@@ -1,0 +1,2 @@
+include ':app'
+rootProject.name = "C19X-SENSOR-Android"
