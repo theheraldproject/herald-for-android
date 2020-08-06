@@ -1,0 +1,7 @@
+::::: 2020-08-06 : Continuous detection and tracking for iOS-Android : TestScript T5 : PASSED
+P2 and X in close proximity for over 7 hours.
+P2 in background mode, screen locked, zero interaction.
+X being used as normal phone with average screen on and interactions.
+Results in "T4-20200806-Contacts-X" show constant detection and tracking.
+Test validates Android peripheral for detection and tracking by iOS central.
+
