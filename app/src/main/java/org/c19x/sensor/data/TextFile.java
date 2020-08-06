@@ -17,7 +17,6 @@ public class TextFile {
         final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
         if (!folder.exists()) {
             folder.mkdirs();
-            logger.debug("Created folder (folder={})", folder);
         }
         file = new File(folder, filename);
     }

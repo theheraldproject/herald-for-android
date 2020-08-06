@@ -9,4 +9,8 @@ public class PayloadTimestamp {
     public PayloadTimestamp(Date value) {
         this.value = value;
     }
+
+    public PayloadTimestamp() {
+        this(new Date());
+    }
 }

@@ -12,15 +12,30 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import org.c19x.sensor.PayloadDataSupplier;
+import org.c19x.sensor.R;
+import org.c19x.sensor.Sensor;
+import org.c19x.sensor.SensorArray;
 import org.c19x.sensor.datatype.Triple;
 import org.c19x.sensor.datatype.Tuple;
+import org.c19x.sensor.payload.sonar.MockSonarPayloadDataSupplier;
 
 public class AppDelegate extends Application {
     private static AppDelegate appDelegate;
     private static Context context;
+
+    private Sensor sensor;
+
     // Notifications
     private final int notificationChannelId = "C19XNotificationChannel".hashCode();
     private Triple<String, String, Notification> notificationContent = new Triple<>(null, null, null);
+
+    /// Generate unique and consistent device identifier for testing detection and tracking
+    private int identifier() {
+        final String text = Build.MODEL + ":" + Build.BRAND;
+        return text.hashCode();
+    }
+
 
     @Override
     public void onCreate() {
@@ -35,6 +50,10 @@ public class AppDelegate extends Application {
         } else {
             startService(intent);
         }
+
+        final PayloadDataSupplier payloadDataSupplier = new MockSonarPayloadDataSupplier(identifier());
+        sensor = new SensorArray(context, payloadDataSupplier);
+        sensor.start();
     }
 
     @Override
@@ -76,7 +95,7 @@ public class AppDelegate extends Application {
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 final PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, 0);
                 final NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), "C19XNotificationChannel")
-                        //.setSmallIcon(R.drawable.virus)
+                        .setSmallIcon(R.drawable.virus)
                         .setContentTitle(title)
                         .setContentText(body)
                         .setContentIntent(pendingIntent)
