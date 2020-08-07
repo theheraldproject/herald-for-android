@@ -43,7 +43,9 @@ public class BLEDevice {
     /// Payload data last update timestamp, this is used to determine what needs to be shared with peers.
     private Date payloadDataLastUpdatedAt = new Date(0);
     /// Payload data already shared with this peer
-    public List<PayloadData> payloadSharingData = new ArrayList<>();
+    protected List<PayloadData> payloadSharingData = new ArrayList<>();
+    /// Payload data shared by this peer
+    private List<PayloadData> payloadSharingDataReceived;
     /// Payload sharing last update timestamp, this is used to throttle read payload sharing calls
     private Date payloadSharingDataLastUpdatedAt = new Date(0);
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
@@ -76,7 +78,7 @@ public class BLEDevice {
     }
 
     public String description() {
-        return "BLEDevice[id=" + identifier + ",lastUpdatedAt=" + lastUpdatedAt + ",peripheral=" + (peripheral == null ? "-" : "T") + ",os=" + operatingSystem + "]";
+        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + "]";
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
@@ -154,6 +156,17 @@ public class BLEDevice {
         this.payloadData = payloadData;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.payloadData);
+    }
+
+    public List<PayloadData> payloadSharingData() {
+        return payloadSharingDataReceived;
+    }
+
+    public void payloadSharingData(List<PayloadData> payloadSharingData) {
+        this.payloadSharingDataReceived = payloadSharingData;
+        lastUpdatedAt = new Date();
+        payloadSharingDataLastUpdatedAt = lastUpdatedAt;
+        delegate.device(this, BLEDeviceAttribute.payloadSharingData);
     }
 
     public RSSI rssi() {

@@ -13,7 +13,7 @@ public class Data {
     }
 
     public String description() {
-        return Base64.encodeToString(value, Base64.DEFAULT);
+        return Base64.encodeToString(value, Base64.DEFAULT | Base64.NO_WRAP);
     }
 
     @Override

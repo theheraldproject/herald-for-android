@@ -115,6 +115,22 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
                 });
                 break;
             }
+            case payloadSharingData: {
+                final List<PayloadData> payloadSharingData = device.payloadSharingData();
+                if (payloadSharingData == null) {
+                    return;
+                }
+                logger.debug("didShare (device={},payloadSharingData={})", device.identifier, payloadSharingData);
+                operationQueue.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, payloadSharingData, device.identifier);
+                        }
+                    }
+                });
+                break;
+            }
             default: {
                 return;
             }
