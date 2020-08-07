@@ -25,4 +25,6 @@ public class BLESensorConfiguration {
     /// Time delay between payload sharing
     public static TimeInterval payloadSharingTimeInterval = TimeInterval.minute;
 
+    // BLE advert manufacturer ID for Apple, for scanning of background iOS devices
+    public static int manufacturerIdForApple = 76;
 }

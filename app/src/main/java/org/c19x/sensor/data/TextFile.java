@@ -39,7 +39,7 @@ public class TextFile {
     }
 
     public boolean empty() {
-        return file.exists();
+        return !file.exists() || file.length() == 0;
     }
 
     /// Append line to new or existing file

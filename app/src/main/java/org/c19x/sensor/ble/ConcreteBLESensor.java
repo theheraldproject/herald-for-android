@@ -1,6 +1,11 @@
 package org.c19x.sensor.ble;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
+
+import androidx.core.app.ActivityCompat;
 
 import org.c19x.sensor.PayloadDataSupplier;
 import org.c19x.sensor.Sensor;
@@ -32,7 +37,7 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
         this.context = context;
         bluetoothStateManager = new ConcreteBluetoothStateManager(context);
         transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, payloadDataSupplier, database);
-        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, payloadDataSupplier, database);
+        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, payloadDataSupplier, database, transmitter);
         database.add(this);
     }
 
@@ -120,4 +125,17 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
     public void bleDatabaseDidDelete(BLEDevice device) {
         logger.debug("didDelete (device={})", device.identifier);
     }
+
+    /**
+     * Check permissions for BLESensor. Add this to Activity.
+     *
+     * @param activity
+     */
+    public final static void checkPermissions(final Activity activity) {
+        final String locationPermission = Manifest.permission.ACCESS_FINE_LOCATION;
+        if (ActivityCompat.checkSelfPermission(activity, locationPermission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(activity, new String[]{locationPermission}, 0);
+        }
+    }
+
 }
