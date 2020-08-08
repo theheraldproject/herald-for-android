@@ -48,7 +48,7 @@ public class BLEDevice {
     /// Bluetooth GATT connection
     protected BluetoothGatt bluetoothGatt;
     /// RSSI and payload write back timestamp, this is used to prioritise peers for write back
-    protected Date lastWriteBackAt = new Date(0);
+    private Date lastWriteBackAt = new Date(0);
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     public TimeInterval timeIntervalSinceLastUpdate() {
@@ -150,6 +150,13 @@ public class BLEDevice {
         this.txPower = txPower;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.txPower);
+    }
+
+    public void writeBack(boolean success) {
+        lastUpdatedAt = new Date();
+        if (success) {
+            lastWriteBackAt = lastUpdatedAt;
+        }
     }
 
     public String toString() {

@@ -47,6 +47,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     private final static int scanOnDurationMillis = 8000, scanOffDurationMillis = 4000;
@@ -510,6 +511,42 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     /**
      * Write RSSI and payload data to central via signal characteristic if this device cannot transmit.
      */
+    private void taskWriteBack(final Set<BLEDevice> devices, final int limit) {
+        logger.debug("taskWriteBack (transmitter={},devices={},limit={})", transmitter.isSupported(), devices.size(), limit);
+        if (transmitter.isSupported()) {
+            return;
+        }
+        // Prioritise devices to write payload (least recent first)
+        // - RSSI data is always fresh enough given the devices are passed in from taskProcessScanResults
+        final List<BLEDevice> pending = new ArrayList<>(devices.size());
+        for (BLEDevice device : devices) {
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android) {
+                pending.add(device);
+            }
+        }
+        Collections.sort(pending, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalSinceLastWriteBack().value, d0.timeIntervalSinceLastWriteBack().value);
+            }
+        });
+        // Initiate write back
+        final List<String> pendingQueue = new ArrayList<>();
+        for (BLEDevice device : pending) {
+            pendingQueue.add(device.operatingSystem() + ":" + device.timeIntervalSinceLastWriteBack().value);
+        }
+        logger.debug("taskWriteBack pending (limit={},pending={},queue={})", limit, pending.size(), pendingQueue);
+        for (int i = 0; i < Math.min(limit, pending.size()); i++) {
+            final BLEDevice device = pending.get(i);
+            logger.debug("taskWriteBack request (device={})", device);
+            writePayload(device);
+        }
+    }
+
+
+    /**
+     * Write RSSI and payload data to central via signal characteristic if this device cannot transmit.
+     */
     private void taskWriteBack(final Set<BLEDevice> devices) {
         logger.debug("taskWriteBack (transmitter={})", transmitter.isSupported());
         if (transmitter.isSupported()) {
@@ -558,7 +595,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         taskRemoveDuplicatePeripherals();
         final Set<BLEDevice> devices = taskProcessScanResults();
         taskConnect();
-        taskWriteBack(devices);
+        taskWriteBack(devices, concurrentConnectionQuota);
     }
 
     private void readPayload(final BLEDevice device) {
@@ -614,7 +651,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         // Establish payload bundle
         final byte[] writePayloadBundle = writePayloadBundle(rssi, payloadData);
         logger.fault("writePayload (device={},rssi={},payload={})", device, rssi, payloadData.description());
-        connect(device, "writePayload", characteristicUUID, null, writePayloadBundle);
+        final boolean success = connect(device, "writePayload", characteristicUUID, null, writePayloadBundle);
+        device.writeBack(success);
     }
 
     /// Create writePayload data bundle for writing to signal characteristic
@@ -630,28 +668,30 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     // MARK:- BLEDevice connection
 
     /// Connect device and perform read/write operation on characteristic
-    private void connect(final BLEDevice device, final String task, final UUID characteristicUUID, final Callback<byte[]> readData, final byte[] writeData) {
+    private boolean connect(final BLEDevice device, final String task, final UUID characteristicUUID, final Callback<byte[]> readData, final byte[] writeData) {
         if (device.peripheral() == null) {
-            return;
+            return false;
         }
         if (readData != null && writeData != null) {
             logger.fault("task {} denied, cannot read and write at the same time (device={})", task, device);
-            return;
+            return false;
         }
+        final AtomicBoolean success = new AtomicBoolean(false);
         final CountDownLatch blocking = new CountDownLatch(1);
         final Callback<String> disconnect = new Callback<String>() {
             @Override
             public void accept(String source) {
                 logger.debug("task {}, disconnect (source={},device={})", task, source, device);
-                if (device.gatt != null) {
+                final BluetoothGatt gatt = device.gatt;
+                if (gatt != null) {
                     try {
                         device.state(BLEDeviceState.disconnecting);
-                        device.gatt.disconnect();
+                        gatt.disconnect();
                     } catch (Throwable e) {
                         logger.fault("task {}, disconnect failed (device={},error={})", task, device, e);
                     }
                     try {
-                        device.gatt.close();
+                        gatt.close();
                     } catch (Throwable e) {
                         logger.fault("task {}, close failed (device={},error={})", task, device, e);
                     }
@@ -663,7 +703,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             }
         };
         final BluetoothGattCallback callback = new BluetoothGattCallback() {
-
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 logger.debug("task {}, onConnectionStateChange (device={},status={},state={})", task, device, status, onConnectionStatusChangeStateToString(newState));
@@ -673,7 +712,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         break;
                     }
                     case BluetoothProfile.STATE_CONNECTED: {
-                        logger.debug("task {}, didConnect (device={})", device);
+                        logger.debug("task {}, didConnect (device={})", task, device);
                         device.state(BLEDeviceState.connected);
                         device.gatt = gatt;
                         gatt.discoverServices();
@@ -694,7 +733,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
                 if (service == null) {
-                    logger.debug("task {}, onServicesDiscovered, BLESensor service not found (device={})", task, device);
+                    logger.debug("task {}, onServicesDiscovered, service not found (device={})", task, device);
                     if (device.operatingSystem() != BLEDeviceOperatingSystem.unknown) {
                         device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     }
@@ -732,6 +771,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         (characteristic.getValue() == null ? "NULL" : characteristic.getValue().length));
                 if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
                     readData.accept(characteristic.getValue());
+                    success.set(true);
                 }
                 disconnect.accept("onCharacteristicRead");
             }
@@ -739,10 +779,13 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             @Override
             public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
                 logger.debug("task {}, onCharacteristicWrite (device={},success={})", task, device, (status == BluetoothGatt.GATT_SUCCESS));
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    success.set(true);
+                }
                 disconnect.accept("onCharacteristicWrite");
             }
         };
-        logger.debug("task {}, connect (device={})", device);
+        logger.debug("task {}, connect (device={})", task, device);
         device.state(BLEDeviceState.connecting);
         try {
             device.gatt = device.peripheral().connectGatt(context, false, callback);
@@ -760,6 +803,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             logger.fault("task {}, connect failed (device={},error={})", device, e);
             disconnect.accept("connect|noGatt");
         }
+        return success.get();
     }
 
     // MARK:- Bluetooth code transformers
