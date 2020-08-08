@@ -27,7 +27,8 @@ public class AppDelegate extends Application {
     private Sensor sensor;
 
     // Notifications
-    private final int notificationChannelId = "C19XNotificationChannel".hashCode();
+    private final String notificationChannelName = "NotificationChannel";
+    private final int notificationChannelId = notificationChannelName.hashCode();
     private Triple<String, String, Notification> notificationContent = new Triple<>(null, null, null);
 
     /// Generate unique and consistent device identifier for testing detection and tracking
@@ -74,8 +75,8 @@ public class AppDelegate extends Application {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             final int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            final NotificationChannel channel = new NotificationChannel("C19XNotificationChannel", "C19X", importance);
-            channel.setDescription("C19X notifications");
+            final NotificationChannel channel = new NotificationChannel(notificationChannelName, notificationChannelName, importance);
+            channel.setDescription(notificationChannelName);
             final NotificationManager notificationManager = getApplicationContext().getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
@@ -94,7 +95,7 @@ public class AppDelegate extends Application {
                 final Intent intent = new Intent(getApplicationContext(), AppDelegate.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 final PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, 0);
-                final NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), "C19XNotificationChannel")
+                final NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), notificationChannelName)
                         .setSmallIcon(R.drawable.virus)
                         .setContentTitle(title)
                         .setContentText(body)
@@ -109,7 +110,7 @@ public class AppDelegate extends Application {
             }
         } else {
             final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
-            notificationManager.deleteNotificationChannel("C19XNotificationChannel");
+            notificationManager.deleteNotificationChannel(notificationChannelName);
             notificationContent = new Triple<>(null, null, null);
         }
         return new Tuple<>(notificationChannelId, null);
