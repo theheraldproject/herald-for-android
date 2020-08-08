@@ -5,6 +5,8 @@ import android.content.Context;
 import org.c19x.sensor.ble.ConcreteBLESensor;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.ContactLog;
+import org.c19x.sensor.data.DetectionLog;
+import org.c19x.sensor.data.RScriptLog;
 import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.PayloadTimestamp;
 
@@ -16,17 +18,27 @@ public class SensorArray implements Sensor {
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private List<Sensor> sensorArray = new ArrayList<>();
 
+    private final static int payloadPrefixLength = 6;
+    private final String payloadString, payloadPrefix;
+    public final static String deviceDescription = android.os.Build.MODEL + "(Android " + android.os.Build.VERSION.SDK_INT + ")";
+
+
     public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
         logger.debug("init");
-//        sensorArray.append(ConcreteGPSSensor(rangeForBeacon:UUID(uuidString:BLESensorConfiguration.serviceUUID.uuidString)))
         sensorArray.add(new ConcreteBLESensor(context, payloadDataSupplier));
 
         // Loggers
-        final String payloadString = payloadDataSupplier.payload(new PayloadTimestamp()).description();
+        payloadString = payloadDataSupplier.payload(new PayloadTimestamp()).description();
+        payloadPrefix = payloadString.substring(0, payloadPrefixLength);
         add(new ContactLog("contacts.csv"));
-//        add(delegate: RScriptLog(filename: "rScriptLog.csv"))
-//        add(delegate: DetectionLog(filename: "detection.csv", payloadString: payloadString, prefixLength: 6))
-        logger.info("DEVICE ID (payloadPrefix={})", payloadString.substring(0, 6));
+        add(new RScriptLog("rScriptLog.csv"));
+        add(new DetectionLog("detection.csv", payloadString, payloadPrefixLength));
+
+        logger.info("DEVICE (payloadPrefix={},description={})", payloadPrefix, deviceDescription);
+    }
+
+    public final String payloadPrefix() {
+        return payloadPrefix;
     }
 
     @Override

@@ -12,8 +12,12 @@ public class Data {
         this.value = value;
     }
 
-    public String description() {
+    public String base64EncodedString() {
         return Base64.encodeToString(value, Base64.DEFAULT | Base64.NO_WRAP);
+    }
+
+    public String description() {
+        return base64EncodedString();
     }
 
     @Override
@@ -31,6 +35,6 @@ public class Data {
 
     @Override
     public String toString() {
-        return description();
+        return base64EncodedString();
     }
 }

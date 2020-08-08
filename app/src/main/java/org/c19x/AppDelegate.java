@@ -24,7 +24,7 @@ public class AppDelegate extends Application {
     private static AppDelegate appDelegate;
     private static Context context;
 
-    private Sensor sensor;
+    protected Sensor sensor;
 
     // Notifications
     private final String notificationChannelName = "NotificationChannel";
