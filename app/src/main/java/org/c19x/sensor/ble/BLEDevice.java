@@ -2,7 +2,6 @@ package org.c19x.sensor.ble;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCharacteristic;
 
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.RSSI;
@@ -30,12 +29,6 @@ public class BLEDevice {
     public BluetoothGatt gatt = null;
     /// Bluetooth device connection state last update timestamp, this is used to disconnect long connections.
     private Date stateLastUpdatedAt = new Date(0);
-    /// Service characteristic for signalling between BLE devices, e.g. to keep awake
-    private BluetoothGattCharacteristic signalCharacteristic;
-    /// Service characteristic for reading payload data, e.g. C19X beacon code or Sonar encrypted identifier
-    private BluetoothGattCharacteristic payloadCharacteristic;
-    /// Service characteristic for reading payload sharing data, e.g. C19X beacon code or Sonar encrypted identifier recently acquired by this device
-    private BluetoothGattCharacteristic payloadSharingCharacteristic;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
@@ -106,36 +99,6 @@ public class BLEDevice {
         this.state = state;
 //        lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.state);
-    }
-
-    public BluetoothGattCharacteristic signalCharacteristic() {
-        return signalCharacteristic;
-    }
-
-    public void signalCharacteristic(BluetoothGattCharacteristic characteristic) {
-        this.signalCharacteristic = characteristic;
-        lastUpdatedAt = new Date();
-        delegate.device(this, BLEDeviceAttribute.signalCharacteristic);
-    }
-
-    public BluetoothGattCharacteristic payloadCharacteristic() {
-        return payloadCharacteristic;
-    }
-
-    public void payloadCharacteristic(BluetoothGattCharacteristic characteristic) {
-        this.payloadCharacteristic = characteristic;
-        lastUpdatedAt = new Date();
-        delegate.device(this, BLEDeviceAttribute.payloadCharacteristic);
-    }
-
-    public BluetoothGattCharacteristic payloadSharingCharacteristic() {
-        return payloadSharingCharacteristic;
-    }
-
-    public void payloadSharingCharacteristic(BluetoothGattCharacteristic characteristic) {
-        this.payloadSharingCharacteristic = characteristic;
-        lastUpdatedAt = new Date();
-        delegate.device(this, BLEDeviceAttribute.payloadSharingCharacteristic);
     }
 
     public BLEDeviceOperatingSystem operatingSystem() {

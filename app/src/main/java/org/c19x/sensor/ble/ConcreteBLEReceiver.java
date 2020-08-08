@@ -257,10 +257,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             }
         }
         for (BLEDevice device : devicesToRemove) {
-            logger.debug("taskRemoveExpiredDevices (removed={})", device.identifier);
+            logger.debug("taskRemoveExpiredDevices (removed={})", device);
             database.delete(device.identifier);
             if (device.bluetoothGatt != null) {
-                logger.debug("disconnect (source=taskRemoveExpiredDevices,identifier={})", device.identifier);
+                logger.debug("disconnect (source=taskRemoveExpiredDevices,identifier={})", device);
                 device.bluetoothGatt.disconnect();
             }
         }
@@ -294,7 +294,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             database.delete(discarding.identifier);
             logger.debug("taskRemoveDuplicatePeripherals (payload={},device={},duplicate={},keeping={}",
                     keeping.payloadData().description(),
-                    device.identifier,
+                    device,
                     duplicate.identifier,
                     (keeping == device ? "former" : "latter"));
         }
@@ -384,7 +384,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
         logger.debug("taskConnect status (connected={},connecting={},disconnected={})", connected.size(), connecting.size(), disconnected.size());
         for (BLEDevice device : connected) {
-            logger.debug("taskConnect connected (device={},operatingSystem={})", device.identifier, device.operatingSystem());
+            logger.debug("taskConnect connected (device={},operatingSystem={})", device, device.operatingSystem());
         }
 
         // Establish connections to keep
@@ -442,18 +442,18 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 }
             }
             for (BLEDevice device : discard) {
-                logger.debug("taskConnect|discard (device={},operatingSystem={})", device.identifier, device.operatingSystem());
+                logger.debug("taskConnect|discard (device={},operatingSystem={})", device, device.operatingSystem());
                 if (device.gatt != null) {
                     try {
                         device.state(BLEDeviceState.disconnecting);
                         device.gatt.disconnect();
                     } catch (Throwable e) {
-                        logger.fault("taskConnect|discard, disconnect failed (device={},error={})", device.identifier, e);
+                        logger.fault("taskConnect|discard, disconnect failed (device={},error={})", device, e);
                     }
                     try {
                         device.gatt.close();
                     } catch (Throwable e) {
-                        logger.fault("taskConnect|discard, close failed (device={},error={})", device.identifier, e);
+                        logger.fault("taskConnect|discard, close failed (device={},error={})", device, e);
                     }
                     device.gatt = null;
                 }
@@ -585,6 +585,14 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     private void writePayload(final BLEDevice device) {
         logger.debug("writePayload (device={})", device);
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
+            logger.fault("writePayload denied, unknown operating system (device={})", device);
+            return;
+        }
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
+            logger.fault("writePayload denied, ignore device (device={})", device);
+            return;
+        }
         // Establish OS and characteristic
         UUID characteristicUUID = null;
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
@@ -627,14 +635,14 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             return;
         }
         if (readData != null && writeData != null) {
-            logger.fault("task {} denied, cannot read and write at the same time (device={})", task, device.identifier);
+            logger.fault("task {} denied, cannot read and write at the same time (device={})", task, device);
             return;
         }
         final CountDownLatch blocking = new CountDownLatch(1);
         final Callback<String> disconnect = new Callback<String>() {
             @Override
             public void accept(String source) {
-                logger.debug("task {}, disconnect (source={},device={})", task, source, device.identifier);
+                logger.debug("task {}, disconnect (source={},device={})", task, source, device);
                 if (device.gatt != null) {
                     try {
                         device.state(BLEDeviceState.disconnecting);
@@ -650,7 +658,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     device.gatt = null;
                 }
                 device.state(BLEDeviceState.disconnected);
-                logger.debug("task {}, disconnected (source={},device={})", task, source, device.identifier);
+                logger.debug("task {}, disconnected (source={},device={})", task, source, device);
                 blocking.countDown();
             }
         };
@@ -658,14 +666,14 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                logger.debug("task {}, onConnectionStateChange (device={},status={},state={})", task, device.identifier, status, onConnectionStatusChangeStateToString(newState));
+                logger.debug("task {}, onConnectionStateChange (device={},status={},state={})", task, device, status, onConnectionStatusChangeStateToString(newState));
                 switch (newState) {
                     case BluetoothProfile.STATE_CONNECTING: {
                         device.state(BLEDeviceState.connecting);
                         break;
                     }
                     case BluetoothProfile.STATE_CONNECTED: {
-                        logger.debug("task {}, didConnect (device={})", device.identifier);
+                        logger.debug("task {}, didConnect (device={})", device);
                         device.state(BLEDeviceState.connected);
                         device.gatt = gatt;
                         gatt.discoverServices();
@@ -686,7 +694,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
                 if (service == null) {
-                    logger.debug("task {}, onServicesDiscovered, BLESensor service not found (device={})", task, device.identifier);
+                    logger.debug("task {}, onServicesDiscovered, BLESensor service not found (device={})", task, device);
                     if (device.operatingSystem() != BLEDeviceOperatingSystem.unknown) {
                         device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     }
@@ -696,12 +704,12 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 final BluetoothGattCharacteristic characteristic = service.getCharacteristic(characteristicUUID);
                 if (characteristic != null) {
                     if (readData != null) {
-                        logger.debug("task {}, readCharacteristic (device={})", task, device.identifier);
+                        logger.debug("task {}, readCharacteristic (device={})", task, device);
                         if (!gatt.readCharacteristic(characteristic)) {
                             disconnect.accept("onServicesDiscovered|readCharacteristicFailed");
                         }
                     } else if (writeData != null) {
-                        logger.debug("task {}, writeCharacteristic (device={})", task, device.identifier);
+                        logger.debug("task {}, writeCharacteristic (device={})", task, device);
                         characteristic.setValue(writeData);
                         characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                         if (!gatt.writeCharacteristic(characteristic)) {
@@ -719,7 +727,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             @Override
             public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
                 logger.debug("task {}, onCharacteristicRead (device={},success={},value={})",
-                        task, device.identifier,
+                        task, device,
                         (status == BluetoothGatt.GATT_SUCCESS),
                         (characteristic.getValue() == null ? "NULL" : characteristic.getValue().length));
                 if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
@@ -730,7 +738,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
             @Override
             public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-                logger.debug("task {}, onCharacteristicWrite (device={},success={})", task, device.identifier, (status == BluetoothGatt.GATT_SUCCESS));
+                logger.debug("task {}, onCharacteristicWrite (device={},success={})", task, device, (status == BluetoothGatt.GATT_SUCCESS));
                 disconnect.accept("onCharacteristicWrite");
             }
         };
@@ -744,7 +752,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 try {
                     blocking.await(10, TimeUnit.SECONDS);
                 } catch (Throwable e) {
-                    logger.debug("task {}, timeout (device={})", task, device.identifier);
+                    logger.debug("task {}, timeout (device={})", task, device);
                     disconnect.accept("connect|timeout");
                 }
             }
@@ -810,121 +818,4 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 return "UNKNOWN_STATE_" + state;
         }
     }
-//
-//    private final void taskProcessDevice(final BLEDevice device) {
-//        logger.debug("taskProcessDevice (device={})", device);
-//
-//        if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
-//            logger.debug("taskProcessDevice, ignore (device={})", device);
-//            return;
-//        }
-//
-//        if (device.payloadData() != null) {
-//            logger.debug("taskProcessDevice, has payload, skipping (device={})", device);
-//            return;
-//        }
-//
-//        // Beacon missing beacon code or peripheral needs to transmit beacon code to central
-//        final CompletableFuture<PayloadData> future = new CompletableFuture<>();
-//        final AtomicBoolean gattOpen = new AtomicBoolean(true);
-//        final BluetoothGattCallback callback = new BluetoothGattCallback() {
-//            private PayloadData payloadData = null;
-//
-//            @Override
-//            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-//                logger.debug("GATT client connection state change (device={},status={},newState={})",
-//                        gatt.getDevice(), status, onConnectionStatusChangeStateToString(newState));
-//                if (newState == BluetoothProfile.STATE_CONNECTED) {
-//                    gatt.discoverServices();
-//                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-//                    if (gattOpen.compareAndSet(true, false)) {
-//                        gatt.close();
-//                        logger.debug("GATT client closed");
-//                    }
-//                    future.complete(payloadData);
-//                }
-//            }
-//
-//            @Override
-//            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-//                logger.debug("GATT client discovered services (device={},status={})", device, status);
-////                for (BluetoothGattService service : gatt.getServices()) {
-////                    logger.debug("GATT client discovered service (device={},status={},uuid={})", device, status, service.getUuid());
-////                }
-//                final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
-//                if (service == null) {
-//                    logger.debug("GATT client C19X service not found (device={})", device);
-//                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-//                    gatt.close();
-//                    future.complete(payloadData);
-//                    return;
-//                }
-//                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
-//                    logger.debug("GATT client discovered characteristic (device={},characteristic={})", device, characteristic.getUuid());
-//                    if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID) && device.payloadData() == null) {
-//                        logger.debug("GATT client discovered payload characteristic (device={})", gatt.getDevice());
-//                        gatt.readCharacteristic(characteristic);
-//                        return;
-////                        if (!transmitter.isSupported()) {
-////                            Logger.debug(tag, "GATT client not associated with transmitter, sending data instead");
-////                            final BeaconCode beaconCode = transmitter.beaconCode();
-////                            final ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES + Integer.BYTES);
-////                            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-////                            byteBuffer.putLong(0, beaconCode.value);
-////                            byteBuffer.putInt(Long.BYTES, beacon.getRssi().value);
-////                            characteristic.setValue(byteBuffer.array());
-////                            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-////                            final boolean writeInitSuccess = gatt.writeCharacteristic(characteristic);
-////                            Logger.debug(tag, "GATT client initiated write (device={},receiverBeaconCode={},rssi={},success={})", gatt.getDevice(), beaconCode, beacon.getRssi().value, writeInitSuccess);
-////                            // GATT close on write complete
-////                            return;
-////                        } else {
-////                            gatt.disconnect();
-////                            future.complete(centralBeaconCode);
-////                        }
-//                    }
-//                }
-//                gatt.disconnect();
-//                future.complete(payloadData);
-//            }
-//
-//            @Override
-//            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-//                logger.debug("GATT client read characteristic (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-//                payloadData = new PayloadData(characteristic.getValue());
-//                gatt.disconnect();
-//                future.complete(payloadData);
-//            }
-//
-//            @Override
-//            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-//                logger.debug("GATT client wrote characteristic (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-//                gatt.disconnect();
-//                future.complete(payloadData);
-//            }
-//        };
-//        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE);
-//        final String gattDevice = (gatt != null && gatt.getDevice() != null ? gatt.getDevice().toString() : "null");
-//        try {
-//            final PayloadData payloadData = future.get(5, TimeUnit.SECONDS);
-//            if (payloadData != null) {
-//                logger.debug("GATT client read payload (payload={})", payloadData.description());
-//                device.payloadData(payloadData);
-//            }
-//        } catch (TimeoutException e) {
-//            logger.fault("GATT client timeout (device={})", gattDevice);
-//        } catch (Throwable e) {
-//            logger.fault("GATT client exception (device={})", gattDevice, e);
-//        }
-//        if (gattOpen.compareAndSet(true, false)) {
-//            try {
-//                gatt.disconnect();
-//            } catch (Throwable e) {
-//                logger.fault("GATT client disconnect exception (device={})", gattDevice, e);
-//            }
-//            gatt.close();
-//            logger.fault("GATT client closed (device={})", gattDevice);
-//        }
-//    }
-//
 }
