@@ -585,6 +585,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     private void writePayload(final BLEDevice device) {
         logger.debug("writePayload (device={})", device);
+        // Write payload not possible for unknown or ignore devices
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
             logger.fault("writePayload denied, unknown operating system (device={})", device);
             return;
@@ -593,17 +594,11 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             logger.fault("writePayload denied, ignore device (device={})", device);
             return;
         }
-        // Establish OS and characteristic
-        UUID characteristicUUID = null;
-        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
-            characteristicUUID = BLESensorConfiguration.iosSignalCharacteristicUUID;
-        } else if (device.operatingSystem() == BLEDeviceOperatingSystem.android) {
-            characteristicUUID = BLESensorConfiguration.androidSignalCharacteristicUUID;
-        }
-        if (characteristicUUID == null) {
-            logger.fault("writePayload denied, operating system must be iOS or Android (device={},operatingSystem={})", device, device.operatingSystem());
-            return;
-        }
+        // Establish signal characteristic based on operating system
+        final UUID characteristicUUID =
+                (device.operatingSystem() == BLEDeviceOperatingSystem.ios ?
+                        BLESensorConfiguration.iosSignalCharacteristicUUID :
+                        BLESensorConfiguration.androidSignalCharacteristicUUID);
         // Establish RSSI
         final RSSI rssi = device.rssi();
         if (rssi == null) {
@@ -617,14 +612,19 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             return;
         }
         // Establish payload bundle
+        final byte[] writePayloadBundle = writePayloadBundle(rssi, payloadData);
+        logger.fault("writePayload (device={},rssi={},payload={})", device, rssi, payloadData.description());
+        connect(device, "writePayload", characteristicUUID, null, writePayloadBundle);
+    }
+
+    /// Create writePayload data bundle for writing to signal characteristic
+    private static byte[] writePayloadBundle(RSSI rssi, PayloadData payloadData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(4 + payloadData.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.putInt(rssi.value);
         byteBuffer.position(4);
         byteBuffer.put(payloadData.value);
-        final byte[] writeData = byteBuffer.array();
-        logger.fault("writePayload (device={},rssi={},payload={})", device, rssi, payloadData.description());
-        connect(device, "writePayload", characteristicUUID, null, writeData);
+        return byteBuffer.array();
     }
 
     // MARK:- BLEDevice connection
