@@ -20,7 +20,7 @@ public class SensorArray implements Sensor {
 
     private final static int payloadPrefixLength = 6;
     private final String payloadString, payloadPrefix;
-    public final static String deviceDescription = android.os.Build.MODEL + "(Android " + android.os.Build.VERSION.SDK_INT + ")";
+    public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
 
     public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
