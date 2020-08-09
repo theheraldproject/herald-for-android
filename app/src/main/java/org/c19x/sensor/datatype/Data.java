@@ -20,6 +20,16 @@ public class Data {
         return base64EncodedString();
     }
 
+    public Data subdata(int offset) {
+        if (offset < value.length) {
+            final byte[] offsetValue = new byte[value.length - offset];
+            System.arraycopy(value, offset, offsetValue, 0, offsetValue.length);
+            return new Data(offsetValue);
+        } else {
+            return null;
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

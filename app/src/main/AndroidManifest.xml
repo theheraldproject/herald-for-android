@@ -22,7 +22,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service android:name="org.c19x.ForegroundService" />
-        <activity android:name="org.c19x.MainActivity">
+        <activity
+            android:name="org.c19x.MainActivity"
+            android:configChanges="orientation"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

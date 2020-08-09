@@ -1,7 +1,6 @@
 package org.c19x.sensor.ble;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -26,7 +25,6 @@ import org.c19x.sensor.datatype.BluetoothState;
 import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
-import org.c19x.sensor.datatype.PayloadTimestamp;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.TimeInterval;
 
@@ -43,13 +41,11 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
@@ -644,38 +640,41 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 (device.operatingSystem() == BLEDeviceOperatingSystem.ios ?
                         BLESensorConfiguration.iosSignalCharacteristicUUID :
                         BLESensorConfiguration.androidSignalCharacteristicUUID);
-        // Establish RSSI
-        final RSSI rssi = device.rssi();
-        if (rssi == null) {
-            logger.fault("writePayload denied, missing RSSI (device={})", device);
-            return;
+        // Priority
+        // 1. Write payload
+        // 2. Write payload sharing
+        // 3. Write RSSI
+        if (device.payloadData() != null && (device.lastWritePayloadAt == null || device.timeIntervalSinceLastWritePayload().value > TimeInterval.hour.value)) {
+            final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
+            device.writePayload(connect(device, "writePayload", characteristicUUID, null, data));
+        } else if (transmitter instanceof ConcreteBLETransmitter && (device.lastWritePayloadSharingAt == null || device.timeIntervalSinceLastWritePayloadSharing().value > BLESensorConfiguration.payloadSharingTimeInterval.value)) {
+            final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
+            final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
+            device.writePayloadSharing(connect(device, "writePayloadSharing", characteristicUUID, null, data));
+        } else if (device.rssi() != null) {
+            final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
+            device.writeRssi(connect(device, "writeRSSI", characteristicUUID, null, data));
         }
-        // Establish payload
-        final PayloadData payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-        if (payloadData == null) {
-            logger.fault("writePayload denied, missing payload data (device={})", device);
-            return;
-        }
-        // Establish payload bundle
-        final byte[] writePayloadBundle = writePayloadBundle(rssi, payloadData);
-        logger.fault("writePayload (device={},rssi={},payload={})", device, rssi, payloadData.description());
-        final boolean success = connect(device, "writePayload", characteristicUUID, null, writePayloadBundle);
-        device.writeBack(success);
     }
 
-    /// Create writePayload data bundle for writing to signal characteristic
-    private static byte[] writePayloadBundle(RSSI rssi, PayloadData payloadData) {
-        if (rssi == null) {
-            return null;
-        }
-        if (payloadData == null) {
-            return null;
-        }
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(4 + payloadData.value.length);
+    private static byte[] signalData(final byte actionCode, final byte[] data) {
+        return signalData(actionCode, data.length, data);
+    }
+
+    private static byte[] signalData(final byte actionCode, final int shortValue) {
+        return signalData(actionCode, shortValue, null);
+    }
+
+    /// Create data bundle for writing to signal characteristic
+    private static byte[] signalData(final byte actionCode, final int shortValue, final byte[] data) {
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + (data == null ? 0 : data.length));
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        byteBuffer.putInt(rssi.value);
-        byteBuffer.position(4);
-        byteBuffer.put(payloadData.value);
+        byteBuffer.put(0, actionCode);
+        byteBuffer.putShort(1, Integer.valueOf(shortValue).shortValue());
+        if (data != null) {
+            byteBuffer.position(3);
+            byteBuffer.put(data);
+        }
         return byteBuffer.array();
     }
 
@@ -876,164 +875,164 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 return "UNKNOWN_STATE_" + state;
         }
     }
-
-    private final void taskProcessAndroidDevice(final BLEDevice device) {
-        if (device.operatingSystem() != BLEDeviceOperatingSystem.android) {
-            logger.fault("taskProcessAndroidDevice denied, not Android (device={})", device);
-            return;
-        }
-
-        final AtomicBoolean readPayload = new AtomicBoolean(device.payloadData() == null);
-        final AtomicBoolean readPayloadSharing = new AtomicBoolean(device.timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value);
-        final AtomicBoolean writePayloadBundle = new AtomicBoolean(!transmitter.isSupported());
-
-        if (!(readPayload.get() || readPayloadSharing.get() || writePayloadBundle.get())) {
-            logger.debug("taskProcessAndroidDevice complete, no action required (device={})", device);
-            return;
-        } else {
-            logger.debug("taskProcessAndroidDevice (device={},readPayload={},readPayloadSharing={},writePayloadBundle={})", device, readPayload, readPayloadSharing, writePayloadBundle);
-        }
-
-        final CompletableFuture<Boolean> future = new CompletableFuture<>();
-        final AtomicBoolean gattOpen = new AtomicBoolean(true);
-        final BluetoothGattCallback callback = new BluetoothGattCallback() {
-            private void checkCompletion(BluetoothGatt gatt) {
-                if (!(readPayload.get() || readPayloadSharing.get() || writePayloadBundle.get())) {
-                    gatt.disconnect();
-                    future.complete(true);
-                }
-            }
-
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                logger.debug("taskProcessAndroidDevice, onConnectionStateChange (device={},status={},newState={})",
-                        gatt.getDevice(), status, onConnectionStatusChangeStateToString(newState));
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    gatt.discoverServices();
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    if (gattOpen.compareAndSet(true, false)) {
-                        gatt.close();
-                        logger.debug("taskProcessAndroidDevice, closed (device={})", device);
-                    }
-                    future.complete(true);
-                }
-            }
-
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                logger.debug("taskProcessAndroidDevice, onServicesDiscovered (device={},status={})", device, status);
-                for (BluetoothGattService service : gatt.getServices()) {
-                    logger.debug("taskProcessAndroidDevice, discovered service (device={},status={},uuid={})", device, status, service.getUuid());
-                }
-                final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
-                if (service == null) {
-                    logger.debug("taskProcessAndroidDevice, missing sensor service (device={})", device);
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-                    gatt.close();
-                    future.complete(false);
-                    return;
-                }
-                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
-                    logger.debug("taskProcessAndroidDevice, found characteristic (device={},characteristic={})", device, characteristic.getUuid().toString());
-                    if (readPayload.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.payloadCharacteristicUUID.toString())) {
-                        logger.debug("taskProcessAndroidDevice, readPayload request (device={})", gatt.getDevice());
-                        if (!gatt.readCharacteristic(characteristic)) {
-                            logger.fault("taskProcessAndroidDevice, readPayload request failed (device={})", gatt.getDevice());
-                            readPayload.set(false);
-                        } else {
-                            readPayloadSharing.set(false);
-                            writePayloadBundle.set(false);
-                        }
-                    } else if (readPayloadSharing.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.payloadSharingCharacteristicUUID.toString())) {
-                        logger.debug("taskProcessAndroidDevice, readPayloadSharing request (device={})", gatt.getDevice());
-                        if (!gatt.readCharacteristic(characteristic)) {
-                            logger.fault("taskProcessAndroidDevice, readPayloadSharing request failed (device={})", gatt.getDevice());
-                            readPayloadSharing.set(false);
-                        } else {
-                            readPayload.set(false);
-                            writePayloadBundle.set(false);
-                        }
-                    } else if (writePayloadBundle.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.iosSignalCharacteristicUUID.toString())) {
-                        final byte[] value = writePayloadBundle(device.rssi(), transmitter.payloadData());
-                        if (value != null) {
-                            logger.debug("taskProcessAndroidDevice, writePayloadBundle to iOS request (device={})", gatt.getDevice());
-                            characteristic.setValue(value);
-                            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                            if (!gatt.writeCharacteristic(characteristic)) {
-                                logger.fault("taskProcessAndroidDevice, writePayloadBundle request failed (device={})", gatt.getDevice());
-                                writePayloadBundle.set(false);
-                            } else {
-                                readPayload.set(false);
-                                readPayloadSharing.set(false);
-                            }
-                        }
-                    } else if (writePayloadBundle.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.androidSignalCharacteristicUUID.toString())) {
-                        final byte[] value = writePayloadBundle(device.rssi(), transmitter.payloadData());
-                        if (value != null) {
-                            logger.debug("taskProcessAndroidDevice, writePayloadBundle to Android request (device={})", gatt.getDevice());
-                            characteristic.setValue(value);
-                            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                            if (!gatt.writeCharacteristic(characteristic)) {
-                                logger.fault("taskProcessAndroidDevice, writePayloadBundle request failed (device={})", gatt.getDevice());
-                                writePayloadBundle.set(false);
-                            } else {
-                                readPayload.set(false);
-                                readPayloadSharing.set(false);
-                            }
-                        }
-                    }
-                }
-                checkCompletion(gatt);
-            }
-
-            @Override
-            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-                if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
-                    logger.debug("taskProcessAndroidDevice, readPayload completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-                    if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
-                        device.payloadData(new PayloadData(characteristic.getValue()));
-                        readPayload.set(false);
-                    }
-                } else if (characteristic.getUuid().equals(BLESensorConfiguration.payloadSharingCharacteristicUUID)) {
-                    logger.debug("taskProcessAndroidDevice, readPayloadSharing completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-                    if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
-                        device.payloadSharingData(payloadDataSupplier.payload(new Data(characteristic.getValue())));
-                        readPayloadSharing.set(false);
-                    }
-                }
-                checkCompletion(gatt);
-            }
-
-            @Override
-            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-                if (characteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
-                    logger.debug("taskProcessAndroidDevice, writePayloadBundle to iOS completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-                    writePayloadBundle.set(false);
-                } else if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
-                    logger.debug("taskProcessAndroidDevice, writePayloadBundle to Android completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
-                    writePayloadBundle.set(false);
-                }
-                checkCompletion(gatt);
-            }
-        };
-        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE);
-        final String gattDevice = (gatt != null && gatt.getDevice() != null ? gatt.getDevice().toString() : "null");
-        try {
-            future.get(10, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            logger.fault("taskProcessAndroidDevice, timeout (device={})", gattDevice);
-        } catch (Throwable e) {
-            logger.fault("taskProcessAndroidDevice, exception (device={})", gattDevice, e);
-        }
-        if (gattOpen.compareAndSet(true, false)) {
-            try {
-                gatt.disconnect();
-            } catch (Throwable e) {
-                logger.fault("taskProcessAndroidDevice, disconnect exception (device={})", gattDevice, e);
-            }
-            gatt.close();
-            logger.debug("taskProcessAndroidDevice, closed (device={})", gattDevice);
-        }
-    }
-
+//
+//    private final void taskProcessAndroidDevice(final BLEDevice device) {
+//        if (device.operatingSystem() != BLEDeviceOperatingSystem.android) {
+//            logger.fault("taskProcessAndroidDevice denied, not Android (device={})", device);
+//            return;
+//        }
+//
+//        final AtomicBoolean readPayload = new AtomicBoolean(device.payloadData() == null);
+//        final AtomicBoolean readPayloadSharing = new AtomicBoolean(device.timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value);
+//        final AtomicBoolean writePayloadBundle = new AtomicBoolean(!transmitter.isSupported());
+//
+//        if (!(readPayload.get() || readPayloadSharing.get() || writePayloadBundle.get())) {
+//            logger.debug("taskProcessAndroidDevice complete, no action required (device={})", device);
+//            return;
+//        } else {
+//            logger.debug("taskProcessAndroidDevice (device={},readPayload={},readPayloadSharing={},writePayloadBundle={})", device, readPayload, readPayloadSharing, writePayloadBundle);
+//        }
+//
+//        final CompletableFuture<Boolean> future = new CompletableFuture<>();
+//        final AtomicBoolean gattOpen = new AtomicBoolean(true);
+//        final BluetoothGattCallback callback = new BluetoothGattCallback() {
+//            private void checkCompletion(BluetoothGatt gatt) {
+//                if (!(readPayload.get() || readPayloadSharing.get() || writePayloadBundle.get())) {
+//                    gatt.disconnect();
+//                    future.complete(true);
+//                }
+//            }
+//
+//            @Override
+//            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+//                logger.debug("taskProcessAndroidDevice, onConnectionStateChange (device={},status={},newState={})",
+//                        gatt.getDevice(), status, onConnectionStatusChangeStateToString(newState));
+//                if (newState == BluetoothProfile.STATE_CONNECTED) {
+//                    gatt.discoverServices();
+//                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+//                    if (gattOpen.compareAndSet(true, false)) {
+//                        gatt.close();
+//                        logger.debug("taskProcessAndroidDevice, closed (device={})", device);
+//                    }
+//                    future.complete(true);
+//                }
+//            }
+//
+//            @Override
+//            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+//                logger.debug("taskProcessAndroidDevice, onServicesDiscovered (device={},status={})", device, status);
+//                for (BluetoothGattService service : gatt.getServices()) {
+//                    logger.debug("taskProcessAndroidDevice, discovered service (device={},status={},uuid={})", device, status, service.getUuid());
+//                }
+//                final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
+//                if (service == null) {
+//                    logger.debug("taskProcessAndroidDevice, missing sensor service (device={})", device);
+//                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+//                    gatt.close();
+//                    future.complete(false);
+//                    return;
+//                }
+//                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+//                    logger.debug("taskProcessAndroidDevice, found characteristic (device={},characteristic={})", device, characteristic.getUuid().toString());
+//                    if (readPayload.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.payloadCharacteristicUUID.toString())) {
+//                        logger.debug("taskProcessAndroidDevice, readPayload request (device={})", gatt.getDevice());
+//                        if (!gatt.readCharacteristic(characteristic)) {
+//                            logger.fault("taskProcessAndroidDevice, readPayload request failed (device={})", gatt.getDevice());
+//                            readPayload.set(false);
+//                        } else {
+//                            readPayloadSharing.set(false);
+//                            writePayloadBundle.set(false);
+//                        }
+//                    } else if (readPayloadSharing.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.payloadSharingCharacteristicUUID.toString())) {
+//                        logger.debug("taskProcessAndroidDevice, readPayloadSharing request (device={})", gatt.getDevice());
+//                        if (!gatt.readCharacteristic(characteristic)) {
+//                            logger.fault("taskProcessAndroidDevice, readPayloadSharing request failed (device={})", gatt.getDevice());
+//                            readPayloadSharing.set(false);
+//                        } else {
+//                            readPayload.set(false);
+//                            writePayloadBundle.set(false);
+//                        }
+//                    } else if (writePayloadBundle.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.iosSignalCharacteristicUUID.toString())) {
+//                        final byte[] value = writePayloadBundle(device.rssi(), transmitter.payloadData());
+//                        if (value != null) {
+//                            logger.debug("taskProcessAndroidDevice, writePayloadBundle to iOS request (device={})", gatt.getDevice());
+//                            characteristic.setValue(value);
+//                            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+//                            if (!gatt.writeCharacteristic(characteristic)) {
+//                                logger.fault("taskProcessAndroidDevice, writePayloadBundle request failed (device={})", gatt.getDevice());
+//                                writePayloadBundle.set(false);
+//                            } else {
+//                                readPayload.set(false);
+//                                readPayloadSharing.set(false);
+//                            }
+//                        }
+//                    } else if (writePayloadBundle.get() && characteristic.getUuid().toString().equalsIgnoreCase(BLESensorConfiguration.androidSignalCharacteristicUUID.toString())) {
+//                        final byte[] value = writePayloadBundle(device.rssi(), transmitter.payloadData());
+//                        if (value != null) {
+//                            logger.debug("taskProcessAndroidDevice, writePayloadBundle to Android request (device={})", gatt.getDevice());
+//                            characteristic.setValue(value);
+//                            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+//                            if (!gatt.writeCharacteristic(characteristic)) {
+//                                logger.fault("taskProcessAndroidDevice, writePayloadBundle request failed (device={})", gatt.getDevice());
+//                                writePayloadBundle.set(false);
+//                            } else {
+//                                readPayload.set(false);
+//                                readPayloadSharing.set(false);
+//                            }
+//                        }
+//                    }
+//                }
+//                checkCompletion(gatt);
+//            }
+//
+//            @Override
+//            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+//                if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
+//                    logger.debug("taskProcessAndroidDevice, readPayload completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
+//                    if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
+//                        device.payloadData(new PayloadData(characteristic.getValue()));
+//                        readPayload.set(false);
+//                    }
+//                } else if (characteristic.getUuid().equals(BLESensorConfiguration.payloadSharingCharacteristicUUID)) {
+//                    logger.debug("taskProcessAndroidDevice, readPayloadSharing completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
+//                    if (status == BluetoothGatt.GATT_SUCCESS && characteristic.getValue() != null) {
+//                        device.payloadSharingData(payloadDataSupplier.payload(new Data(characteristic.getValue())));
+//                        readPayloadSharing.set(false);
+//                    }
+//                }
+//                checkCompletion(gatt);
+//            }
+//
+//            @Override
+//            public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+//                if (characteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
+//                    logger.debug("taskProcessAndroidDevice, writePayloadBundle to iOS completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
+//                    writePayloadBundle.set(false);
+//                } else if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
+//                    logger.debug("taskProcessAndroidDevice, writePayloadBundle to Android completed (device={},success={},status={})", gatt.getDevice(), (status == BluetoothGatt.GATT_SUCCESS), onCharacteristicWriteStatusToString(status));
+//                    writePayloadBundle.set(false);
+//                }
+//                checkCompletion(gatt);
+//            }
+//        };
+//        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE);
+//        final String gattDevice = (gatt != null && gatt.getDevice() != null ? gatt.getDevice().toString() : "null");
+//        try {
+//            future.get(10, TimeUnit.SECONDS);
+//        } catch (TimeoutException e) {
+//            logger.fault("taskProcessAndroidDevice, timeout (device={})", gattDevice);
+//        } catch (Throwable e) {
+//            logger.fault("taskProcessAndroidDevice, exception (device={})", gattDevice, e);
+//        }
+//        if (gattOpen.compareAndSet(true, false)) {
+//            try {
+//                gatt.disconnect();
+//            } catch (Throwable e) {
+//                logger.fault("taskProcessAndroidDevice, disconnect exception (device={})", gattDevice, e);
+//            }
+//            gatt.close();
+//            logger.debug("taskProcessAndroidDevice, closed (device={})", gattDevice);
+//        }
+//    }
+//
 }

@@ -47,8 +47,15 @@ public class BLEDevice {
     private BLE_TxPower txPower;
     /// Bluetooth GATT connection
     protected BluetoothGatt bluetoothGatt;
-    /// RSSI and payload write back timestamp, this is used to prioritise peers for write back
+    /// Write back timestamp, this is used to prioritise peers for write back
     private Date lastWriteBackAt = new Date(0);
+    /// Write payload timestamp, this is used to prioritise next write action for transmit only devices
+    protected Date lastWritePayloadAt = null;
+    /// Write RSSI timestamp, this is used to prioritise next write action for transmit only devices
+    protected Date lastWriteRssiAt = null;
+    /// Write payload sharing timestamp, this is used to prioritise next write action for transmit only devices
+    protected Date lastWritePayloadSharingAt = null;
+
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     public TimeInterval timeIntervalSinceLastUpdate() {
@@ -68,6 +75,21 @@ public class BLEDevice {
     /// Time interval since last write back, this is used to prioritise peers for write back
     public TimeInterval timeIntervalSinceLastWriteBack() {
         return new TimeInterval((new Date().getTime() - lastWriteBackAt.getTime()) / 1000);
+    }
+
+    /// Time interval since last write payload, this is used to prioritise peers for write back
+    public TimeInterval timeIntervalSinceLastWritePayload() {
+        return new TimeInterval((new Date().getTime() - (lastWritePayloadAt == null ? 0 : lastWritePayloadAt.getTime())) / 1000);
+    }
+
+    /// Time interval since last write rssi, this is used to prioritise peers for write back
+    public TimeInterval timeIntervalSinceLastWriteRssi() {
+        return new TimeInterval((new Date().getTime() - (lastWriteRssiAt == null ? 0 : lastWriteRssiAt.getTime())) / 1000);
+    }
+
+    /// Time interval since last write payload sharing, this is used to prioritise peers for write back
+    public TimeInterval timeIntervalSinceLastWritePayloadSharing() {
+        return new TimeInterval((new Date().getTime() - (lastWritePayloadSharingAt == null ? 0 : lastWritePayloadSharingAt.getTime())) / 1000);
     }
 
     public String description() {
@@ -152,9 +174,26 @@ public class BLEDevice {
         delegate.device(this, BLEDeviceAttribute.txPower);
     }
 
-    public void writeBack(boolean success) {
+    public void writePayload(boolean success) {
         lastUpdatedAt = new Date();
         if (success) {
+            lastWritePayloadAt = lastUpdatedAt;
+            lastWriteBackAt = lastUpdatedAt;
+        }
+    }
+
+    public void writeRssi(boolean success) {
+        lastUpdatedAt = new Date();
+        if (success) {
+            lastWriteRssiAt = lastUpdatedAt;
+            lastWriteBackAt = lastUpdatedAt;
+        }
+    }
+
+    public void writePayloadSharing(boolean success) {
+        lastUpdatedAt = new Date();
+        if (success) {
+            lastWritePayloadSharingAt = lastUpdatedAt;
             lastWriteBackAt = lastUpdatedAt;
         }
     }

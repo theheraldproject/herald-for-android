@@ -28,7 +28,6 @@ import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
 import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.ProximityMeasurementUnit;
-import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -204,7 +203,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
     }
 
-    private static class PayloadSharingData {
+    protected static class PayloadSharingData {
         public final List<TargetIdentifier> identifiers;
         public final Data data;
 
@@ -215,7 +214,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
     /// Determine what payload data to share with peer
-    private PayloadSharingData payloadSharingData(BLEDevice peer) {
+    protected PayloadSharingData payloadSharingData(BLEDevice peer) {
         // Get other devices that were seen recently by this device
         final List<BLEDevice> unknownDevices = new ArrayList<>();
         final List<BLEDevice> knownDevices = new ArrayList<>();
@@ -281,7 +280,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
 
-    private final static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
+    private static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
                 .setConnectable(true)
@@ -310,7 +309,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         return callback;
     }
 
-    private final static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final ConcreteBLETransmitter concreteBLETransmitter, final BLEDatabase database) {
+    private static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final ConcreteBLETransmitter concreteBLETransmitter, final BLEDatabase database) {
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             logger.fault("Bluetooth unsupported");
@@ -375,6 +374,16 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 }
             }
 
+            private Short int16(byte[] data, int index) {
+                if (index < data.length - 1) {
+                    final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+                    return byteBuffer.getShort(index);
+                } else {
+                    return null;
+                }
+            }
+
             @Override
             public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
                 logger.debug("onConnectionStateChange (device={},status={},newState={})",
@@ -398,27 +407,81 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 );
                 if (characteristic.getUuid() == BLESensorConfiguration.androidSignalCharacteristicUUID) {
                     final byte[] data = onCharacteristicWriteSignalData(device, requestId, offset, value);
-                    if (data.length == 4 + 129) {
-                        final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-                        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-                        final RSSI rssi = new RSSI(byteBuffer.getInt(0));
-                        final byte[] payloadDataBytes = new byte[data.length - 4];
-                        System.arraycopy(data, 4, payloadDataBytes, 0, payloadDataBytes.length);
-                        final PayloadData payloadData = new PayloadData(payloadDataBytes);
-                        final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, new Double(rssi.value));
-                        logger.debug("didReceiveWrite -> didDetect={}", targetIdentifier);
-                        for (SensorDelegate delegate : delegates) {
-                            delegate.sensor(SensorType.BLE, targetIdentifier);
+                    if (data.length > 0) {
+                        final byte actionCode = data[0];
+                        switch (actionCode) {
+                            case BLESensorConfiguration.signalCharacteristicActionWritePayload: {
+                                logger.debug("didReceiveWrite (central={},action=writePayload)", targetDevice);
+                                // writePayload data format
+                                // 0-0 : actionCode
+                                // 1-2 : payload data count in bytes (Int16)
+                                // 3.. : payload data
+                                final Short payloadDataCount = int16(data, 1);
+                                if (payloadDataCount != null && data.length == (3 + payloadDataCount.intValue())) {
+                                    logger.debug("didReceiveWrite -> didDetect={}", targetDevice);
+                                    for (SensorDelegate delegate : delegates) {
+                                        delegate.sensor(SensorType.BLE, targetIdentifier);
+                                    }
+                                    final Data payloadDataBytes = new Data(data).subdata(3);
+                                    if (payloadDataBytes != null) {
+                                        final PayloadData payloadData = new PayloadData(payloadDataBytes.value);
+                                        logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData, targetDevice);
+                                        for (SensorDelegate delegate : delegates) {
+                                            delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
+                                        }
+                                    } else {
+                                        // Should never happen given range check earlier
+                                        logger.fault("didReceiveWrite, invalid payload (central={},action=writePayload)", targetDevice);
+                                    }
+                                    onCharacteristicWriteSignalData.remove(device.getAddress());
+
+                                }
+                                break;
+                            }
+                            case BLESensorConfiguration.signalCharacteristicActionWriteRSSI: {
+                                logger.debug("didReceiveWrite (central={},action=writeRSSI)", targetDevice);
+                                // writeRSSI data format
+                                // 0-0 : actionCode
+                                // 1-2 : rssi value (Int16)
+                                final Short rssiValue = int16(data, 1);
+                                if (rssiValue != null) {
+                                    final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, Double.valueOf(rssiValue.doubleValue()));
+                                    logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity, targetDevice);
+                                    for (SensorDelegate delegate : delegates) {
+                                        delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
+                                    }
+                                } else {
+                                    logger.fault("didReceiveWrite, invalid request (central={},action=writeRSSI)", targetDevice);
+                                }
+                                break;
+                            }
+                            case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing: {
+                                logger.debug("didReceiveWrite (central={},action=writePayloadSharing)", targetDevice);
+                                // writePayloadSharing data format
+                                // 0-0 : actionCode
+                                // 1-2 : payload sharing data count in bytes (Int16)
+                                // 3.. : payload sharing data (to be parsed by payload data supplier)
+                                final Short payloadDataCount = int16(data, 1);
+                                if (payloadDataCount != null && data.length == (3 + payloadDataCount.intValue())) {
+                                    final Data payloadData = new Data(data).subdata(3);
+                                    if (payloadData != null) {
+                                        final List<PayloadData> didSharePayloadData = payloadDataSupplier.payload(payloadData);
+                                        logger.debug("didReceiveWrite -> didShare={},fromTarget={}}", didSharePayloadData, targetDevice);
+                                        for (SensorDelegate delegate : delegates) {
+                                            delegate.sensor(SensorType.BLE, didSharePayloadData, targetIdentifier);
+                                        }
+                                    } else {
+                                        // Should never happen given range check earlier
+                                        logger.fault("didReceiveWrite, invalid payload (central={},action=writePayloadSharing)", targetDevice);
+                                    }
+                                }
+                                break;
+                            }
+                            default: {
+                                logger.fault("didReceiveWrite (central={},action=unknown,actionCode={})", targetDevice, actionCode);
+                                break;
+                            }
                         }
-                        logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity.description(), targetIdentifier);
-                        for (SensorDelegate delegate : delegates) {
-                            delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
-                        }
-                        logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData.description(), targetIdentifier);
-                        for (SensorDelegate delegate : delegates) {
-                            delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
-                        }
-                        onCharacteristicWriteSignalData.remove(device.getAddress());
                     }
                     if (responseNeeded) {
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
@@ -471,7 +534,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         return server.get();
     }
 
-    private final static void setGattService(final SensorLogger logger, final Context context, final BluetoothGattServer bluetoothGattServer) {
+    private static void setGattService(final SensorLogger logger, final Context context, final BluetoothGattServer bluetoothGattServer) {
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             logger.fault("Bluetooth unsupported");
@@ -510,7 +573,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid(), payloadSharingCharacteristic.getUuid());
     }
 
-    private final static String onConnectionStateChangeStatusToString(final int state) {
+    private static String onConnectionStateChangeStatusToString(final int state) {
         switch (state) {
             case BluetoothProfile.STATE_CONNECTED:
                 return "STATE_CONNECTED";
@@ -525,7 +588,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
     }
 
-    private final static String onStartFailureErrorCodeToString(final int errorCode) {
+    private static String onStartFailureErrorCodeToString(final int errorCode) {
         switch (errorCode) {
             case ADVERTISE_FAILED_DATA_TOO_LARGE:
                 return "ADVERTISE_FAILED_DATA_TOO_LARGE";

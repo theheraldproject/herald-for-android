@@ -6,6 +6,4 @@ public class PayloadData extends Data {
     public PayloadData(byte[] value) {
         super(value);
     }
-
-
 }
