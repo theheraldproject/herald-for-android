@@ -321,6 +321,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         final BluetoothGattServerCallback callback = new BluetoothGattServerCallback() {
             private Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
             private Map<String, PayloadSharingData> onCharacteristicReadPayloadSharingData = new ConcurrentHashMap<>();
+            private Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
             private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device, int requestId) {
                 final String key = device.getAddress();
@@ -343,12 +344,33 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 return payloadSharingData;
             }
 
+            private byte[] onCharacteristicWriteSignalData(BluetoothDevice device, int requestId, int offset, byte[] value) {
+                final String key = device.getAddress();
+                final byte[] partialData = (onCharacteristicWriteSignalData.containsKey(key) ? onCharacteristicWriteSignalData.get(key) : new byte[0]);
+                byte[] data = new byte[Math.max(partialData.length, offset + (value == null ? 0 : value.length))];
+                System.arraycopy(partialData, 0, data, 0, partialData.length);
+                if (value != null) {
+                    System.arraycopy(value, 0, data, offset, value.length);
+                }
+                onCharacteristicWriteSignalData.put(key, data);
+                return data;
+            }
+
             private void removeData(BluetoothDevice device) {
                 final String deviceAddress = device.getAddress();
-                final List<String> deviceRequestIds = new ArrayList<>(onCharacteristicReadPayloadData.keySet());
-                for (String deviceRequestId : deviceRequestIds) {
+                for (String deviceRequestId : new ArrayList<>(onCharacteristicReadPayloadData.keySet())) {
                     if (deviceRequestId.startsWith(deviceAddress)) {
                         onCharacteristicReadPayloadData.remove(deviceRequestId);
+                    }
+                }
+                for (String deviceRequestId : new ArrayList<>(onCharacteristicReadPayloadSharingData.keySet())) {
+                    if (deviceRequestId.startsWith(deviceAddress)) {
+                        onCharacteristicReadPayloadSharingData.remove(deviceRequestId);
+                    }
+                }
+                for (String deviceRequestId : new ArrayList<>(onCharacteristicWriteSignalData.keySet())) {
+                    if (deviceRequestId.startsWith(deviceAddress)) {
+                        onCharacteristicWriteSignalData.remove(deviceRequestId);
                     }
                 }
             }
@@ -374,32 +396,36 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID) ? "signal" : "unknown"),
                         (value != null ? value.length : "null")
                 );
-                if (characteristic.getUuid() == BLESensorConfiguration.androidSignalCharacteristicUUID && value.length >= 4) {
-                    final ByteBuffer byteBuffer = ByteBuffer.wrap(value);
-                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-                    final RSSI rssi = new RSSI(byteBuffer.getInt(0));
-                    final byte[] payloadDataBytes = new byte[value.length - 4];
-                    System.arraycopy(value, 4, payloadDataBytes, 0, payloadDataBytes.length);
-                    final PayloadData payloadData = new PayloadData(payloadDataBytes);
-                    final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, new Double(rssi.value));
+                if (characteristic.getUuid() == BLESensorConfiguration.androidSignalCharacteristicUUID) {
+                    final byte[] data = onCharacteristicWriteSignalData(device, requestId, offset, value);
+                    if (data.length == 4 + 129) {
+                        final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+                        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+                        final RSSI rssi = new RSSI(byteBuffer.getInt(0));
+                        final byte[] payloadDataBytes = new byte[data.length - 4];
+                        System.arraycopy(data, 4, payloadDataBytes, 0, payloadDataBytes.length);
+                        final PayloadData payloadData = new PayloadData(payloadDataBytes);
+                        final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, new Double(rssi.value));
+                        logger.debug("didReceiveWrite -> didDetect={}", targetIdentifier);
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, targetIdentifier);
+                        }
+                        logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity.description(), targetIdentifier);
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
+                        }
+                        logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData.description(), targetIdentifier);
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
+                        }
+                        onCharacteristicWriteSignalData.remove(device.getAddress());
+                    }
                     if (responseNeeded) {
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
-                    }
-                    logger.debug("didReceiveWrite -> didDetect={}", targetIdentifier);
-                    for (SensorDelegate delegate : delegates) {
-                        delegate.sensor(SensorType.BLE, targetIdentifier);
-                    }
-                    logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity.description(), targetIdentifier);
-                    for (SensorDelegate delegate : delegates) {
-                        delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
-                    }
-                    logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData.description(), targetIdentifier);
-                    for (SensorDelegate delegate : delegates) {
-                        delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
+                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
                     }
                 } else {
                     if (responseNeeded) {
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null);
+                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, value);
                     }
                 }
                 //server.get().cancelConnection(device);
