@@ -59,7 +59,7 @@ public class RScriptLog implements SensorDelegate {
         if (payload == null) {
             return;
         }
-        textFile.write(timestamp() + "," + payload + "," + deviceName + ",iOS," + deviceOS);
+        textFile.write(timestamp() + "," + payload + "," + deviceName + ",android," + deviceOS);
     }
 
     @Override
@@ -67,7 +67,7 @@ public class RScriptLog implements SensorDelegate {
         final String timestamp = timestamp();
         for (PayloadData data : didShare) {
             final String payload = data.base64EncodedString();
-            textFile.write(timestamp + "," + payload + "," + deviceName + ",iOS," + deviceOS);
+            textFile.write(timestamp + "," + payload + "," + deviceName + ",android," + deviceOS);
         }
     }
 
