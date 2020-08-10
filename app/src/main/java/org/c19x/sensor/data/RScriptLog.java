@@ -48,9 +48,8 @@ public class RScriptLog implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        final String payload = didRead.base64EncodedString();
-        identifierToPayload.put(fromTarget.value, payload);
-        textFile.write(timestamp() + "," + payload + "," + deviceName + ",android," + deviceOS);
+        identifierToPayload.put(fromTarget.value, didRead.shortName());
+        textFile.write(timestamp() + "," + didRead.shortName() + "," + deviceName + ",android," + deviceOS);
     }
 
     @Override
@@ -65,9 +64,8 @@ public class RScriptLog implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final String timestamp = timestamp();
-        for (PayloadData data : didShare) {
-            final String payload = data.base64EncodedString();
-            textFile.write(timestamp + "," + payload + "," + deviceName + ",android," + deviceOS);
+        for (PayloadData payloadData : didShare) {
+            textFile.write(timestamp + "," + payloadData.shortName() + "," + deviceName + ",android," + deviceOS);
         }
     }
 

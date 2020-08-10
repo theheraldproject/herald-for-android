@@ -1,7 +1,5 @@
 package org.c19x.sensor.datatype;
 
-import android.util.Base64;
-
 import java.util.Arrays;
 
 /// Raw byte array data
@@ -12,13 +10,13 @@ public class Data {
         this.value = value;
     }
 
-    public String base64EncodedString() {
-        return Base64.encodeToString(value, Base64.DEFAULT | Base64.NO_WRAP);
-    }
-
-    public String description() {
-        return base64EncodedString();
-    }
+//    public String base64EncodedString() {
+//        return Base64.encodeToString(value, Base64.DEFAULT | Base64.NO_WRAP);
+//    }
+//
+//    public String description() {
+//        return base64EncodedString();
+//    }
 
     public Data subdata(int offset) {
         if (offset < value.length) {
@@ -41,10 +39,5 @@ public class Data {
     @Override
     public int hashCode() {
         return Arrays.hashCode(value);
-    }
-
-    @Override
-    public String toString() {
-        return base64EncodedString();
     }
 }

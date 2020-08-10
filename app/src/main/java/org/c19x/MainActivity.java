@@ -28,7 +28,6 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements SensorDelegate {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("MMdd HH:mm:ss");
-    private final static int payloadPrefixLength = 6;
     private long didDetect = 0, didRead = 0, didMeasure = 0, didShare = 0, didVisit = 0;
     private final Set<String> didReadPayloads = new HashSet<>();
     private final Set<String> didSharePayloads = new HashSet<>();
@@ -45,32 +44,30 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         AppDelegate.getAppDelegate().sensor.add(this);
 
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
-        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor).payloadPrefix());
+        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor).payloadData().shortName());
     }
 
     private void updateDetection() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final Map<String, String> payloadPrefixes = new HashMap<>();
-                for (String payload : didReadPayloads) {
-                    final String payloadPrefix = payload.substring(0, Math.min(payloadPrefixLength, payload.length()));
-                    payloadPrefixes.put(payloadPrefix, "read");
+                final Map<String, String> payloadShortNames = new HashMap<>();
+                for (String payloadShortName : didReadPayloads) {
+                    payloadShortNames.put(payloadShortName, "read");
                 }
-                for (String payload : didSharePayloads) {
-                    final String payloadPrefix = payload.substring(0, Math.min(payloadPrefixLength, payload.length()));
-                    payloadPrefixes.put(payloadPrefix, (payloadPrefixes.containsKey(payloadPrefix) ? "read,shared" : "shared"));
+                for (String payloadShortName : didSharePayloads) {
+                    payloadShortNames.put(payloadShortName, (payloadShortNames.containsKey(payloadShortName) ? "read,shared" : "shared"));
                 }
-                final List<String> payloadPrefixesList = new ArrayList<>(payloadPrefixes.keySet());
-                Collections.sort(payloadPrefixesList);
+                final List<String> payloadShortNameList = new ArrayList<>(payloadShortNames.keySet());
+                Collections.sort(payloadShortNameList);
                 final StringBuilder stringBuilder = new StringBuilder();
-                for (String payloadPrefix : payloadPrefixesList) {
-                    stringBuilder.append(payloadPrefix);
+                for (String payloadShortName : payloadShortNameList) {
+                    stringBuilder.append(payloadShortName);
                     stringBuilder.append(" (");
-                    stringBuilder.append(payloadPrefixes.get(payloadPrefix));
+                    stringBuilder.append(payloadShortNames.get(payloadShortName));
                     stringBuilder.append(")\n");
                 }
-                ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + payloadPrefixes.size() + ")");
+                ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + payloadShortNames.size() + ")");
                 final TextView textView = findViewById(R.id.payloads);
                 textView.setText(stringBuilder.toString());
                 textView.setMovementMethod(new ScrollingMovementMethod());
@@ -90,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         this.didRead++;
-        this.didReadPayloads.add(didRead.base64EncodedString());
+        this.didReadPayloads.add(didRead.shortName());
         final TextView textView = findViewById(R.id.didRead);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didRead: " + this.didRead + " (" + timestamp + ")";
@@ -101,8 +98,8 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         this.didShare++;
-        for (PayloadData data : didShare) {
-            this.didSharePayloads.add(data.base64EncodedString());
+        for (PayloadData payloadData : didShare) {
+            this.didSharePayloads.add(payloadData.shortName());
         }
         final TextView textView = findViewById(R.id.didShare);
         final String timestamp = dateFormatter.format(new Date());

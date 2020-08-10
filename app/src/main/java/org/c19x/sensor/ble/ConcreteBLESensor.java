@@ -104,7 +104,7 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
                 if (payloadData == null) {
                     return;
                 }
-                logger.debug("didRead (device={},payloadData={})", device.identifier, payloadData.description());
+                logger.debug("didRead (device={},payloadData={})", device.identifier, payloadData.shortName());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {

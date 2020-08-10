@@ -20,16 +20,14 @@ public class DetectionLog implements SensorDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
-    private final String payloadString;
-    private final int prefixLength;
+    private final PayloadData payloadData;
     private final String deviceName = android.os.Build.MODEL;
     private final String deviceOS = Integer.toString(android.os.Build.VERSION.SDK_INT);
     private final Map<String, String> payloads = new ConcurrentHashMap<>();
 
-    public DetectionLog(String filename, String payloadString, int prefixLength) {
+    public DetectionLog(String filename, PayloadData payloadData) {
         textFile = new TextFile(filename);
-        this.payloadString = payloadString;
-        this.prefixLength = prefixLength;
+        this.payloadData = payloadData;
     }
 
     private String timestamp() {
@@ -45,17 +43,16 @@ public class DetectionLog implements SensorDelegate {
     }
 
     private void write() {
-        final String device = deviceName + "(Android " + deviceOS + ")";
-        final String payloadPrefix = payloadString.substring(0, Math.min(prefixLength, payloadString.length()));
+        final String device = deviceName + " (Android " + deviceOS + ")";
         final List<String> payloadList = new ArrayList<>(payloads.size());
-        for (String payload : payloads.keySet()) {
-            payloadList.add(payload.substring(0, Math.min(prefixLength, payloadString.length())));
+        for (String payloadDataShortName : payloads.keySet()) {
+            payloadList.add(payloadDataShortName);
         }
         Collections.sort(payloadList);
         final StringBuilder content = new StringBuilder();
         content.append(csv(device));
         content.append(",id=");
-        content.append(payloadPrefix);
+        content.append(payloadData.shortName());
         for (String payload : payloadList) {
             content.append(',');
             content.append(payload);
@@ -74,9 +71,8 @@ public class DetectionLog implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        final String payload = didRead.base64EncodedString();
-        if (payloads.put(payload, fromTarget.value) == null) {
-            logger.debug("didRead (payload={})", payload);
+        if (payloads.put(didRead.shortName(), fromTarget.value) == null) {
+            logger.debug("didRead (payload={})", payloadData.shortName());
             write();
         }
     }
@@ -87,10 +83,9 @@ public class DetectionLog implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
-        for (PayloadData data : didShare) {
-            final String payload = data.base64EncodedString();
-            if (payloads.put(payload, fromTarget.value) == null) {
-                logger.debug("didShare (payload={})", payload);
+        for (PayloadData payloadData : didShare) {
+            if (payloads.put(payloadData.shortName(), fromTarget.value) == null) {
+                logger.debug("didShare (payload={})", payloadData.shortName());
                 write();
             }
         }

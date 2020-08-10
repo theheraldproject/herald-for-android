@@ -27,6 +27,7 @@ public class MockSonarPayloadDataSupplier implements SonarPayloadDataSupplier {
     @Override
     public PayloadData payload(PayloadTimestamp timestamp) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(length);
+        byteBuffer.position(3);
         byteBuffer.put(networkByteOrderData(identifier).value);
         final PayloadData payloadData = new PayloadData(byteBuffer.array());
         return payloadData;

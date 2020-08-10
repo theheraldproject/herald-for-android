@@ -24,8 +24,7 @@ public class ContactLog implements SensorDelegate {
     }
 
     private String timestamp() {
-        final String timestamp = dateFormatter.format(new Date());
-        return timestamp;
+        return dateFormatter.format(new Date());
     }
 
     private String csv(String value) {
@@ -45,7 +44,7 @@ public class ContactLog implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(didRead.description()));
+        textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(didRead.shortName()));
     }
 
     @Override
@@ -57,7 +56,7 @@ public class ContactLog implements SensorDelegate {
             if (i > 0) {
                 payloads.append(',');
             }
-            payloads.append(didShare.get(i).description());
+            payloads.append(didShare.get(i).shortName());
         }
         payloads.append(']');
         textFile.write(prefix + ",,,,4,," + csv(payloads.toString()));

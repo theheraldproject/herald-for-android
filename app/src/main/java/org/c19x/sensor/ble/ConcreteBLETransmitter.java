@@ -23,6 +23,7 @@ import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.BluetoothState;
+import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
@@ -41,9 +42,11 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED;
@@ -53,6 +56,7 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_E
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS;
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
+    private final static int advertOnDurationMillis = 20 * 60 * 1000, advertOffDurationMinimumMillis = 4000, advertOffDurationMaximumMillis = 8000;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final ConcreteBLETransmitter self = this;
     private final Context context;
@@ -61,6 +65,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private final BLEDatabase database;
     private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
+    private final Random random = new Random();
     private BluetoothLeAdvertiser bluetoothLeAdvertiser;
     private BluetoothGattServer bluetoothGattServer;
     private AdvertiseCallback advertiseCallback;
@@ -92,47 +97,87 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
             }
         }
-        if (bluetoothLeAdvertiser == null) {
-            logger.fault("Bluetooth LE advertiser unsupported");
-            return;
-        }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("Bluetooth is not powered on");
-            return;
-        }
-        if (advertiseCallback != null) {
-            logger.fault("Already started");
-            return;
-        }
-        enabled = true;
-        startAdvertising();
         logger.debug("start");
+        enabled = true;
+        advertise("start");
+    }
+
+    private void advertise(String source) {
+        logger.debug("advertise (source={},enabled={},on={}ms,off={}-{}ms)", source, enabled, advertOnDurationMillis, advertOffDurationMinimumMillis, advertOffDurationMaximumMillis);
+        if (!enabled) {
+            return;
+        }
+        startAdvertising();
+        final AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
+        final AtomicLong stopTime = new AtomicLong(System.currentTimeMillis());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                stopAdvertising(new Callback<Boolean>() {
+                    @Override
+                    public void accept(Boolean value) {
+                        stopTime.set(System.currentTimeMillis());
+                        logger.debug("advertising period (on={}ms)", stopTime.get() - startTime.get());
+                        if (enabled) {
+                            handler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    startTime.set(System.currentTimeMillis());
+                                    logger.debug("advertising period (off={}ms)", startTime.get() - stopTime.get());
+                                    advertise("onOffLoop");
+                                }
+                            }, advertOffDurationMinimumMillis + random.nextInt(advertOffDurationMaximumMillis - advertOffDurationMinimumMillis));
+                        }
+                    }
+                });
+            }
+        }, advertOnDurationMillis);
     }
 
     @Override
     public void stop() {
+        logger.debug("stop");
         enabled = false;
+        stopAdvertising(new Callback<Boolean>() {
+            @Override
+            public void accept(Boolean success) {
+                logger.debug("stopAdvertising (success={})", success);
+            }
+        });
+    }
+
+    private void stopAdvertising(final Callback<Boolean> callback) {
+        if (bluetoothLeAdvertiser == null) {
+            logger.fault("stopAdvertising denied, Bluetooth LE advertising unsupported");
+            return;
+        }
         if (advertiseCallback == null) {
             logger.fault("Already stopped");
+            return;
+        }
+        if (bluetoothStateManager.state() == BluetoothState.poweredOff) {
+            logger.fault("stopAdvertising denied, Bluetooth is powered off");
             return;
         }
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
-                bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
-                advertiseCallback = null;
+                try {
+                    bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
+                    advertiseCallback = null;
+                    if (bluetoothGattServer != null) {
+                        bluetoothGattServer.clearServices();
+                        bluetoothGattServer.close();
+                        bluetoothGattServer = null;
+                    }
+                    logger.debug("stopAdvertising");
+                    callback.accept(true);
+                } catch (Throwable e) {
+                    logger.fault("stopAdvertising failed", e);
+                    callback.accept(false);
+                }
             }
         });
-        if (bluetoothGattServer != null) {
-            operationQueue.execute(new Runnable() {
-                @Override
-                public void run() {
-                    bluetoothGattServer.clearServices();
-                    bluetoothGattServer.close();
-                    bluetoothGattServer = null;
-                }
-            });
-        }
     }
 
     private void startAdvertising() {

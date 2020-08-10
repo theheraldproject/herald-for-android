@@ -8,6 +8,7 @@ import org.c19x.sensor.data.ContactLog;
 import org.c19x.sensor.data.DetectionLog;
 import org.c19x.sensor.data.RScriptLog;
 import org.c19x.sensor.data.SensorLogger;
+import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
 
 import java.util.ArrayList;
@@ -18,8 +19,7 @@ public class SensorArray implements Sensor {
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private List<Sensor> sensorArray = new ArrayList<>();
 
-    private final static int payloadPrefixLength = 6;
-    private final String payloadString, payloadPrefix;
+    private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
 
@@ -28,17 +28,16 @@ public class SensorArray implements Sensor {
         sensorArray.add(new ConcreteBLESensor(context, payloadDataSupplier));
 
         // Loggers
-        payloadString = payloadDataSupplier.payload(new PayloadTimestamp()).description();
-        payloadPrefix = payloadString.substring(0, payloadPrefixLength);
+        payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
         add(new ContactLog("contacts.csv"));
         add(new RScriptLog("rScriptLog.csv"));
-        add(new DetectionLog("detection.csv", payloadString, payloadPrefixLength));
+        add(new DetectionLog("detection.csv", payloadData));
 
-        logger.info("DEVICE (payloadPrefix={},description={})", payloadPrefix, deviceDescription);
+        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
     }
 
-    public final String payloadPrefix() {
-        return payloadPrefix;
+    public final PayloadData payloadData() {
+        return payloadData;
     }
 
     @Override
