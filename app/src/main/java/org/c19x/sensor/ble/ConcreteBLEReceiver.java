@@ -48,9 +48,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
-    private final static int scanOnDurationMillis = 8000, scanOffDurationMinimumMillis = 500, scanOffDurationMaximumMillis = 4000;
+    private final static int scanOnDurationMillis = 12000, scanOffDurationMinimumMillis = 500, scanOffDurationMaximumMillis = 4000;
     // Define fixed concurrent connection quota
     private final static int concurrentConnectionQuota = 5;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
@@ -63,6 +64,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final Random random = new Random();
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
     private boolean enabled = false;
@@ -88,24 +90,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     @Override
     public void start() {
-        if (bluetoothLeScanner == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null) {
-                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-            }
-        }
-        if (bluetoothLeScanner == null) {
-            logger.fault("start denied, Bluetooth LE scanner unsupported");
-            return;
-        }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("start denied, Bluetooth is not powered on");
-            return;
-        }
-        if (scanCallback != null) {
-            logger.fault("start denied, already started");
-            return;
-        }
         logger.debug("start");
         enabled = true;
         scan("start");
@@ -134,23 +118,32 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
     }
 
-    public void scan(String source) {
+    private void scan(String source) {
         logger.debug("scan (source={},enabled={},on={}ms,off={}-{}ms)", source, enabled, scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
         if (!enabled) {
             return;
         }
         startScan();
-        final Random random = new Random();
+        final AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
+        final AtomicLong stopTime = new AtomicLong(System.currentTimeMillis());
+        final AtomicLong processTime = new AtomicLong(System.currentTimeMillis());
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 stopScan(new Callback<Boolean>() {
                     @Override
                     public void accept(Boolean value) {
+                        stopTime.set(System.currentTimeMillis());
+                        logger.debug("scanning period (on={}ms)", stopTime.get() - startTime.get());
+                        handleScanResults();
+                        processTime.set(System.currentTimeMillis());
+                        logger.debug("scanning period (process={}ms)", processTime.get() - stopTime.get());
                         if (enabled) {
                             handler.postDelayed(new Runnable() {
                                 @Override
                                 public void run() {
+                                    startTime.set(System.currentTimeMillis());
+                                    logger.debug("scanning period (off={}ms)", startTime.get() - processTime.get());
                                     scan("onOffLoop");
                                 }
                             }, scanOffDurationMinimumMillis + random.nextInt(scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
@@ -164,7 +157,17 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     private void startScan() {
         if (bluetoothLeScanner == null) {
+            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter != null) {
+                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+            }
+        }
+        if (bluetoothLeScanner == null) {
             logger.fault("startScan denied, Bluetooth LE scanner unsupported");
+            return;
+        }
+        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+            logger.fault("startScan denied, Bluetooth is not powered on");
             return;
         }
         if (scanCallback != null) {
@@ -209,7 +212,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
                     bluetoothAdapter.cancelDiscovery();
                     logger.debug("stopScan");
-                    handleScanResults();
                     callback.accept(true);
                 } catch (Throwable e) {
                     logger.fault("stopScan failed", e);
@@ -295,7 +297,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             index.put(keeping.payloadData(), keeping);
             database.delete(discarding.identifier);
             logger.debug("taskRemoveDuplicatePeripherals (payload={},device={},duplicate={},keeping={}",
-                    keeping.payloadData().description(),
+                    keeping.payloadData().shortName(),
                     device,
                     duplicate.identifier,
                     (keeping == device ? "former" : "latter"));
