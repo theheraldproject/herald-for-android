@@ -31,6 +31,8 @@ public class BLEDevice {
     private Date stateLastUpdatedAt = new Date(0);
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
+    /// Device is receive only, this is necessary for filtering payload sharing data
+    private boolean receiveOnly = false;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     private PayloadData payloadData;
     /// Payload data last update timestamp, this is used to determine what needs to be shared with peers.
@@ -131,6 +133,15 @@ public class BLEDevice {
         this.operatingSystem = operatingSystem;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.operatingSystem);
+    }
+
+    public boolean receiveOnly() {
+        return receiveOnly;
+    }
+
+    public void receiveOnly(boolean receiveOnly) {
+        this.receiveOnly = receiveOnly;
+        lastUpdatedAt = new Date();
     }
 
     public PayloadData payloadData() {

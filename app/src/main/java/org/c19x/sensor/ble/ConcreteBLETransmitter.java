@@ -220,15 +220,15 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         final List<BLEDevice> knownDevices = new ArrayList<>();
         for (BLEDevice device : database.devices()) {
             // Device was seen recently
-            if (device.timeIntervalSinceLastUpdate().value >= BLESensorConfiguration.payloadSharingTimeInterval.value) {
+            if (device.timeIntervalSinceLastUpdate().value >= BLESensorConfiguration.payloadSharingExpiryTimeInterval.value) {
                 continue;
             }
             // Device has payload
             if (device.payloadData() == null) {
                 continue;
             }
-            // Device is iOS (Android is always discoverable)
-            if (device.operatingSystem() != BLEDeviceOperatingSystem.ios) {
+            // Device is iOS or receive only (Samsung J6)
+            if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.receiveOnly())) {
                 continue;
             }
             // Payload is new to peer
@@ -426,6 +426,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                     if (payloadDataBytes != null) {
                                         final PayloadData payloadData = new PayloadData(payloadDataBytes.value);
                                         logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData, targetDevice);
+                                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                                        targetDevice.receiveOnly(true);
+                                        targetDevice.payloadData(payloadData);
                                         for (SensorDelegate delegate : delegates) {
                                             delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
                                         }
@@ -447,6 +450,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                 if (rssiValue != null) {
                                     final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, Double.valueOf(rssiValue.doubleValue()));
                                     logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity, targetDevice);
+                                    targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                                    targetDevice.receiveOnly(true);
                                     for (SensorDelegate delegate : delegates) {
                                         delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
                                     }
@@ -467,6 +472,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                     if (payloadData != null) {
                                         final List<PayloadData> didSharePayloadData = payloadDataSupplier.payload(payloadData);
                                         logger.debug("didReceiveWrite -> didShare={},fromTarget={}}", didSharePayloadData, targetDevice);
+                                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                                        targetDevice.receiveOnly(true);
                                         for (SensorDelegate delegate : delegates) {
                                             delegate.sensor(SensorType.BLE, didSharePayloadData, targetIdentifier);
                                         }
@@ -491,7 +498,6 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, value);
                     }
                 }
-                //server.get().cancelConnection(device);
             }
 
             @Override
