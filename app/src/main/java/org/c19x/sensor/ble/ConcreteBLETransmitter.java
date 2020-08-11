@@ -31,6 +31,7 @@ import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.ProximityMeasurementUnit;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
+import org.c19x.sensor.datatype.TimeInterval;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -56,7 +57,10 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_E
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS;
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
-    private final static int advertOnDurationMillis = 60 * 60 * 1000, advertOffDurationMinimumMillis = 4000, advertOffDurationMaximumMillis = 8000;
+    // Advert ON/OFF durations
+    private final static long advertOnDurationMillis = TimeInterval.hours(6).millis();
+    private final static long advertOffDurationMinimumMillis = TimeInterval.seconds(4).millis();
+    private final static long advertOffDurationMaximumMillis = TimeInterval.seconds(8).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final ConcreteBLETransmitter self = this;
     private final Context context;
@@ -126,7 +130,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                     logger.debug("advertising period (off={}ms)", startTime.get() - stopTime.get());
                                     advertise("onOffLoop");
                                 }
-                            }, advertOffDurationMinimumMillis + random.nextInt(advertOffDurationMaximumMillis - advertOffDurationMinimumMillis));
+                            }, advertOffDurationMinimumMillis + random.nextInt((int) (advertOffDurationMaximumMillis - advertOffDurationMinimumMillis)));
                         }
                     }
                 });

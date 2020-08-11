@@ -51,7 +51,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
-    private final static int scanOnDurationMillis = 12000, scanOffDurationMinimumMillis = 500, scanOffDurationMaximumMillis = 4000;
+    // Scan ON/OFF durations
+    private final static long scanOnDurationMillis = TimeInterval.seconds(12).millis();
+    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(1).millis();
+    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(4).millis();
     // Define fixed concurrent connection quota
     private final static int concurrentConnectionQuota = 5;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
@@ -146,7 +149,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                                     logger.debug("scanning period (off={}ms)", startTime.get() - processTime.get());
                                     scan("onOffLoop");
                                 }
-                            }, scanOffDurationMinimumMillis + random.nextInt(scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                            }, scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis)));
                         }
                     }
                 });
