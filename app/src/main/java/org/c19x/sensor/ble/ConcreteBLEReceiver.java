@@ -13,8 +13,6 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.ParcelUuid;
 
 import org.c19x.sensor.PayloadDataSupplier;
@@ -46,9 +44,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
@@ -64,13 +62,12 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
     private final Random random = new Random();
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
-    private boolean enabled = false;
+    private ScheduledExecutorService scanLoopQueue;
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
@@ -81,7 +78,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        this.handler = new Handler(Looper.getMainLooper());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -94,20 +90,19 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     @Override
     public void start() {
         logger.debug("start");
-        enabled = true;
+        if (scanLoopQueue != null) {
+            scanLoopQueue.shutdownNow();
+        }
         scan("start");
     }
 
     @Override
     public void stop() {
         logger.debug("stop");
-        enabled = false;
-        stopScan(new Callback<Boolean>() {
-            @Override
-            public void accept(Boolean success) {
-                logger.debug("stopScan (success={})", success);
-            }
-        });
+        if (scanLoopQueue != null) {
+            scanLoopQueue.shutdownNow();
+        }
+        stopScan();
     }
 
 
@@ -122,39 +117,38 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     }
 
     private void scan(String source) {
-        logger.debug("scan (source={},enabled={},on={}ms,off={}-{}ms)", source, enabled, scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
-        if (!enabled) {
-            return;
-        }
-        startScan();
-        final AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
-        final AtomicLong stopTime = new AtomicLong(System.currentTimeMillis());
-        final AtomicLong processTime = new AtomicLong(System.currentTimeMillis());
-        handler.postDelayed(new Runnable() {
+        logger.debug("scan (source={},on={}ms,off={}-{}ms)", source, scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
+        scanLoopQueue = Executors.newScheduledThreadPool(2);
+        scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
+            private long startTime, stopTime, processTime;
+
             @Override
             public void run() {
-                stopScan(new Callback<Boolean>() {
-                    @Override
-                    public void accept(Boolean value) {
-                        stopTime.set(System.currentTimeMillis());
-                        logger.debug("scanning period (on={}ms)", stopTime.get() - startTime.get());
-                        handleScanResults();
-                        processTime.set(System.currentTimeMillis());
-                        logger.debug("scanning period (process={}ms)", processTime.get() - stopTime.get());
-                        if (enabled) {
-                            handler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    startTime.set(System.currentTimeMillis());
-                                    logger.debug("scanning period (off={}ms)", startTime.get() - processTime.get());
-                                    scan("onOffLoop");
-                                }
-                            }, scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis)));
-                        }
+                try {
+                    startTime = System.currentTimeMillis();
+                    startScan();
+                    try {
+                        Thread.sleep(scanOnDurationMillis);
+                    } catch (InterruptedException e) {
                     }
-                });
+                    stopScan();
+                    stopTime = System.currentTimeMillis();
+                    logger.debug("scanning period (on={}ms)", stopTime - startTime);
+                    handleScanResults();
+                    processTime = System.currentTimeMillis();
+                    logger.debug("scanning period (process={}ms)", processTime - stopTime);
+                    final long variableDelay = random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                    try {
+                        Thread.sleep(variableDelay);
+                    } catch (InterruptedException e) {
+                    }
+                    startTime = System.currentTimeMillis();
+                    logger.debug("scanning period (off={}ms)", startTime - processTime);
+                } catch (Throwable e) {
+                    logger.fault("scanning period failure detected", e);
+                }
             }
-        }, scanOnDurationMillis);
+        }, scanOffDurationMinimumMillis, scanOffDurationMinimumMillis, TimeUnit.MILLISECONDS);
     }
 
 
@@ -177,10 +171,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             logger.fault("startScan denied, already started");
             return;
         }
-        if (!enabled) {
-            logger.fault("startScan denied, not enabled");
-            return;
-        }
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
@@ -193,7 +183,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
-    private void stopScan(final Callback<Boolean> callback) {
+    private void stopScan() {
         if (bluetoothLeScanner == null) {
             logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
             return;
@@ -215,10 +205,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
                     bluetoothAdapter.cancelDiscovery();
                     logger.debug("stopScan");
-                    callback.accept(true);
                 } catch (Throwable e) {
                     logger.fault("stopScan failed", e);
-                    callback.accept(false);
                 }
             }
         });
@@ -353,7 +341,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     device.operatingSystem(BLEDeviceOperatingSystem.android);
                 } else {
                     // Ignore other devices
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                    // device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 }
             }
         }
@@ -751,9 +739,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
                 if (service == null) {
                     logger.debug("task {}, onServicesDiscovered, service not found (device={})", task, device);
-                    if (device.operatingSystem() != BLEDeviceOperatingSystem.unknown) {
-                        device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-                    }
+//                    if (device.operatingSystem() != BLEDeviceOperatingSystem.unknown) {
+//                        device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+//                    }
                     disconnect.accept("onServicesDiscovered|serviceNotFound");
                     return;
                 }
