@@ -281,6 +281,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             }
             final BLEDevice duplicate = index.get(device.payloadData());
             if (duplicate == null) {
+                index.put(device.payloadData(), device);
                 continue;
             }
             BLEDevice keeping = device;
@@ -288,7 +289,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 keeping = device;
             } else if (duplicate.peripheral() != null && device.peripheral() == null) {
                 keeping = duplicate;
-            } else if (device.lastUpdatedAt.getTime() > duplicate.lastUpdatedAt.getTime()) {
+            } else if (device.payloadDataLastUpdatedAt().getTime() > duplicate.payloadDataLastUpdatedAt().getTime()) {
                 keeping = device;
             } else {
                 keeping = duplicate;

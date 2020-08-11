@@ -56,7 +56,7 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_E
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS;
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
-    private final static int advertOnDurationMillis = 20 * 60 * 1000, advertOffDurationMinimumMillis = 4000, advertOffDurationMaximumMillis = 8000;
+    private final static int advertOnDurationMillis = 60 * 60 * 1000, advertOffDurationMinimumMillis = 4000, advertOffDurationMaximumMillis = 8000;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final ConcreteBLETransmitter self = this;
     private final Context context;

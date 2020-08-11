@@ -151,7 +151,12 @@ public class BLEDevice {
     public void payloadData(PayloadData payloadData) {
         this.payloadData = payloadData;
         lastUpdatedAt = new Date();
+        payloadDataLastUpdatedAt = lastUpdatedAt;
         delegate.device(this, BLEDeviceAttribute.payloadData);
+    }
+
+    public Date payloadDataLastUpdatedAt() {
+        return payloadDataLastUpdatedAt;
     }
 
     public List<PayloadData> payloadSharingData() {
