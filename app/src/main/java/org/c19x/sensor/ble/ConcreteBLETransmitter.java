@@ -31,7 +31,6 @@ import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.ProximityMeasurementUnit;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
-import org.c19x.sensor.datatype.TimeInterval;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -47,7 +46,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED;
@@ -57,10 +55,6 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_E
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS;
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
-    // Advert ON/OFF durations
-    private final static long advertOnDurationMillis = TimeInterval.hours(6).millis();
-    private final static long advertOffDurationMinimumMillis = TimeInterval.seconds(4).millis();
-    private final static long advertOffDurationMaximumMillis = TimeInterval.seconds(8).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final ConcreteBLETransmitter self = this;
     private final Context context;
@@ -107,35 +101,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
     private void advertise(String source) {
-        logger.debug("advertise (source={},enabled={},on={}ms,off={}-{}ms)", source, enabled, advertOnDurationMillis, advertOffDurationMinimumMillis, advertOffDurationMaximumMillis);
+        logger.debug("advertise (source={},enabled={})", source, enabled);
         if (!enabled) {
             return;
         }
         startAdvertising();
-        final AtomicLong startTime = new AtomicLong(System.currentTimeMillis());
-        final AtomicLong stopTime = new AtomicLong(System.currentTimeMillis());
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                stopAdvertising(new Callback<Boolean>() {
-                    @Override
-                    public void accept(Boolean value) {
-                        stopTime.set(System.currentTimeMillis());
-                        logger.debug("advertising period (on={}ms)", stopTime.get() - startTime.get());
-                        if (enabled) {
-                            handler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    startTime.set(System.currentTimeMillis());
-                                    logger.debug("advertising period (off={}ms)", startTime.get() - stopTime.get());
-                                    advertise("onOffLoop");
-                                }
-                            }, advertOffDurationMinimumMillis + random.nextInt((int) (advertOffDurationMaximumMillis - advertOffDurationMinimumMillis)));
-                        }
-                    }
-                });
-            }
-        }, advertOnDurationMillis);
     }
 
     @Override
@@ -497,7 +467,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                 // 1-2 : rssi value (Int16)
                                 final Short rssiValue = int16(data, 1);
                                 if (rssiValue != null) {
-                                    final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, Double.valueOf(rssiValue.doubleValue()));
+                                    final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, rssiValue.doubleValue());
                                     logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity, targetDevice);
                                     targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
                                     targetDevice.receiveOnly(true);
