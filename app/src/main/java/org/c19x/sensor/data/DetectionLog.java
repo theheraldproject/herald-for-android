@@ -43,23 +43,26 @@ public class DetectionLog implements SensorDelegate {
     }
 
     private void write() {
-        final String device = deviceName + " (Android " + deviceOS + ")";
+        final StringBuilder content = new StringBuilder();
+        content.append(csv(deviceName));
+        content.append(',');
+        content.append("Android");
+        content.append(',');
+        content.append(csv(deviceOS));
+        content.append(',');
+        content.append(csv(payloadData.shortName()));
         final List<String> payloadList = new ArrayList<>(payloads.size());
-        for (String payloadDataShortName : payloads.keySet()) {
-            payloadList.add(payloadDataShortName);
+        for (String payload : payloads.keySet()) {
+            payloadList.add(payload);
         }
         Collections.sort(payloadList);
-        final StringBuilder content = new StringBuilder();
-        content.append(csv(device));
-        content.append(",id=");
-        content.append(payloadData.shortName());
         for (String payload : payloadList) {
             content.append(',');
             content.append(payload);
         }
+        logger.debug("write (content={})", content.toString());
         content.append("\n");
         textFile.overwrite(content.toString());
-        logger.debug("write (content={})", content.toString());
     }
 
 
