@@ -31,6 +31,10 @@ public class BLEDevice {
     private Date stateLastUpdatedAt = new Date(0);
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
+    /// Device operating system last update timestamp, this is used to switch .ignore to .unknown at regular intervals
+    // such that Apple devices not advertising the sensor service don't waste too much processing time, yet not completely
+    // ignored forever, as the sensor service may become available later.
+    private Date operatingSystemLastUpdatedAt = new Date(0);
     /// Device is receive only, this is necessary for filtering payload sharing data
     private boolean receiveOnly = false;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
@@ -45,10 +49,10 @@ public class BLEDevice {
     private Date payloadSharingDataLastUpdatedAt = new Date(0);
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
     private RSSI rssi;
+    /// RSSI last update timestamp, this is used to track last advertised at without relying on didDiscover
+    private Date rssiLastUpdatedAt = new Date(0);
     /// Transmit power data where available (only provided by Android devices)
     private BLE_TxPower txPower;
-    /// Bluetooth GATT connection
-    protected BluetoothGatt bluetoothGatt;
     /// Write back timestamp, this is used to prioritise peers for write back
     private Date lastWriteBackAt = new Date(0);
     /// Write payload timestamp, this is used to prioritise next write action for transmit only devices
@@ -57,7 +61,24 @@ public class BLEDevice {
     protected Date lastWriteRssiAt = null;
     /// Write payload sharing timestamp, this is used to prioritise next write action for transmit only devices
     protected Date lastWritePayloadSharingAt = null;
+    /// Track discovered at timestamp, used by taskConnect to prioritise connection when device runs out of concurrent connection capacity
+    protected Date lastDiscoveredAt = new Date(0);
+    /// Track connect request at timestamp, used by taskConnect to prioritise connection when device runs out of concurrent connection capacity
+    protected Date lastConnectRequestedAt = new Date(0);
+    /// Track connected at timestamp, used by taskConnect to prioritise connection when device runs out of concurrent connection capacity
+    private Date lastConnectedAt = null;
+    /// Track disconnected at timestamp, used by taskConnect to prioritise connection when device runs out of concurrent connection capacity
+    private Date lastDisconnectedAt = null;
 
+    /// Last advert timestamp, inferred from payloadDataLastUpdatedAt, payloadSharingDataLastUpdatedAt, rssiLastUpdatedAt
+    public Date lastAdvertAt() {
+        long max = createdAt.getTime();
+        max = Math.max(max, lastDiscoveredAt.getTime());
+        max = Math.max(max, payloadDataLastUpdatedAt.getTime());
+        max = Math.max(max, payloadSharingDataLastUpdatedAt.getTime());
+        max = Math.max(max, rssiLastUpdatedAt.getTime());
+        return new Date(max);
+    }
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     public TimeInterval timeIntervalSinceLastUpdate() {
@@ -94,6 +115,54 @@ public class BLEDevice {
         return new TimeInterval((new Date().getTime() - (lastWritePayloadSharingAt == null ? 0 : lastWritePayloadSharingAt.getTime())) / 1000);
     }
 
+    /// Time interval since last operating system update, this is used to invalidate ignored Apple devices
+    public TimeInterval timeIntervalSinceLastOperatingSystemUpdate() {
+        return new TimeInterval((new Date().getTime() - operatingSystemLastUpdatedAt.getTime()) / 1000);
+    }
+
+    /// Time interval since last advert detected, this is used to detect concurrent connection quota and prioritise disconnections
+    public TimeInterval timeIntervalSinceLastAdvert() {
+        return new TimeInterval((new Date().getTime() - lastAdvertAt().getTime()) / 1000);
+    }
+
+    /// Time interval between last connection request, this is used to priortise disconnections
+    public TimeInterval timeIntervalSinceLastConnectRequestedAt() {
+        return new TimeInterval((new Date().getTime() - lastConnectRequestedAt.getTime()) / 1000);
+    }
+
+    /// Time interval between last connected at, this is used to estimate last period of continuous tracking, to priortise disconnections
+    public TimeInterval timeIntervalSinceLastConnectedAt() {
+        if (lastConnectedAt == null) {
+            return new TimeInterval(0);
+        }
+        return new TimeInterval((new Date().getTime() - lastConnectedAt.getTime()) / 1000);
+    }
+
+    /// Time interval between last disconnected at, this is used to estimate last period of continuous tracking, to priortise disconnections
+    public TimeInterval timeIntervalSinceLastDisconnectedAt() {
+        if (lastDisconnectedAt == null) {
+            return new TimeInterval((new Date().getTime() - createdAt.getTime()) / 1000);
+        }
+        return new TimeInterval((new Date().getTime() - lastDisconnectedAt.getTime()) / 1000);
+    }
+
+    /// Time interval between last connected at and last advert, this is used to estimate last period of continuous tracking (iOS only), to priortise disconnections
+    public TimeInterval timeIntervalBetweenLastConnectedAndLastAdvert() {
+        if (lastConnectedAt == null || lastAdvertAt().getTime() <= lastConnectedAt.getTime()) {
+            return new TimeInterval(0);
+        }
+        return new TimeInterval((lastAdvertAt().getTime() - lastConnectedAt.getTime()) / 1000);
+    }
+
+    /// Time interval between last payload data updated at and last advert, this is used to estimate last period of continuous tracking (Android only), to priortise disconnections
+    public TimeInterval timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert() {
+        if (payloadDataLastUpdatedAt().getTime() == 0 || lastAdvertAt().getTime() <= payloadDataLastUpdatedAt.getTime()) {
+            return new TimeInterval(0);
+        }
+        return new TimeInterval((lastAdvertAt().getTime() - payloadDataLastUpdatedAt.getTime()) / 1000);
+    }
+
+
     public String description() {
         return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + "]";
     }
@@ -121,7 +190,6 @@ public class BLEDevice {
 
     public void state(BLEDeviceState state) {
         this.state = state;
-//        lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.state);
     }
 
@@ -132,6 +200,7 @@ public class BLEDevice {
     public void operatingSystem(BLEDeviceOperatingSystem operatingSystem) {
         this.operatingSystem = operatingSystem;
         lastUpdatedAt = new Date();
+        operatingSystemLastUpdatedAt = lastUpdatedAt;
         delegate.device(this, BLEDeviceAttribute.operatingSystem);
     }
 
@@ -177,6 +246,7 @@ public class BLEDevice {
     public void rssi(RSSI rssi) {
         this.rssi = rssi;
         lastUpdatedAt = new Date();
+        rssiLastUpdatedAt = lastUpdatedAt;
         delegate.device(this, BLEDeviceAttribute.rssi);
     }
 
@@ -212,6 +282,36 @@ public class BLEDevice {
             lastWritePayloadSharingAt = lastUpdatedAt;
             lastWriteBackAt = lastUpdatedAt;
         }
+    }
+
+    public Date lastConnectedAt() {
+        return lastConnectedAt;
+    }
+
+    public void lastConnectedAt(Date time) {
+        lastConnectedAt = time;
+        // Reset lastDisconnectedAt
+        lastDisconnectedAt = null;
+    }
+
+    public Date lastDisconnectedAt() {
+        return lastDisconnectedAt;
+    }
+
+    public void lastDisconnectedAt(Date time) {
+        lastDisconnectedAt = time;
+    }
+
+    public void disconnect() {
+        if (gatt != null) {
+            try {
+                gatt.close();
+            } catch (Throwable e) {
+            }
+            gatt = null;
+        }
+        lastDisconnectedAt(new Date());
+        state(BLEDeviceState.disconnected);
     }
 
     public String toString() {

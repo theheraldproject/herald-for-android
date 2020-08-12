@@ -1,10 +1,12 @@
 package org.c19x.sensor.ble;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -24,7 +26,9 @@ import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.RSSI;
+import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.TimeInterval;
+import org.c19x.sensor.datatype.Tuple;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -32,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,8 +55,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
-    private final static long scanOnDurationMillis = TimeInterval.seconds(12).millis();
-    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(1).millis();
+    private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
+    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(2).millis();
     private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(4).millis();
     // Define fixed concurrent connection quota
     private final static int concurrentConnectionQuota = 5;
@@ -118,37 +123,50 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     private void scan(String source) {
         logger.debug("scan (source={},on={}ms,off={}-{}ms)", source, scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
-        scanLoopQueue = Executors.newScheduledThreadPool(2);
+        // Previous implementation used recursive Handler.postDelay calls for on/off loop
+        // but that stops working after an indefinite period for unknown reason. Maybe
+        // due to Handler being backed by MainLooper? Executor and thread sleep seems
+        // to work just as well.
+        scanLoopQueue = Executors.newScheduledThreadPool(1);
         scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
-            private long startTime, stopTime, processTime;
-
             @Override
             public void run() {
                 try {
-                    startTime = System.currentTimeMillis();
+                    // Scan for fixed period, defined by scanOnDurationMillis
+                    final long timeStart = System.currentTimeMillis();
                     startScan();
                     try {
                         Thread.sleep(scanOnDurationMillis);
                     } catch (InterruptedException e) {
                     }
                     stopScan();
-                    stopTime = System.currentTimeMillis();
-                    logger.debug("scanning period (on={}ms)", stopTime - startTime);
-                    handleScanResults();
-                    processTime = System.currentTimeMillis();
-                    logger.debug("scanning period (process={}ms)", processTime - stopTime);
-                    final long variableDelay = random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                    try {
-                        Thread.sleep(variableDelay);
-                    } catch (InterruptedException e) {
+                    final long timeStop = System.currentTimeMillis();
+                    final long periodScan = timeStop - timeStart;
+                    logger.debug("scanning period (on={}ms)", periodScan);
+
+                    // Process scan results
+                    processScanResults();
+                    final long timeProcess = System.currentTimeMillis();
+                    final long periodProcess = timeProcess - timeStop;
+                    logger.debug("scanning period (process={}ms)", periodProcess);
+
+                    // Rest for variable period
+                    final long periodOffTarget = random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                    if (periodProcess < periodOffTarget) {
+                        try {
+                            Thread.sleep(periodOffTarget - periodProcess);
+                        } catch (InterruptedException e) {
+                        }
                     }
-                    startTime = System.currentTimeMillis();
-                    logger.debug("scanning period (off={}ms)", startTime - processTime);
+                    final long timeOff = System.currentTimeMillis();
+                    // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
+                    final long periodOff = (timeOff - timeProcess);
+                    logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
                 } catch (Throwable e) {
                     logger.fault("scanning period failure detected", e);
                 }
             }
-        }, scanOffDurationMinimumMillis, scanOffDurationMinimumMillis, TimeUnit.MILLISECONDS);
+        }, 0, scanOffDurationMinimumMillis, TimeUnit.MILLISECONDS);
     }
 
 
@@ -212,6 +230,12 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
+    /// Scan for devices advertising sensor service and all Apple devices as
+    // iOS background advert does not include service UUID. There is a risk
+    // that the sensor will spend time communicating with Apple devices that
+    // are not running the sensor code repeatedly, but there is no reliable
+    // way of filtering this as the service may be absent only because of
+    // transient issues. This will be handled in taskConnect.
     private static ScanCallback startScan(final SensorLogger logger, final BluetoothLeScanner bluetoothLeScanner, final Collection<ScanResult> scanResults) {
         final List<ScanFilter> filter = new ArrayList<>(2);
         filter.add(new ScanFilter.Builder().setManufacturerData(
@@ -227,7 +251,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         final ScanCallback callback = new ScanCallback() {
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
-//                logger.debug("onScanResult (result={})", result);
                 scanResults.add(result);
             }
 
@@ -241,9 +264,148 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         return callback;
     }
 
+    /// Process scan results.
+    private void processScanResults() {
+        // Identify devices discovered in last scan
+        final Set<BLEDevice> devices = didDiscover();
+        taskRegisterConnectedDevices();
+        taskResolveDevicePeripherals();
+        taskRemoveExpiredDevices();
+        taskRemoveDuplicatePeripherals();
+        taskConnect();
+        taskWriteBack(devices, concurrentConnectionQuota);
+    }
+
     /**
-     * Remove devices that have not been updated for over an hour, as the UUID is likely to have changed after being out of range for over 20 minutes, so it will require discovery.
+     * Process scan results to
+     * 1. Create BLEDevice from scan result for new devices
+     * 2. Read RSSI
+     * 3. Identify operating system
      */
+    private Set<BLEDevice> didDiscover() {
+        // Take current copy of concurrently modifiable scan results
+        final List<ScanResult> scanResultList = new ArrayList<>(scanResults.size());
+        while (scanResults.size() > 0) {
+            scanResultList.add(scanResults.poll());
+        }
+
+        // Process scan results and return devices created/updated in scan results
+        logger.debug("didDiscover");
+        final Set<BLEDevice> devices = new HashSet<>();
+        for (ScanResult scanResult : scanResultList) {
+            final BLEDevice device = database.device(scanResult.getDevice());
+            device.lastDiscoveredAt = new Date();
+            devices.add(device);
+            // Read RSSI from scan result
+            device.rssi(new RSSI(scanResult.getRssi()));
+            // Don't ignore devices forever just because
+            // sensor service was not found at some point
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore &&
+                    device.timeIntervalSinceLastOperatingSystemUpdate().value > TimeInterval.minutes(2).value) {
+                logger.debug("didDiscover, re-introducing ignored device (device={})", device);
+                device.operatingSystem(BLEDeviceOperatingSystem.unknown);
+            }
+            // Identify operating system from scan record where possible
+            // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
+            // - Sensor service found + Manufacturer not Apple -> Android
+            // - Sensor service not found + Manufacturer is Apple -> iOS (Background) or Apple device not advertising sensor service, to be resolved later
+            // - Sensor service not found + Manufacturer not Apple -> Ignore (shouldn't be possible as we are scanning for Apple or with service)
+            final boolean hasSensorService = hasSensorService(scanResult);
+            final boolean isAppleDevice = isAppleDevice(scanResult);
+            if (hasSensorService && isAppleDevice) {
+                // Definitely iOS device offering sensor service in foreground mode
+                device.operatingSystem(BLEDeviceOperatingSystem.ios);
+            } else if (hasSensorService && !isAppleDevice) {
+                // Definitely Android device offering sensor service
+                device.operatingSystem(BLEDeviceOperatingSystem.android);
+            } else if (!hasSensorService && isAppleDevice) {
+                // Maybe iOS device offering sensor service in background mode,
+                // can't be sure without additional checks after connection, so
+                // only set operating system if it is unknown to offer a guess.
+                if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ios);
+                }
+            } else {
+                // Sensor service not found + Manufacturer not Apple should be impossible (!hasSensorService && !isAppleDevice)
+                // Shouldn't be possible as we are scanning for devices with sensor service or Apple device.
+                logger.fault("didDiscover, invalid non-Apple device without sensor service (device={})", device);
+                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+            }
+        }
+        return devices;
+    }
+
+    /// Does scan result include advert for sensor service?
+    private static boolean hasSensorService(final ScanResult scanResult) {
+        final ScanRecord scanRecord = scanResult.getScanRecord();
+        if (scanRecord == null) {
+            return false;
+        }
+        final List<ParcelUuid> serviceUuids = scanRecord.getServiceUuids();
+        if (serviceUuids == null || serviceUuids.size() == 0) {
+            return false;
+        }
+        for (ParcelUuid serviceUuid : serviceUuids) {
+            if (serviceUuid.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Does scan result indicate device was manufactured by Apple?
+    private static boolean isAppleDevice(final ScanResult scanResult) {
+        final ScanRecord scanRecord = scanResult.getScanRecord();
+        if (scanRecord == null) {
+            return false;
+        }
+        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
+        return data != null;
+    }
+
+    /// Register connected devices to catch devices not found via discovery, e.g. connection initiated by peer
+    private void taskRegisterConnectedDevices() {
+        final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        final List<BluetoothDevice> bluetoothDevices = bluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
+        for (BluetoothDevice bluetoothDevice : bluetoothDevices) {
+            if (bluetoothDevice.getType() == BluetoothDevice.DEVICE_TYPE_LE) {
+                final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
+                final BLEDevice device = database.device(identifier);
+                if (device.peripheral() == null || device.peripheral() != bluetoothDevice) {
+                    logger.debug("taskRegisterConnectedPeripherals (device={})", device);
+                    database.device(bluetoothDevice);
+                }
+            }
+        }
+    }
+
+    /// Resolve BluetoothDevice for all devices where possible
+    private void taskResolveDevicePeripherals() {
+        final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        final BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
+        for (BLEDevice device : database.devices()) {
+            if (device.peripheral() != null) {
+                continue;
+            }
+            final String address = device.identifier.value;
+            if (!bluetoothAdapter.checkBluetoothAddress(address)) {
+                continue;
+            }
+            try {
+                final BluetoothDevice bluetoothDevice = bluetoothAdapter.getRemoteDevice(address);
+                if (bluetoothDevice == null) {
+                    continue;
+                }
+                logger.debug("taskResolveDevicePeripherals (resolved={})", device);
+                device.peripheral(bluetoothDevice);
+            } catch (Throwable e) {
+            }
+        }
+    }
+
+    /// Remove devices that have not been updated for over an hour, as the UUID
+    // is likely to have changed after being out of range for over 20 minutes,
+    // so it will require discovery.
     private void taskRemoveExpiredDevices() {
         final List<BLEDevice> devicesToRemove = new ArrayList<>();
         for (BLEDevice device : database.devices()) {
@@ -252,18 +414,14 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             }
         }
         for (BLEDevice device : devicesToRemove) {
-            logger.debug("taskRemoveExpiredDevices (removed={})", device);
+            logger.debug("taskRemoveExpiredDevices (remove={})", device);
             database.delete(device.identifier);
-            if (device.bluetoothGatt != null) {
-                logger.debug("disconnect (source=taskRemoveExpiredDevices,identifier={})", device);
-                device.bluetoothGatt.disconnect();
-            }
+            logger.debug("disconnect (source=taskRemoveExpiredDevices,device={})", device);
+            device.disconnect();
         }
     }
 
-    /**
-     * Remove devices with the same payload data but different peripherals.
-     */
+    /// Remove devices with the same payload data but different peripherals.
     private void taskRemoveDuplicatePeripherals() {
         final Map<PayloadData, BLEDevice> index = new HashMap<>();
         for (BLEDevice device : database.devices()) {
@@ -290,214 +448,196 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             database.delete(discarding.identifier);
             logger.debug("taskRemoveDuplicatePeripherals (payload={},device={},duplicate={},keeping={}",
                     keeping.payloadData().shortName(),
-                    device,
-                    duplicate.identifier,
-                    (keeping == device ? "former" : "latter"));
+                    device, duplicate, keeping);
         }
     }
 
-
-    /**
-     * Process scan results to
-     * 1. Create BLEDevice from scan result for new devices
-     * 2. Read RSSI for the device
-     * 3. Identify operating system for the device, if it is currently .unknown or .ignore
-     */
-    private Set<BLEDevice> taskProcessScanResults() {
-
-        final List<ScanResult> scanResultList = new ArrayList<>(scanResults);
-        final Set<BLEDevice> devices = new HashSet<>();
-        final Set<String> processed = new HashSet<>();
-        for (ScanResult scanResult : scanResultList) {
-            // Device
-            final BLEDevice device = database.device(scanResult.getDevice());
-            devices.add(device);
-            // RSSI
-            device.rssi(new RSSI(scanResult.getRssi()));
-            // Operating system
-            final ScanRecord scanRecord = scanResult.getScanRecord();
-            if ((device.operatingSystem() == BLEDeviceOperatingSystem.unknown || device.operatingSystem() == BLEDeviceOperatingSystem.ignore) && scanRecord != null) {
-                // Test if service is being advertised
-                boolean hasService = false;
-                if (scanRecord.getServiceUuids() != null) {
-                    for (ParcelUuid parcelUuid : scanRecord.getServiceUuids()) {
-                        if (parcelUuid.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
-                            hasService = true;
-                            break;
-                        }
-                    }
-                }
-                if (scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple) != null) {
-                    // Apple device
-                    if (!hasService) {
-                        // Apple device in background mode
-                        device.operatingSystem(BLEDeviceOperatingSystem.ios);
-                    } else {
-                        // Apple device in foreground mode advertising BLESensor service
-                        device.operatingSystem(BLEDeviceOperatingSystem.ios);
-                    }
-                } else if (hasService) {
-                    // Android device advertising C19X service
-                    device.operatingSystem(BLEDeviceOperatingSystem.android);
-                } else {
-                    // Ignore other devices
-                    // device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-                }
-            }
-        }
-        scanResults.clear();
-        return devices;
-    }
-
-    /**
-     * Manage connections to meet concurrent connection quota
-     * 1. Discard long running connections
-     * 2. Connect to readPayload or readPayloadSharing using surplus quota
-     */
     private void taskConnect() {
-        // Get connection status
-        final List<BLEDevice> connected = new ArrayList<>();
-        final List<BLEDevice> connecting = new ArrayList<>();
-        final List<BLEDevice> disconnected = new ArrayList<>();
-        for (BLEDevice device : database.devices()) {
+        final Tuple<List<BLEDevice>, List<BLEDevice>> devicesSeparatedByConnectionState = taskConnectSeparateByConnectionState(database.devices());
+        final List<BLEDevice> connected = devicesSeparatedByConnectionState.getA("connected");
+        final List<BLEDevice> disconnected = devicesSeparatedByConnectionState.getB("disconnected");
+        final List<BLEDevice> pending = taskConnectPendingDevices(disconnected);
+        final Tuple<Integer, List<BLEDevice>> requestConnectionCapacity = taskConnectRequestConnectionCapacity(connected, pending);
+        final int capacity = requestConnectionCapacity.getA("capacity");
+        final List<BLEDevice> keepConnected = requestConnectionCapacity.getB("keepConnected");
+        taskConnectInitiateConnectionToPendingDevices(pending, capacity);
+//        taskConnectRefreshKeepConnectedDevices(keepConnected: keepConnected)
+    }
+
+    /// Separate devices by current connection state
+    private Tuple<List<BLEDevice>, List<BLEDevice>> taskConnectSeparateByConnectionState(final List<BLEDevice> devices) {
+        final List<BLEDevice> connected = new ArrayList<>(devices.size());
+        final List<BLEDevice> disconnected = new ArrayList<>(devices.size());
+        for (BLEDevice device : devices) {
             if (device.peripheral() == null) {
                 continue;
             }
-            switch (device.state()) {
-                case connected: {
-                    connected.add(device);
-                    break;
-                }
-                case connecting: {
-                    connecting.add(device);
-                    break;
-                }
-                default: {
-                    disconnected.add(device);
-                    break;
-                }
+            if (device.state() == BLEDeviceState.connected) {
+                connected.add(device);
+            } else if (device.state() == BLEDeviceState.disconnected) {
+                disconnected.add(device);
             }
         }
-        logger.debug("taskConnect status (connected={},connecting={},disconnected={})", connected.size(), connecting.size(), disconnected.size());
+        logger.debug("taskConnect status summary (connected={},disconnected={}})", connected.size(), disconnected.size());
         for (BLEDevice device : connected) {
-            logger.debug("taskConnect connected (device={},operatingSystem={})", device, device.operatingSystem());
+            logger.debug("taskConnect status connected (device={},upTime={})", device, device.timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert());
         }
-
-        // Establish connections to keep
-        // - Android connections are short lived and should be left to complete
-        // - iOS connections for getting the payload data should be left to complete
-        final List<BLEDevice> keep = new ArrayList<>();
-        final List<BLEDevice> keepAndroid = new ArrayList<>();
-        final List<BLEDevice> keepIos = new ArrayList<>();
-        for (BLEDevice device : connected) {
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
-                keepIos.add(device);
-            } else if (device.operatingSystem() == BLEDeviceOperatingSystem.android) {
-                keepAndroid.add(device);
-            }
-        }
-        keep.addAll(keepAndroid);
-        keep.addAll(keepIos);
-        logger.debug("taskConnect keep (android={},ios={})", keepAndroid.size(), keepIos.size());
-
-        // Establish connections to discard
-        // - All connections that are not disconnected within 10 seconds
-        final List<BLEDevice> discard = new ArrayList<>();
-        for (BLEDevice device : database.devices()) {
-            // Has connection handle
-            if (device.gatt == null) {
-                continue;
-            }
-            // Not disconnected
-            if (device.state() == BLEDeviceState.disconnected) {
-                continue;
-            }
-            // Is connected for too long
-            if (device.timeIntervalSinceLastStateUpdate().value < (new TimeInterval(10)).value) {
-                continue;
-            }
-            discard.add(device);
-        }
-        // Sort by last updated time stamp (most recent first)
-        Collections.sort(discard, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
-            }
-        });
-
-        // Discard connections to meet quota
-        final int capacity = concurrentConnectionQuota - connected.size();
-        if (capacity <= 0) {
-            logger.fault("taskConnect quota exceeded, suspending new connections (connected={},keep={},quota={})", connected.size(), keep.size(), concurrentConnectionQuota);
-            // Keep most recently updated devices first as devices that haven't been updated for a while may be going out of range
-            final int surplusCapacity = concurrentConnectionQuota - keep.size();
-            if (surplusCapacity > 0) {
-                for (int i = surplusCapacity; i-- > 0 && discard.size() > 0; ) {
-                    discard.remove(0);
-                }
-            }
-            for (BLEDevice device : discard) {
-                logger.debug("taskConnect|discard (device={},operatingSystem={})", device, device.operatingSystem());
-                if (device.gatt != null) {
-                    try {
-                        device.state(BLEDeviceState.disconnecting);
-                        device.gatt.disconnect();
-                    } catch (Throwable e) {
-                        logger.fault("taskConnect|discard, disconnect failed (device={},error={})", device, e);
-                    }
-                    try {
-                        device.gatt.close();
-                    } catch (Throwable e) {
-                        logger.fault("taskConnect|discard, close failed (device={},error={})", device, e);
-                    }
-                    device.gatt = null;
-                }
-                device.state(BLEDeviceState.disconnected);
-            }
-        }
-
-        // Establish pending connections
-        // - New iOS or Android devices without payload data
-        // - iOS and Android devices sorted by last payload shared at timestamp (least recent first)
-        final List<BLEDevice> pending = new ArrayList<>();
-        final List<BLEDevice> pendingNew = new ArrayList<>();
-        final List<BLEDevice> pendingShare = new ArrayList<>();
         for (BLEDevice device : disconnected) {
-            // iOS and Android devices only (unknown or ignore devices are resolved by taskProcessScanResults)
-            if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                continue;
-            }
-            // Seek payload as top priority
-            if (device.payloadData() == null) {
-                pendingNew.add(device);
-            }
-            // Invoke payload sharing if payloads have not been shared for a while
-            else if (device.timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value) {
-                pendingShare.add(device);
+            logger.debug("taskConnect status disconnected (device={},downTime={})", device, device.timeIntervalSinceLastDisconnectedAt());
+        }
+        return new Tuple<>("connected", connected, "disconnected", disconnected);
+    }
+
+    /// Establish pending connections for disconnected devices
+    private List<BLEDevice> taskConnectPendingDevices(List<BLEDevice> disconnected) {
+        final List<BLEDevice> pending = new ArrayList<>(disconnected.size());
+        // 1. Resolve operating system
+        final List<BLEDevice> os = new ArrayList<>(disconnected.size());
+        for (BLEDevice device : disconnected) {
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
+                os.add(device);
             }
         }
-        Collections.sort(pendingShare, new Comparator<BLEDevice>() {
+        Collections.sort(os, new Comparator<BLEDevice>() {
             @Override
             public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d0.lastUpdatedAt.getTime(), d1.lastUpdatedAt.getTime());
+                return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
             }
         });
-        pending.addAll(pendingNew);
-        pending.addAll(pendingShare);
-        logger.debug("taskConnect pending (new={},share={},total={})", pendingNew.size(), pendingShare.size(), pending.size());
-        final List<String> pendingQueue = new ArrayList<>();
-        for (BLEDevice device : pending) {
-            pendingQueue.add(device.operatingSystem() + ":" + device.timeIntervalSinceLastUpdate().value);
+        pending.addAll(os);
+        // 2. Get payload
+        final List<BLEDevice> payload = new ArrayList<>(disconnected.size());
+        for (BLEDevice device : disconnected) {
+            if ((device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) &&
+                    device.payloadData() == null && !pending.contains(device)) {
+                payload.add(device);
+            }
         }
-        logger.debug("taskConnect pending (queue={})", pendingQueue);
-        for (int i = 0; i < capacity && i < pending.size(); i++) {
-            final BLEDevice device = pending.get(i);
+        Collections.sort(payload, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
+            }
+        });
+        pending.addAll(payload);
+        // 3. Payload sharing only requires a transient connection
+        final List<BLEDevice> payloadSharing = new ArrayList<>(disconnected.size());
+        for (BLEDevice device : disconnected) {
+            if ((device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) &&
+                    device.timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value &&
+                    !pending.contains(device)) {
+                payload.add(device);
+            }
+        }
+        Collections.sort(payloadSharing, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalSinceLastPayloadShared().value, d0.timeIntervalSinceLastPayloadShared().value);
+            }
+        });
+        pending.addAll(payloadSharing);
+        if (pending.size() > 0) {
+            logger.debug("taskConnect pending summary (devices={})", pending.size());
+            for (BLEDevice device : os) {
+                logger.debug("taskConnect pending, operating system (device={},timeSinceLastRequest={})", device, device.timeIntervalSinceLastConnectRequestedAt());
+            }
+            for (BLEDevice device : payload) {
+                logger.debug("taskConnect pending, read payload (device={},timeSinceLastRequest={})", device, device.timeIntervalSinceLastConnectRequestedAt());
+            }
+            for (BLEDevice device : payloadSharing) {
+                logger.debug("taskConnect pending, read payload sharing (device={},timeSinceLastRequest={}})", device, device.timeIntervalSinceLastPayloadShared());
+            }
+        }
+        return pending;
+    }
+
+    /// Free connection capacity for pending devices if possible by disconnecting long running connections to iOS devices
+    private Tuple<Integer, List<BLEDevice>> taskConnectRequestConnectionCapacity(List<BLEDevice> connected, List<BLEDevice> pending) {
+        final int quota = BLESensorConfiguration.concurrentConnectionQuota;
+        final int capacityRequest = 1;
+        if (!(pending.size() > 0 && (capacityRequest + connected.size()) > quota)) {
+            final int capacity = quota - connected.size();
+            return new Tuple<>("capacity", capacity, "keepConnected", connected);
+        }
+        // All connections are transient in Android (unlike iOS)
+        final List<BLEDevice> transientDevices = connected;
+        logger.debug("taskConnect capacity summary (quota={},connected={},transient={},pending={})", quota, connected.size(), transientDevices.size(), pending.size());
+        // Only disconnect devices if there is no transient device that will naturally free up capacity in the near future
+        if (!(transientDevices.size() == 0)) {
+            logger.debug("taskConnect capacity, wait for disconnection by transient devices");
+            return new Tuple<>("capacity", 0, "keepConnected", connected);
+        }
+        // Candidate devices for disconnection
+        // - Device has been tracked for > 1 minute (up time)
+        // - Device has been connected for > 30 seconds
+        // - Sort device by up time (longest first)
+        final List<BLEDevice> candidates = new ArrayList<>(connected.size());
+        for (BLEDevice device : connected) {
+            if (device.timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert().value > TimeInterval.minute.value &&
+                    device.timeIntervalSinceLastConnectedAt().value > TimeInterval.seconds(30).value) {
+                candidates.add(device);
+            }
+        }
+        Collections.sort(candidates, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert().value, d0.timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert().value);
+            }
+        });
+        final List<String> candidateList = new ArrayList<>(candidates.size());
+        for (BLEDevice device : candidates) {
+            candidateList.add(device + ":" + device.timeIntervalBetweenLastPayloadDataUpdateAndLastAdvert());
+        }
+        logger.debug("taskConnect capacity, candidates (devices={})", candidateList);
+        // Disconnect devices to meet capacity request
+        final List<BLEDevice> keepConnected = new ArrayList<>(candidates.size());
+        final List<BLEDevice> willDisconnect = new ArrayList<>(candidates.size());
+        for (int i = 0; i < candidates.size(); i++) {
+            if (i < capacityRequest) {
+                willDisconnect.add(candidates.get(i));
+            } else {
+                keepConnected.add(candidates.get(i));
+            }
+        }
+        logger.debug("taskConnect capacity, plan (willDisconnect={},,keepConnected={})", willDisconnect.size(), keepConnected.size());
+        for (BLEDevice device : willDisconnect) {
+            if (device.gatt != null) {
+                logger.debug("taskConnect capacity, disconnect (device={})", device);
+                device.disconnect();
+            }
+        }
+        return new Tuple<>("capacity", willDisconnect.size(), "keepConnected", keepConnected);
+    }
+
+    /// Initiate connection to pending devices, up to maximum capacity
+    private void taskConnectInitiateConnectionToPendingDevices(List<BLEDevice> pending, int capacity) {
+        if (pending.size() == 0) {
+            return;
+        }
+        if (capacity == 0) {
+            return;
+        }
+        final List<BLEDevice> readyForConnection = new ArrayList<>();
+        for (BLEDevice device : pending) {
+            if (device.peripheral() != null) {
+                readyForConnection.add(device);
+            }
+        }
+        final List<BLEDevice> devices = new ArrayList<>();
+        if (readyForConnection.size() < capacity) {
+            devices.addAll(readyForConnection);
+        } else {
+            for (int i = 0; i < capacity; i++) {
+                devices.add(readyForConnection.get(i));
+            }
+        }
+        logger.debug("taskConnect initiate connection summary (pending={},capacity={},connectingTo={})", pending.size(), capacity, devices.size());
+        for (BLEDevice device : devices) {
             if (device.payloadData() == null) {
-                logger.debug("taskConnect connect (goal=readPayload,device={})", device);
+                logger.debug("taskConnect initiate connection, connect (goal=readPayload,device={})", device);
                 readPayload(device);
             } else {
-                logger.debug("taskConnect connect (goal=readPayloadSharing,device={})", device);
+                logger.debug("taskConnect initiate connection, connect (goal=readPayloadSharing,device={})", device);
                 readPayloadSharing(device);
             }
         }
@@ -585,15 +725,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
     }
 
-    /// Process a batch of scan results.
-    private void handleScanResults() {
-        taskRemoveExpiredDevices();
-        taskRemoveDuplicatePeripherals();
-        final Set<BLEDevice> devices = taskProcessScanResults();
-        taskConnect();
-        taskWriteBack(devices, concurrentConnectionQuota);
-    }
-
     private void readPayload(final BLEDevice device) {
         logger.debug("readPayload (device={})", device);
         connect(device, "readPayload", BLESensorConfiguration.payloadCharacteristicUUID, new Callback<byte[]>() {
@@ -634,12 +765,12 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         BLESensorConfiguration.androidSignalCharacteristicUUID);
         // Priority
         // 1. Write payload
-        // 2. Write payload sharing
-        // 3. Write RSSI
+        // 2. Write RSSI
+        // 3. Write payload sharing
         if (device.payloadData() != null && (device.lastWritePayloadAt == null || device.timeIntervalSinceLastWritePayload().value > TimeInterval.hour.value)) {
             final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
             device.writePayload(connect(device, "writePayload", characteristicUUID, null, data));
-        } else if (transmitter instanceof ConcreteBLETransmitter && (device.lastWritePayloadSharingAt == null || device.timeIntervalSinceLastWritePayloadSharing().value > BLESensorConfiguration.payloadSharingTimeInterval.value)) {
+        } else if (transmitter instanceof ConcreteBLETransmitter && (device.lastWritePayloadSharingAt == null || device.timeIntervalSinceLastWritePayloadSharing().value > (BLESensorConfiguration.payloadSharingTimeInterval.value * 4))) {
             final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
             final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
             device.writePayloadSharing(connect(device, "writePayloadSharing", characteristicUUID, null, data));
@@ -674,6 +805,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     /// Connect device and perform read/write operation on characteristic
     private boolean connect(final BLEDevice device, final String task, final UUID characteristicUUID, final Callback<byte[]> readData, final byte[] writeData) {
+        device.lastConnectRequestedAt = new Date();
         if (device.peripheral() == null) {
             return false;
         }
@@ -701,7 +833,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         logger.fault("task {}, close failed (device={},error={})", task, device, e);
                     }
                     device.gatt = null;
+                    device.lastDisconnectedAt(new Date());
                 }
+                device.lastDisconnectedAt(new Date());
                 device.state(BLEDeviceState.disconnected);
                 logger.debug("task {}, disconnected (source={},device={})", task, source, device);
                 blocking.countDown();
@@ -719,6 +853,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     case BluetoothProfile.STATE_CONNECTED: {
                         logger.debug("task {}, didConnect (device={})", task, device);
                         device.state(BLEDeviceState.connected);
+                        device.lastConnectedAt(new Date());
                         device.gatt = gatt;
                         gatt.discoverServices();
                         break;
@@ -728,6 +863,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         break;
                     }
                     case BluetoothProfile.STATE_DISCONNECTED: {
+                        device.gatt = null;
+                        device.lastDisconnectedAt(new Date());
                         disconnect.accept("onConnectionStateChange");
                         break;
                     }
@@ -739,9 +876,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
                 if (service == null) {
                     logger.debug("task {}, onServicesDiscovered, service not found (device={})", task, device);
-//                    if (device.operatingSystem() != BLEDeviceOperatingSystem.unknown) {
-//                        device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-//                    }
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     disconnect.accept("onServicesDiscovered|serviceNotFound");
                     return;
                 }

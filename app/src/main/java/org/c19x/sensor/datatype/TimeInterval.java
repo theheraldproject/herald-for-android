@@ -26,4 +26,9 @@ public class TimeInterval {
     public long millis() {
         return value * 1000;
     }
+
+    @Override
+    public String toString() {
+        return Long.toString(value);
+    }
 }
