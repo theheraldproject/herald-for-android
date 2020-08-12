@@ -47,7 +47,7 @@ public class Sample {
         }
     }
 
-    public Double getMin() {
+    public Double min() {
         if (n > 0) {
             return min;
         } else {
@@ -55,7 +55,7 @@ public class Sample {
         }
     }
 
-    public Double getMax() {
+    public Double max() {
         if (n > 0) {
             return max;
         } else {

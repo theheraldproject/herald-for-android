@@ -69,7 +69,7 @@ public class StatisticsLog implements SensorDelegate {
             if (sample == null) {
                 continue;
             }
-            if (sample.mean() == null || sample.standardDeviation() == null || sample.getMin() == null || sample.getMax() == null) {
+            if (sample.mean() == null || sample.standardDeviation() == null || sample.min() == null || sample.max() == null) {
                 continue;
             }
             content.append(csv(payload));
@@ -80,9 +80,9 @@ public class StatisticsLog implements SensorDelegate {
             content.append(',');
             content.append(sample.standardDeviation());
             content.append(',');
-            content.append(sample.getMin());
+            content.append(sample.min());
             content.append(',');
-            content.append(sample.getMax());
+            content.append(sample.max());
             content.append('\n');
         }
         textFile.overwrite(content.toString());
