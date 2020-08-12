@@ -4,7 +4,8 @@ import android.bluetooth.BluetoothDevice;
 
 import java.util.Objects;
 
-/// Ephemeral identifier for detected target (e.g. smartphone, beacon, place). This is likely to be an UUID but using String for variable identifier length.
+/// Ephemeral identifier for detected target (e.g. smartphone, beacon, place).
+// This is likely to be an UUID but using String for variable identifier length.
 public class TargetIdentifier {
     public final String value;
 
@@ -12,6 +13,7 @@ public class TargetIdentifier {
         this.value = value;
     }
 
+    /// Create target identifier based on bluetooth device address
     public TargetIdentifier(BluetoothDevice bluetoothDevice) {
         this.value = bluetoothDevice.getAddress();
     }
