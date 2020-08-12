@@ -56,10 +56,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
-    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(2).millis();
-    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(4).millis();
-    // Define fixed concurrent connection quota
-    private final static int concurrentConnectionQuota = 5;
+    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(4).millis();
+    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(6).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final ConcreteBLEReceiver self = this;
     private final Context context;
@@ -151,12 +149,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     logger.debug("scanning period (process={}ms)", periodProcess);
 
                     // Rest for variable period
-                    final long periodOffTarget = random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                    if (periodProcess < periodOffTarget) {
-                        try {
-                            Thread.sleep(periodOffTarget - periodProcess);
-                        } catch (InterruptedException e) {
-                        }
+                    final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                    try {
+                        Thread.sleep(periodOffTarget);
+                    } catch (InterruptedException e) {
                     }
                     final long timeOff = System.currentTimeMillis();
                     // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
@@ -166,7 +162,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     logger.fault("scanning period failure detected", e);
                 }
             }
-        }, 0, scanOffDurationMinimumMillis, TimeUnit.MILLISECONDS);
+        }, 0, 500, TimeUnit.MILLISECONDS);
     }
 
 
@@ -273,7 +269,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         taskRemoveExpiredDevices();
         taskRemoveDuplicatePeripherals();
         taskConnect();
-        taskWriteBack(devices, concurrentConnectionQuota);
+        taskWriteBack(devices, BLESensorConfiguration.concurrentConnectionQuota);
     }
 
     /**
@@ -694,7 +690,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 connections.add(device);
             }
         }
-        final int capacity = concurrentConnectionQuota - connections.size();
+        final int capacity = BLESensorConfiguration.concurrentConnectionQuota - connections.size();
         if (capacity <= 0) {
             return;
         }
