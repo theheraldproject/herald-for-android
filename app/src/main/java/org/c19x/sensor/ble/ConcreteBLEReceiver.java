@@ -264,10 +264,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private void processScanResults() {
         // Identify devices discovered in last scan
         final Set<BLEDevice> devices = didDiscover();
-        taskRegisterConnectedDevices();
-        taskResolveDevicePeripherals();
+        // taskRegisterConnectedDevices(); // Unnecessary on Android
+        // taskResolveDevicePeripherals(); // Unnecessary on Android
         taskRemoveExpiredDevices();
-        taskRemoveDuplicatePeripherals();
+        // taskRemoveDuplicatePeripherals(); // Unnecessary on Android
         taskConnect();
         taskWriteBack(devices, BLESensorConfiguration.concurrentConnectionQuota);
     }
@@ -487,61 +487,26 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     /// Establish pending connections for disconnected devices
     private List<BLEDevice> taskConnectPendingDevices(List<BLEDevice> disconnected) {
         final List<BLEDevice> pending = new ArrayList<>(disconnected.size());
-        // 1. Resolve operating system
-        final List<BLEDevice> os = new ArrayList<>(disconnected.size());
         for (BLEDevice device : disconnected) {
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
-                os.add(device);
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
+                continue;
             }
+            if (device.goal() == BLEDeviceGoal.nothing) {
+                continue;
+            }
+            pending.add(device);
         }
-        Collections.sort(os, new Comparator<BLEDevice>() {
+        Collections.sort(pending, new Comparator<BLEDevice>() {
             @Override
             public int compare(BLEDevice d0, BLEDevice d1) {
                 return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
             }
         });
-        pending.addAll(os);
-        // 2. Get payload
-        final List<BLEDevice> payload = new ArrayList<>(disconnected.size());
-        for (BLEDevice device : disconnected) {
-            if ((device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) &&
-                    device.payloadData() == null && !pending.contains(device)) {
-                payload.add(device);
-            }
-        }
-        Collections.sort(payload, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
-            }
-        });
-        pending.addAll(payload);
-        // 3. Payload sharing only requires a transient connection
-        final List<BLEDevice> payloadSharing = new ArrayList<>(disconnected.size());
-        for (BLEDevice device : disconnected) {
-            if ((device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) &&
-                    device.timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value &&
-                    !pending.contains(device)) {
-                payload.add(device);
-            }
-        }
-        Collections.sort(payloadSharing, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceLastPayloadShared().value, d0.timeIntervalSinceLastPayloadShared().value);
-            }
-        });
-        pending.addAll(payloadSharing);
         if (pending.size() > 0) {
             logger.debug("taskConnect pending summary (devices={})", pending.size());
-            for (BLEDevice device : os) {
-                logger.debug("taskConnect pending, operating system (device={},timeSinceLastRequest={})", device, device.timeIntervalSinceLastConnectRequestedAt());
-            }
-            for (BLEDevice device : payload) {
-                logger.debug("taskConnect pending, read payload (device={},timeSinceLastRequest={})", device, device.timeIntervalSinceLastConnectRequestedAt());
-            }
-            for (BLEDevice device : payloadSharing) {
-                logger.debug("taskConnect pending, read payload sharing (device={},timeSinceLastRequest={}})", device, device.timeIntervalSinceLastPayloadShared());
+            for (int i = 0; i < pending.size(); i++) {
+                final BLEDevice device = pending.get(i);
+                logger.debug("taskConnect pending, queue (priority={},device={},timeSinceLastRequest={}})", i + 1, device, device.timeIntervalSinceLastConnectRequestedAt());
             }
         }
         return pending;
@@ -629,11 +594,11 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
         logger.debug("taskConnect initiate connection summary (pending={},capacity={},connectingTo={})", pending.size(), capacity, devices.size());
         for (BLEDevice device : devices) {
-            if (device.payloadData() == null) {
-                logger.debug("taskConnect initiate connection, connect (goal=readPayload,device={})", device);
+            if (device.goal() == BLEDeviceGoal.payload) {
+                logger.debug("taskConnect initiate connection, connect (device={})", device);
                 readPayload(device);
-            } else {
-                logger.debug("taskConnect initiate connection, connect (goal=readPayloadSharing,device={})", device);
+            } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
+                logger.debug("taskConnect initiate connection, connect (device={})", device);
                 readPayloadSharing(device);
             }
         }
@@ -861,6 +826,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     case BluetoothProfile.STATE_DISCONNECTED: {
                         device.gatt = null;
                         device.lastDisconnectedAt(new Date());
+                        if (status != 0) {
+                            device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                        }
                         disconnect.accept("onConnectionStateChange");
                         break;
                     }

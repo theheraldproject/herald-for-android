@@ -164,7 +164,7 @@ public class BLEDevice {
 
 
     public String description() {
-        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + "]";
+        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + ",goal=" + goal().name() + "]";
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
@@ -312,6 +312,18 @@ public class BLEDevice {
         }
         lastDisconnectedAt(new Date());
         state(BLEDeviceState.disconnected);
+    }
+
+    public BLEDeviceGoal goal() {
+        if (operatingSystem == BLEDeviceOperatingSystem.unknown) {
+            return BLEDeviceGoal.operatingSystem;
+        } else if (payloadData() == null) {
+            return BLEDeviceGoal.payload;
+        } else if (timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value) {
+            return BLEDeviceGoal.payloadSharing;
+        } else {
+            return BLEDeviceGoal.nothing;
+        }
     }
 
     public String toString() {
