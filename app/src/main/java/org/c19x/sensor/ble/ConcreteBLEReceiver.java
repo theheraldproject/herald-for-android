@@ -766,7 +766,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         if (device.payloadData() != null && (device.lastWritePayloadAt == null || device.timeIntervalSinceLastWritePayload().value > TimeInterval.hour.value)) {
             final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
             device.writePayload(connect(device, "writePayload", characteristicUUID, null, data));
-        } else if (transmitter instanceof ConcreteBLETransmitter && (device.lastWritePayloadSharingAt == null || device.timeIntervalSinceLastWritePayloadSharing().value > (BLESensorConfiguration.payloadSharingTimeInterval.value * 4))) {
+        } else if (transmitter instanceof ConcreteBLETransmitter && (device.lastWritePayloadSharingAt == null || device.timeIntervalSinceLastWritePayloadSharing().value > BLESensorConfiguration.payloadSharingTimeInterval.value)) {
             final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
             final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
             device.writePayloadSharing(connect(device, "writePayloadSharing", characteristicUUID, null, data));
