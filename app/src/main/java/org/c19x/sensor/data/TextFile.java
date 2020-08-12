@@ -68,4 +68,12 @@ public class TextFile {
         }
     }
 
+    /// Quote value for CSV output if required.
+    public static String csv(String value) {
+        if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {
+            return "\"" + value + "\"";
+        } else {
+            return value;
+        }
+    }
 }

@@ -8,6 +8,7 @@ import org.c19x.sensor.data.ContactLog;
 import org.c19x.sensor.data.DetectionLog;
 import org.c19x.sensor.data.RScriptLog;
 import org.c19x.sensor.data.SensorLogger;
+import org.c19x.sensor.data.StatisticsLog;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
 
@@ -30,7 +31,8 @@ public class SensorArray implements Sensor {
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
         add(new ContactLog("contacts.csv"));
-        add(new RScriptLog("rScriptLog.csv"));
+        add(new StatisticsLog("statistics.csv", payloadData));
+        add(new RScriptLog("rScriptLog.csv", payloadData));
         add(new DetectionLog("detection.csv", payloadData));
 
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);

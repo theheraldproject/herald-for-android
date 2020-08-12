@@ -17,12 +17,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RScriptLog implements SensorDelegate {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
+    private final PayloadData payloadData;
     private final String deviceOS = Integer.toString(android.os.Build.VERSION.SDK_INT);
     private final String deviceName = android.os.Build.MODEL;
     private final Map<String, String> identifierToPayload = new ConcurrentHashMap<>();
 
-    public RScriptLog(String filename) {
+    public RScriptLog(String filename, PayloadData payloadData) {
         textFile = new TextFile(filename);
+        this.payloadData = payloadData;
         if (textFile.empty()) {
             textFile.write("datetime,payload,devicename,os,osver");
         }
@@ -33,11 +35,7 @@ public class RScriptLog implements SensorDelegate {
     }
 
     private String csv(String value) {
-        if (value.contains(",")) {
-            return "\"" + value + "\"";
-        } else {
-            return value;
-        }
+        return TextFile.csv(value);
     }
 
     // MARK:- SensorDelegate
@@ -64,8 +62,11 @@ public class RScriptLog implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final String timestamp = timestamp();
-        for (PayloadData payloadData : didShare) {
-            textFile.write(timestamp + "," + payloadData.shortName() + "," + deviceName + ",android," + deviceOS);
+        for (PayloadData payload : didShare) {
+            if (payload.shortName() == payloadData.shortName()) {
+                continue;
+            }
+            textFile.write(timestamp + "," + payload.shortName() + "," + deviceName + ",android," + deviceOS);
         }
     }
 

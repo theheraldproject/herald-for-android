@@ -35,11 +35,7 @@ public class DetectionLog implements SensorDelegate {
     }
 
     private String csv(String value) {
-        if (value.contains(",")) {
-            return "\"" + value + "\"";
-        } else {
-            return value;
-        }
+        return TextFile.csv(value);
     }
 
     private void write() {
@@ -53,6 +49,9 @@ public class DetectionLog implements SensorDelegate {
         content.append(csv(payloadData.shortName()));
         final List<String> payloadList = new ArrayList<>(payloads.size());
         for (String payload : payloads.keySet()) {
+            if (payload == payloadData.shortName()) {
+                continue;
+            }
             payloadList.add(payload);
         }
         Collections.sort(payloadList);

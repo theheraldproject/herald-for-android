@@ -28,11 +28,7 @@ public class ContactLog implements SensorDelegate {
     }
 
     private String csv(String value) {
-        if (value.contains(",")) {
-            return "\"" + value + "\"";
-        } else {
-            return value;
-        }
+        return TextFile.csv(value);
     }
 
     // MARK:- SensorDelegate
