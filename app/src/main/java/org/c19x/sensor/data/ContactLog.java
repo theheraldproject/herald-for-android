@@ -46,16 +46,9 @@ public class ContactLog implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final String prefix = timestamp() + "," + sensor.name() + "," + csv(fromTarget.value);
-        final StringBuilder payloads = new StringBuilder();
-        payloads.append('[');
-        for (int i = 0; i < didShare.size(); i++) {
-            if (i > 0) {
-                payloads.append(',');
-            }
-            payloads.append(didShare.get(i).shortName());
+        for (PayloadData payloadData : didShare) {
+            textFile.write(prefix + ",,,,4,," + csv(payloadData.shortName()));
         }
-        payloads.append(']');
-        textFile.write(prefix + ",,,,4,," + csv(payloads.toString()));
     }
 
     @Override
