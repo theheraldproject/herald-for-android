@@ -99,7 +99,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         queue.execute(new Runnable() {
             @Override
             public void run() {
-                logger.debug("update (device={},attribute={})", device.identifier, didUpdate.name());
+                //logger.debug("update (device={},attribute={})", device.identifier, didUpdate.name());
                 for (BLEDatabaseDelegate delegate : delegates) {
                     delegate.bleDatabaseDidUpdate(device, didUpdate);
                 }
