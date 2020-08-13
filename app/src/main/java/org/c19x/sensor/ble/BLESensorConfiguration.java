@@ -1,11 +1,13 @@
 package org.c19x.sensor.ble;
 
+import org.c19x.sensor.data.SensorLoggerLevel;
 import org.c19x.sensor.datatype.TimeInterval;
 
 import java.util.UUID;
 
 /// Defines BLE sensor configuration data, e.g. service and characteristic UUIDs
 public class BLESensorConfiguration {
+    public final static SensorLoggerLevel logLevel = SensorLoggerLevel.fault;
     /**
      * Service UUID for beacon service. This is a fixed UUID to enable iOS devices to find each other even
      * in background mode. Android devices will need to find Apple devices first using the manufacturer code

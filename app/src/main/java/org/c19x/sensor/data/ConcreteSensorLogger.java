@@ -2,6 +2,8 @@ package org.c19x.sensor.data;
 
 import android.util.Log;
 
+import org.c19x.sensor.ble.BLESensorConfiguration;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -15,9 +17,22 @@ public class ConcreteSensorLogger implements SensorLogger {
         this.category = category;
     }
 
+    private boolean suppress(SensorLoggerLevel level) {
+        switch (level) {
+            case debug:
+                return (BLESensorConfiguration.logLevel == SensorLoggerLevel.info || BLESensorConfiguration.logLevel == SensorLoggerLevel.fault);
+            case info:
+                return (BLESensorConfiguration.logLevel == SensorLoggerLevel.fault);
+            default:
+                return false;
+        }
+    }
+
     public void log(SensorLoggerLevel level, String message, final Object... values) {
-        outputLog(level, tag(subsystem, category), message, values);
-        outputStream(level, subsystem, category, message, values);
+        if (!suppress(level)) {
+            outputLog(level, tag(subsystem, category), message, values);
+            outputStream(level, subsystem, category, message, values);
+        }
     }
 
     public void debug(String message, final Object... values) {
