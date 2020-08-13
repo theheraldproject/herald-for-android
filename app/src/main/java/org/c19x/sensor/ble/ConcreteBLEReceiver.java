@@ -57,7 +57,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
     private final static long scanOffBeforeConnectDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long scanOffAfterConnectDurationMillis = TimeInterval.seconds(2).millis();
+    private final static long scanOffAfterConnectDurationMillis = TimeInterval.seconds(4).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
