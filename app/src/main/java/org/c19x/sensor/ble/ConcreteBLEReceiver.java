@@ -65,6 +65,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final ExecutorService operationQueue = Executors.newFixedThreadPool(1);
     private final ExecutorService executorService = Executors.newFixedThreadPool(BLESensorConfiguration.concurrentConnectionQuota);
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
@@ -259,32 +260,32 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             @Override
             public void onScanFailed(int errorCode) {
                 logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
-                if (restarting.compareAndSet(false, true)) {
-                    logger.fault("onScanFailed, restarting Bluetooth to correct error");
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                logger.debug("onScanFailed, disabling Bluetooth to correct");
-                                BluetoothAdapter.getDefaultAdapter().disable();
-                            } catch (Throwable e) {
-                                logger.fault("onScanFailed, failed to disable Bluetooth to correct");
-                            }
-                            try {
-                                logger.debug("onScanFailed, resting Bluetooth for 5 seconds");
-                                sleep(5000);
-                            } catch (Throwable e) {
-                            }
-                            try {
-                                logger.debug("onScanFailed, re-enabling Bluetooth to correct");
-                                BluetoothAdapter.getDefaultAdapter().enable();
-                            } catch (Throwable e) {
-                                logger.fault("onScanFailed, failed to re-enable Bluetooth to correct");
-                            }
-                            restarting.set(false);
-                        }
-                    }).start();
-                }
+//                if (restarting.compareAndSet(false, true)) {
+//                    logger.fault("onScanFailed, restarting Bluetooth to correct error");
+//                    new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            try {
+//                                logger.debug("onScanFailed, disabling Bluetooth to correct");
+//                                BluetoothAdapter.getDefaultAdapter().disable();
+//                            } catch (Throwable e) {
+//                                logger.fault("onScanFailed, failed to disable Bluetooth to correct");
+//                            }
+//                            try {
+//                                logger.debug("onScanFailed, resting Bluetooth for 5 seconds");
+//                                sleep(5000);
+//                            } catch (Throwable e) {
+//                            }
+//                            try {
+//                                logger.debug("onScanFailed, re-enabling Bluetooth to correct");
+//                                BluetoothAdapter.getDefaultAdapter().enable();
+//                            } catch (Throwable e) {
+//                                logger.fault("onScanFailed, failed to re-enable Bluetooth to correct");
+//                            }
+//                            restarting.set(false);
+//                        }
+//                    }).start();
+//                }
             }
         };
         bluetoothLeScanner.startScan(filter, settings, callback);
