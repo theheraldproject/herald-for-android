@@ -28,7 +28,7 @@ public class BLESensorConfiguration {
     /// Must be > payloadSharingTimeInterval to share pending payloads
     public final static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
     /// Maximum number of concurrent BLE connections
-    public final static int concurrentConnectionQuota = 1;
+    public final static int concurrentConnectionQuota = 3;
 
 
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload data length, then payload data
