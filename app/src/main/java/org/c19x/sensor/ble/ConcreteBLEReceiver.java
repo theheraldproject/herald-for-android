@@ -15,6 +15,8 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelUuid;
 
 import org.c19x.sensor.PayloadDataSupplier;
@@ -51,21 +53,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static java.lang.Thread.sleep;
-
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
-    private final static long scanOffBeforeConnectDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long scanOffAfterConnectDurationMillis = TimeInterval.seconds(4).millis();
+    private final static long scanOffDurationMillis = TimeInterval.seconds(4).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
+    private final Handler handler;
+    private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
-    private final ExecutorService operationQueue = Executors.newFixedThreadPool(1);
     private final ExecutorService executorService = Executors.newFixedThreadPool(BLESensorConfiguration.concurrentConnectionQuota);
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
@@ -80,57 +80,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
+        this.handler = new Handler(Looper.getMainLooper());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
-        scanLoop();
-    }
-
-    private void scanLoop() {
-        final Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    if (!enabled.get()) {
-                        try {
-                            sleep(1000);
-                        } catch (Throwable e) {
-                        }
-                        continue;
-                    }
-                    try {
-                        final long t0 = System.currentTimeMillis();
-                        // Scan for fixed period
-                        startScan();
-                        try {
-                            sleep(scanOnDurationMillis);
-                        } catch (Throwable e) {
-                            logger.fault("scanLoop, scan interrupted", e);
-                        }
-                        stopScan();
-                        final long t1 = System.currentTimeMillis();
-                        try {
-                            sleep(scanOffBeforeConnectDurationMillis);
-                        } catch (Throwable e) {
-                            logger.fault("scanLoop, rest before connect interrupted", e);
-                        }
-                        // Process scan results
-                        final long t2 = System.currentTimeMillis();
-                        processScanResults();
-                        final long t3 = System.currentTimeMillis();
-                        try {
-                            sleep(scanOffAfterConnectDurationMillis);
-                        } catch (Throwable e) {
-                            logger.fault("scanLoop, rest after connect interrupted", e);
-                        }
-                        final long t4 = System.currentTimeMillis();
-                        logger.debug("scanLoop (total={},scan={},rest={},process={},rest={})", (t4 - t0), (t1 - t0), (t2 - t1), (t3 - t2), (t4 - t3));
-                    } catch (Throwable e) {
-                        logger.fault("scanLoop error, restarting", e);
-                    }
-                }
-            }
-        });
-        thread.start();
     }
 
     @Override
@@ -151,11 +103,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     @Override
     public void start() {
         logger.debug("start");
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("start denied, Bluetooth is not powered on");
-            return;
-        }
         enabled.set(true);
+        startScanLoop();
     }
 
     @Override
@@ -164,72 +113,120 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         enabled.set(false);
     }
 
-    private void startScan() {
-        logger.debug("startScan");
-        try {
-            if (scanCallback != null) {
-                logger.fault("startScan denied, already started");
-                return;
+    private void startScanLoop() {
+        logger.debug("startScanLoop (on={},off={})", scanOnDurationMillis, scanOffDurationMillis);
+        startScan(new Callback<Boolean>() {
+            @Override
+            public void accept(Boolean value) {
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        stopScan(new Callback<Boolean>() {
+                            @Override
+                            public void accept(Boolean value) {
+                                if (enabled.get()) {
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            startScanLoop();
+                                        }
+                                    }, scanOffDurationMillis);
+                                }
+                            }
+                        });
+                    }
+                }, scanOnDurationMillis);
             }
-            if (bluetoothLeScanner == null) {
-                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                if (bluetoothAdapter != null) {
-                    bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-                }
-            }
-            if (bluetoothLeScanner == null) {
-                logger.fault("startScan denied, Bluetooth LE scanner unsupported");
-                return;
-            }
-            if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-                logger.fault("startScan denied, Bluetooth is not powered on");
-                return;
-            }
-            scanCallback = startScan(logger, bluetoothLeScanner, scanResults);
-            logger.debug("startScan successful");
-        } catch (Throwable e) {
-            logger.fault("startScan failed", e);
-            scanCallback = null;
-        }
+        });
     }
 
-    private void stopScan() {
-        logger.debug("stopScan");
-        try {
-            if (scanCallback == null) {
-                logger.fault("stopScan denied, already stopped");
-                return;
-            }
-            if (bluetoothLeScanner == null) {
-                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                if (bluetoothAdapter != null) {
-                    bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-                }
-            }
-            if (bluetoothLeScanner == null) {
-                logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
-                scanCallback = null;
-                return;
-            }
-            try {
-                bluetoothLeScanner.stopScan(scanCallback);
-            } catch (Throwable e) {
-                logger.fault("stopScan failed, Bluetooth LE scanner error", e);
-            }
-            scanCallback = null;
-            try {
-                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                if (bluetoothAdapter != null) {
-                    bluetoothAdapter.cancelDiscovery();
-                }
-            } catch (Throwable e) {
-                logger.fault("stopScan failed, Bluetooth adapter error", e);
-                return;
-            }
-            logger.debug("stopScan successful");
-        } catch (Throwable e) {
-            logger.fault("stopScan failed", e);
+    private void startScan(final Callback<Boolean> callback) {
+        logger.debug("startScan");
+        if (scanCallback != null) {
+            logger.fault("startScan denied, already started");
+            return;
         }
+        if (bluetoothLeScanner == null) {
+            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter != null) {
+                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+            }
+        }
+        if (bluetoothLeScanner == null) {
+            logger.fault("startScan denied, Bluetooth LE scanner unsupported");
+            return;
+        }
+        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+            logger.fault("startScan denied, Bluetooth is not powered on");
+            return;
+        }
+        if (!enabled.get()) {
+            logger.fault("startScan denied, not enabled");
+            return;
+        }
+        operationQueue.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    scanCallback = startScan(logger, bluetoothLeScanner, scanResults);
+                    logger.debug("startScan successful");
+                    if (callback != null) {
+                        callback.accept(true);
+                    }
+                } catch (Throwable e) {
+                    logger.fault("startScan failed", e);
+                    scanCallback = null;
+                    if (callback != null) {
+                        callback.accept(false);
+                    }
+                }
+            }
+        });
+    }
+
+    private void stopScan(final Callback<Boolean> callback) {
+        logger.debug("stopScan");
+        if (scanCallback == null) {
+            logger.fault("stopScan denied, already stopped");
+            return;
+        }
+        if (bluetoothLeScanner == null) {
+            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter != null) {
+                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+            }
+        }
+        if (bluetoothLeScanner == null) {
+            logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
+            scanCallback = null;
+            return;
+        }
+        operationQueue.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    bluetoothLeScanner.stopScan(scanCallback);
+                } catch (Throwable e) {
+                    logger.fault("stopScan warning, bluetoothLeScanner.stopScan error", e);
+                }
+                scanCallback = null;
+                try {
+                    final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    if (bluetoothAdapter != null) {
+                        bluetoothAdapter.cancelDiscovery();
+                    }
+                } catch (Throwable e) {
+                    logger.fault("stopScan warning, bluetoothAdapter.cancelDiscovery error", e);
+                }
+                try {
+                    processScanResults();
+                } catch (Throwable e) {
+                    logger.fault("stopScan warning, processScanResults error", e);
+                }
+                logger.debug("stopScan successful");
+                callback.accept(true);
+            }
+        });
     }
 
     /// Scan for devices advertising sensor service and all Apple devices as
@@ -251,7 +248,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 .setReportDelay(0)
                 .build();
         final ScanCallback callback = new ScanCallback() {
-            private AtomicBoolean restarting = new AtomicBoolean(false);
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
                 scanResults.add(result);
@@ -260,32 +256,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             @Override
             public void onScanFailed(int errorCode) {
                 logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
-//                if (restarting.compareAndSet(false, true)) {
-//                    logger.fault("onScanFailed, restarting Bluetooth to correct error");
-//                    new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            try {
-//                                logger.debug("onScanFailed, disabling Bluetooth to correct");
-//                                BluetoothAdapter.getDefaultAdapter().disable();
-//                            } catch (Throwable e) {
-//                                logger.fault("onScanFailed, failed to disable Bluetooth to correct");
-//                            }
-//                            try {
-//                                logger.debug("onScanFailed, resting Bluetooth for 5 seconds");
-//                                sleep(5000);
-//                            } catch (Throwable e) {
-//                            }
-//                            try {
-//                                logger.debug("onScanFailed, re-enabling Bluetooth to correct");
-//                                BluetoothAdapter.getDefaultAdapter().enable();
-//                            } catch (Throwable e) {
-//                                logger.fault("onScanFailed, failed to re-enable Bluetooth to correct");
-//                            }
-//                            restarting.set(false);
-//                        }
-//                    }).start();
-//                }
             }
         };
         bluetoothLeScanner.startScan(filter, settings, callback);
@@ -295,6 +265,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
 
     /// Process scan results.
     private void processScanResults() {
+        final long t0 = System.currentTimeMillis();
+        logger.debug("processScanResults (results={})", scanResults.size());
         // Identify devices discovered in last scan
         final Set<BLEDevice> devices = didDiscover();
         // taskRegisterConnectedDevices(); // Unnecessary on Android
@@ -302,7 +274,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         taskRemoveExpiredDevices();
         // taskRemoveDuplicatePeripherals(); // Unnecessary on Android
         taskConnect();
+        final long t1 = System.currentTimeMillis();
         taskWriteBack(devices, BLESensorConfiguration.concurrentConnectionQuota);
+        final long t2 = System.currentTimeMillis();
+        logger.debug("processScanResults (results={},devices={},elapsed={}ms,read={}ms,write={}ms)", scanResults.size(), devices.size(), (t2 - t0), (t1 - t0), (t2 - t1));
     }
 
     /**
