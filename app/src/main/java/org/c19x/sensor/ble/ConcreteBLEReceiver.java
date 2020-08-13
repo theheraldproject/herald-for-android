@@ -95,6 +95,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         logger.debug("start");
         if (scanLoopQueue != null) {
             scanLoopQueue.shutdownNow();
+            scanLoopQueue = null;
         }
         scan("start");
     }
@@ -125,6 +126,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         // but that stops working after an indefinite period for unknown reason. Maybe
         // due to Handler being backed by MainLooper? Executor and thread sleep seems
         // to work just as well.
+        if (scanLoopQueue != null) {
+            logger.fault("scan denied, already started");
+            return;
+        }
         scanLoopQueue = Executors.newScheduledThreadPool(1);
         scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
             @Override
@@ -143,21 +148,26 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     logger.debug("scanning period (on={}ms)", periodScan);
 
                     // Process scan results
-                    processScanResults();
-                    final long timeProcess = System.currentTimeMillis();
-                    final long periodProcess = timeProcess - timeStop;
-                    logger.debug("scanning period (process={}ms)", periodProcess);
+                    operationQueue.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            processScanResults();
+                            final long timeProcess = System.currentTimeMillis();
+                            final long periodProcess = timeProcess - timeStop;
+                            logger.debug("scanning period (process={}ms)", periodProcess);
 
-                    // Rest for variable period
-                    final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                    try {
-                        Thread.sleep(periodOffTarget);
-                    } catch (InterruptedException e) {
-                    }
-                    final long timeOff = System.currentTimeMillis();
-                    // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
-                    final long periodOff = (timeOff - timeProcess);
-                    logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
+                            // Rest for variable period
+                            final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                            try {
+                                Thread.sleep(periodOffTarget);
+                            } catch (InterruptedException e) {
+                            }
+                            final long timeOff = System.currentTimeMillis();
+                            // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
+                            final long periodOff = (timeOff - timeProcess);
+                            logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
+                        }
+                    });
                 } catch (Throwable e) {
                     logger.fault("scanning period failure detected", e);
                 }
