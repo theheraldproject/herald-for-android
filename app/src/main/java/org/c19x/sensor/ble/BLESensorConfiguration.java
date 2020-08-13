@@ -22,15 +22,13 @@ public class BLESensorConfiguration {
     public final static UUID payloadCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000003");
     /// Secondary payload characteristic (read) for sharing payload data acquired by this central, e.g. identity data of other peripherals in the vincinity
     public final static UUID payloadSharingCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000004");
-    /// Time delay between advert restart
-    public final static TimeInterval advertRestartTimeInterval = TimeInterval.minute;
     /// Time delay between payload sharing
     public final static TimeInterval payloadSharingTimeInterval = TimeInterval.minute;
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
     /// Must be > payloadSharingTimeInterval to share pending payloads
     public final static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
     /// Maximum number of concurrent BLE connections
-    public final static int concurrentConnectionQuota = 6;
+    public final static int concurrentConnectionQuota = 3;
 
 
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload data length, then payload data

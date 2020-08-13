@@ -42,33 +42,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static java.lang.Thread.sleep;
 
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
-    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(4).millis();
-    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(6).millis();
+    private final static long scanOffBeforeConnectDurationMillis = TimeInterval.seconds(2).millis();
+    private final static long scanOffAfterConnectDurationMillis = TimeInterval.seconds(2).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
-    private final ConcreteBLEReceiver self = this;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
-    private final Random random = new Random();
-    private final ScheduledExecutorService scanLoopQueue = Executors.newScheduledThreadPool(1);
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
     private AtomicBoolean enabled = new AtomicBoolean(false);
@@ -84,55 +80,47 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         this.transmitter = transmitter;
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
-        startScanLoop();
     }
 
-    private void startScanLoop() {
-        scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
+    private void scanLoop() {
+        final Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                if (enabled.get()) {
-                    logger.debug("scan (on={}ms,off={}-{}ms)", scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
+                while (enabled.get()) {
                     try {
-                        // Scan for fixed period, defined by scanOnDurationMillis
-                        final long timeStart = System.currentTimeMillis();
+                        final long t0 = System.currentTimeMillis();
+                        // Scan for fixed period
                         startScan();
                         try {
-                            Thread.sleep(scanOnDurationMillis);
-                        } catch (InterruptedException e) {
+                            sleep(scanOnDurationMillis);
+                        } catch (Throwable e) {
+                            logger.fault("scanLoop, scan interrupted", e);
                         }
                         stopScan();
-                        final long timeStop = System.currentTimeMillis();
-                        final long periodScan = timeStop - timeStart;
-                        logger.debug("scanning period (on={}ms)", periodScan);
-
+                        final long t1 = System.currentTimeMillis();
+                        try {
+                            sleep(scanOffBeforeConnectDurationMillis);
+                        } catch (Throwable e) {
+                            logger.fault("scanLoop, rest before connect interrupted", e);
+                        }
                         // Process scan results
-                        operationQueue.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                processScanResults();
-                                final long timeProcess = System.currentTimeMillis();
-                                final long periodProcess = timeProcess - timeStop;
-                                logger.debug("scanning period (process={}ms)", periodProcess);
-
-                                // Rest for variable period
-                                final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                                try {
-                                    Thread.sleep(periodOffTarget);
-                                } catch (InterruptedException e) {
-                                }
-                                final long timeOff = System.currentTimeMillis();
-                                // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
-                                final long periodOff = (timeOff - timeProcess);
-                                logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
-                            }
-                        });
+                        final long t2 = System.currentTimeMillis();
+                        processScanResults();
+                        final long t3 = System.currentTimeMillis();
+                        try {
+                            sleep(scanOffAfterConnectDurationMillis);
+                        } catch (Throwable e) {
+                            logger.fault("scanLoop, rest after connect interrupted", e);
+                        }
+                        final long t4 = System.currentTimeMillis();
+                        logger.debug("scanLoop (total={},scan={},rest={},process={},rest={})", (t4 - t0), (t1 - t0), (t2 - t1), (t3 - t2), (t4 - t3));
                     } catch (Throwable e) {
-                        logger.fault("scanning period failure detected", e);
+
                     }
                 }
             }
-        }, 0, 500, TimeUnit.MILLISECONDS);
+        });
+        thread.start();
     }
 
     @Override
@@ -143,7 +131,13 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     @Override
     public void start() {
         logger.debug("start");
-        enabled.set(true);
+        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+            logger.fault("start denied, Bluetooth is not powered on");
+            return;
+        }
+        if (enabled.compareAndSet(false, true)) {
+            scanLoop();
+        }
     }
 
     @Override
@@ -164,63 +158,71 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     }
 
     private void startScan() {
-        if (scanCallback != null) {
-            logger.fault("startScan denied, already started");
-            return;
-        }
-        if (bluetoothLeScanner == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null) {
-                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+        logger.debug("startScan");
+        try {
+            if (scanCallback != null) {
+                logger.fault("startScan denied, already started");
+                return;
             }
-        }
-        if (bluetoothLeScanner == null) {
-            logger.fault("startScan denied, Bluetooth LE scanner unsupported");
-            return;
-        }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("startScan denied, Bluetooth is not powered on");
-            return;
-        }
-        operationQueue.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    scanCallback = startScan(logger, bluetoothLeScanner, scanResults);
-                } catch (Throwable e) {
-                    logger.fault("startScan failed", e);
+            if (bluetoothLeScanner == null) {
+                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (bluetoothAdapter != null) {
+                    bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
                 }
             }
-        });
+            if (bluetoothLeScanner == null) {
+                logger.fault("startScan denied, Bluetooth LE scanner unsupported");
+                return;
+            }
+            if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+                logger.fault("startScan denied, Bluetooth is not powered on");
+                return;
+            }
+            scanCallback = startScan(logger, bluetoothLeScanner, scanResults);
+            logger.debug("startScan successful");
+        } catch (Throwable e) {
+            logger.fault("startScan failed", e);
+            scanCallback = null;
+        }
     }
 
     private void stopScan() {
-        if (bluetoothLeScanner == null) {
-            logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
-            return;
-        }
-        if (scanCallback == null) {
-            logger.fault("stopScan denied, already stopped");
-            return;
-        }
-        if (bluetoothStateManager.state() == BluetoothState.poweredOff) {
-            logger.fault("stopScan denied, Bluetooth is powered off");
-            return;
-        }
-        operationQueue.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    bluetoothLeScanner.stopScan(scanCallback);
-                    scanCallback = null;
-                    final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                    bluetoothAdapter.cancelDiscovery();
-                    logger.debug("stopScan");
-                } catch (Throwable e) {
-                    logger.fault("stopScan failed", e);
+        logger.debug("stopScan");
+        try {
+            if (scanCallback == null) {
+                logger.fault("stopScan denied, already stopped");
+                return;
+            }
+            if (bluetoothLeScanner == null) {
+                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (bluetoothAdapter != null) {
+                    bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
                 }
             }
-        });
+            if (bluetoothLeScanner == null) {
+                logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
+                scanCallback = null;
+                return;
+            }
+            try {
+                bluetoothLeScanner.stopScan(scanCallback);
+            } catch (Throwable e) {
+                logger.fault("stopScan failed, Bluetooth LE scanner error", e);
+            }
+            scanCallback = null;
+            try {
+                final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                if (bluetoothAdapter != null) {
+                    bluetoothAdapter.cancelDiscovery();
+                }
+            } catch (Throwable e) {
+                logger.fault("stopScan failed, Bluetooth adapter error", e);
+                return;
+            }
+            logger.debug("stopScan successful");
+        } catch (Throwable e) {
+            logger.fault("stopScan failed", e);
+        }
     }
 
     /// Scan for devices advertising sensor service and all Apple devices as
@@ -488,7 +490,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
                 continue;
             }
-            if (device.goal() == BLEDeviceGoal.nothing) {
+            if (device.goal() == BLEDeviceGoal.rssi) {
+                // RSSI acquired by scan, connect unnecessary
                 continue;
             }
             pending.add(device);

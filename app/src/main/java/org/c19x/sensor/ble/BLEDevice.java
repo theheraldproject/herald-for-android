@@ -322,7 +322,7 @@ public class BLEDevice {
         } else if (timeIntervalSinceLastPayloadShared().value > BLESensorConfiguration.payloadSharingTimeInterval.value) {
             return BLEDeviceGoal.payloadSharing;
         } else {
-            return BLEDeviceGoal.nothing;
+            return BLEDeviceGoal.rssi;
         }
     }
 
