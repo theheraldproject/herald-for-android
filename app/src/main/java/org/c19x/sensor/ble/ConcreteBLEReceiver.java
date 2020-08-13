@@ -56,8 +56,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
-    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(3).millis();
-    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(4).millis();
+    private final static long scanOffDurationMinimumMillis = TimeInterval.seconds(4).millis();
+    private final static long scanOffDurationMaximumMillis = TimeInterval.seconds(6).millis();
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final ConcreteBLEReceiver self = this;
     private final Context context;
@@ -105,12 +105,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         if (scanLoopQueue != null) {
             scanLoopQueue.shutdownNow();
         }
-        stopScan(new Callback<Boolean>() {
-            @Override
-            public void accept(Boolean value) {
-                logger.debug("stopped (success={})", value);
-            }
-        });
+        stopScan();
     }
 
 
@@ -142,31 +137,27 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         Thread.sleep(scanOnDurationMillis);
                     } catch (InterruptedException e) {
                     }
-                    stopScan(new Callback<Boolean>() {
-                        @Override
-                        public void accept(Boolean value) {
-                            final long timeStop = System.currentTimeMillis();
-                            final long periodScan = timeStop - timeStart;
-                            logger.debug("scanning period (on={}ms)", periodScan);
+                    stopScan();
+                    final long timeStop = System.currentTimeMillis();
+                    final long periodScan = timeStop - timeStart;
+                    logger.debug("scanning period (on={}ms)", periodScan);
 
-                            processScanResults();
-                            final long timeProcess = System.currentTimeMillis();
-                            final long periodProcess = timeProcess - timeStop;
-                            logger.debug("scanning period (process={}ms)", periodProcess);
+                    // Process scan results
+                    processScanResults();
+                    final long timeProcess = System.currentTimeMillis();
+                    final long periodProcess = timeProcess - timeStop;
+                    logger.debug("scanning period (process={}ms)", periodProcess);
 
-                            // Rest for variable period
-                            final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                            try {
-                                Thread.sleep(periodOffTarget);
-                            } catch (InterruptedException e) {
-                            }
-                            final long timeOff = System.currentTimeMillis();
-                            // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
-                            final long periodOff = (timeOff - timeProcess);
-                            logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
-                        }
-                    });
-
+                    // Rest for variable period
+                    final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                    try {
+                        Thread.sleep(periodOffTarget);
+                    } catch (InterruptedException e) {
+                    }
+                    final long timeOff = System.currentTimeMillis();
+                    // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
+                    final long periodOff = (timeOff - timeProcess);
+                    logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
                 } catch (Throwable e) {
                     logger.fault("scanning period failure detected", e);
                 }
@@ -206,7 +197,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
-    private void stopScan(final Callback<Boolean> callback) {
+    private void stopScan() {
         if (bluetoothLeScanner == null) {
             logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
             return;
@@ -228,10 +219,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                     final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
                     bluetoothAdapter.cancelDiscovery();
                     logger.debug("stopScan");
-                    callback.accept(true);
                 } catch (Throwable e) {
                     logger.fault("stopScan failed", e);
-                    callback.accept(false);
                 }
             }
         });
