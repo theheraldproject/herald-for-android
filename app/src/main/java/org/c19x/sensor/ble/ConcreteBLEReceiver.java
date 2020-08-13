@@ -603,14 +603,26 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             }
         }
         logger.debug("taskConnect initiate connection summary (pending={},capacity={},connectingTo={})", pending.size(), capacity, devices.size());
-        for (BLEDevice device : devices) {
-            if (device.goal() == BLEDeviceGoal.payload) {
-                logger.debug("taskConnect initiate connection, connect (device={})", device);
-                readPayload(device);
-            } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
-                logger.debug("taskConnect initiate connection, connect (device={})", device);
-                readPayloadSharing(device);
-            }
+        final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(devices.size(), BLESensorConfiguration.concurrentConnectionQuota));
+        for (final BLEDevice device : devices) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    if (device.goal() == BLEDeviceGoal.payload) {
+                        logger.debug("taskConnect initiate connection, connect (device={})", device);
+                        readPayload(device);
+                    } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
+                        logger.debug("taskConnect initiate connection, connect (device={})", device);
+                        readPayloadSharing(device);
+                    }
+                }
+            });
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (Throwable e) {
+            logger.fault("taskConnect initiate connection, timeout", e);
         }
     }
 
@@ -642,10 +654,28 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             pendingQueue.add(device.operatingSystem() + ":" + device.timeIntervalSinceLastWriteBack().value);
         }
         logger.debug("taskWriteBack pending (limit={},pending={},queue={})", limit, pending.size(), pendingQueue);
+        final List<BLEDevice> writeDevices = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, pending.size()); i++) {
-            final BLEDevice device = pending.get(i);
-            logger.debug("taskWriteBack request (device={})", device);
-            writePayload(device);
+            writeDevices.add(pending.get(i));
+        }
+        if (writeDevices.size() == 0) {
+            return;
+        }
+        final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(writeDevices.size(), BLESensorConfiguration.concurrentConnectionQuota));
+        for (final BLEDevice device : writeDevices) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    logger.debug("taskWriteBack request (device={})", device);
+                    writePayload(device);
+                }
+            });
+        }
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (Throwable e) {
+            logger.fault("taskWriteBack request, timeout", e);
         }
     }
 
