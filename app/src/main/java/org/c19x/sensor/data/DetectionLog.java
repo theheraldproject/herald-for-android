@@ -28,6 +28,7 @@ public class DetectionLog implements SensorDelegate {
     public DetectionLog(String filename, PayloadData payloadData) {
         textFile = new TextFile(filename);
         this.payloadData = payloadData;
+        write();
     }
 
     private String timestamp() {

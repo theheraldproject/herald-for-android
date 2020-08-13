@@ -65,6 +65,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final ExecutorService executorService = Executors.newFixedThreadPool(BLESensorConfiguration.concurrentConnectionQuota);
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
     private AtomicBoolean enabled = new AtomicBoolean(false);
@@ -80,13 +81,21 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         this.transmitter = transmitter;
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
+        scanLoop();
     }
 
     private void scanLoop() {
         final Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (enabled.get()) {
+                while (true) {
+                    if (!enabled.get()) {
+                        try {
+                            sleep(1000);
+                        } catch (Throwable e) {
+                        }
+                        continue;
+                    }
                     try {
                         final long t0 = System.currentTimeMillis();
                         // Scan for fixed period
@@ -115,7 +124,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                         final long t4 = System.currentTimeMillis();
                         logger.debug("scanLoop (total={},scan={},rest={},process={},rest={})", (t4 - t0), (t1 - t0), (t2 - t1), (t3 - t2), (t4 - t3));
                     } catch (Throwable e) {
-
+                        logger.fault("scanLoop error, restarting", e);
                     }
                 }
             }
@@ -129,25 +138,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     }
 
     @Override
-    public void start() {
-        logger.debug("start");
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("start denied, Bluetooth is not powered on");
-            return;
-        }
-        if (enabled.compareAndSet(false, true)) {
-            scanLoop();
-        }
-    }
-
-    @Override
-    public void stop() {
-        logger.debug("stop");
-        enabled.set(false);
-    }
-
-
-    @Override
     public void bluetoothStateManager(BluetoothState didUpdateState) {
         logger.debug("didUpdateState (state={})", didUpdateState);
         if (didUpdateState == BluetoothState.poweredOn) {
@@ -155,6 +145,22 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         } else if (didUpdateState == BluetoothState.poweredOff) {
             stop();
         }
+    }
+
+    @Override
+    public void start() {
+        logger.debug("start");
+        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+            logger.fault("start denied, Bluetooth is not powered on");
+            return;
+        }
+        enabled.set(true);
+    }
+
+    @Override
+    public void stop() {
+        logger.debug("stop");
+        enabled.set(false);
     }
 
     private void startScan() {
@@ -244,6 +250,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 .setReportDelay(0)
                 .build();
         final ScanCallback callback = new ScanCallback() {
+            private AtomicBoolean restarting = new AtomicBoolean(false);
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
                 scanResults.add(result);
@@ -252,6 +259,32 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             @Override
             public void onScanFailed(int errorCode) {
                 logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
+                if (restarting.compareAndSet(false, true)) {
+                    logger.fault("onScanFailed, restarting Bluetooth to correct error");
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                logger.debug("onScanFailed, disabling Bluetooth to correct");
+                                BluetoothAdapter.getDefaultAdapter().disable();
+                            } catch (Throwable e) {
+                                logger.fault("onScanFailed, failed to disable Bluetooth to correct");
+                            }
+                            try {
+                                logger.debug("onScanFailed, resting Bluetooth for 5 seconds");
+                                sleep(5000);
+                            } catch (Throwable e) {
+                            }
+                            try {
+                                logger.debug("onScanFailed, re-enabling Bluetooth to correct");
+                                BluetoothAdapter.getDefaultAdapter().enable();
+                            } catch (Throwable e) {
+                                logger.fault("onScanFailed, failed to re-enable Bluetooth to correct");
+                            }
+                            restarting.set(false);
+                        }
+                    }).start();
+                }
             }
         };
         bluetoothLeScanner.startScan(filter, settings, callback);
@@ -288,9 +321,12 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         logger.debug("didDiscover");
         final Set<BLEDevice> devices = new HashSet<>();
         for (ScanResult scanResult : scanResultList) {
+            logger.debug("didDiscover, processing scan result (scanResult={})", scanResult);
             final BLEDevice device = database.device(scanResult.getDevice());
             device.lastDiscoveredAt = new Date();
-            devices.add(device);
+            if (devices.add(device)) {
+                logger.debug("didDiscover, device (device={})", device);
+            }
             // Read RSSI from scan result
             device.rssi(new RSSI(scanResult.getRssi()));
             // Don't ignore devices forever just because
@@ -580,47 +616,52 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
         final List<BLEDevice> readyForConnection = new ArrayList<>();
         for (BLEDevice device : pending) {
-            if (device.peripheral() != null) {
+            if (device.peripheral() != null && readyForConnection.size() < capacity) {
                 readyForConnection.add(device);
             }
         }
-        final List<BLEDevice> devices = new ArrayList<>();
-        if (readyForConnection.size() < capacity) {
-            devices.addAll(readyForConnection);
-        } else {
-            for (int i = 0; i < capacity; i++) {
-                devices.add(readyForConnection.get(i));
-            }
+        logger.debug("taskConnect initiate connection summary (pending={},capacity={},connectingTo={})", pending.size(), capacity, readyForConnection.size());
+        if (readyForConnection.size() == 0) {
+            return;
         }
-        logger.debug("taskConnect initiate connection summary (pending={},capacity={},connectingTo={})", pending.size(), capacity, devices.size());
-        final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(devices.size(), BLESensorConfiguration.concurrentConnectionQuota));
-        for (final BLEDevice device : devices) {
+        final CountDownLatch blocking = new CountDownLatch(readyForConnection.size());
+        for (final BLEDevice device : readyForConnection) {
             executorService.execute(new Runnable() {
                 @Override
                 public void run() {
-                    if (device.goal() == BLEDeviceGoal.payload) {
-                        logger.debug("taskConnect initiate connection, connect (device={})", device);
-                        readPayload(device);
-                    } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
-                        logger.debug("taskConnect initiate connection, connect (device={})", device);
-                        readPayloadSharing(device);
+                    try {
+                        boolean successful = true;
+                        if (device.goal() == BLEDeviceGoal.payload || device.goal() == BLEDeviceGoal.operatingSystem) {
+                            logger.debug("taskConnect initiate connection, connect (device={})", device);
+                            successful = readPayload(device);
+                        } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
+                            logger.debug("taskConnect initiate connection, connect (device={})", device);
+                            successful = readPayloadSharing(device);
+                        }
+                        if (successful) {
+                            logger.debug("taskConnect initiate connection, successful (device={})", device);
+                        } else {
+                            logger.fault("taskConnect initiate connection, failed (device={})", device);
+                        }
+                    } catch (Throwable e) {
+                        logger.fault("taskConnect initiate connection, error (device={})", device, e);
                     }
+                    blocking.countDown();
                 }
             });
         }
-        executorService.shutdown();
         try {
-            executorService.awaitTermination(30, TimeUnit.SECONDS);
+            blocking.await(1, TimeUnit.MINUTES);
         } catch (Throwable e) {
-            logger.fault("taskConnect initiate connection, timeout", e);
+            logger.fault("taskConnect initiate connection, timeout (devices={})", readyForConnection, e);
         }
     }
 
     /**
      * Write RSSI and payload data to central via signal characteristic if this device cannot transmit.
      */
-    private void taskWriteBack(final Set<BLEDevice> devices, final int limit) {
-        logger.debug("taskWriteBack (transmitter={},devices={},limit={})", transmitter.isSupported(), devices.size(), limit);
+    private void taskWriteBack(final Set<BLEDevice> devices, final int capacity) {
+        logger.debug("taskWriteBack (transmitter={},devices={},capacity={})", transmitter.isSupported(), devices.size(), capacity);
         if (transmitter.isSupported()) {
             return;
         }
@@ -643,29 +684,35 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         for (BLEDevice device : pending) {
             pendingQueue.add(device.operatingSystem() + ":" + device.timeIntervalSinceLastWriteBack().value);
         }
-        logger.debug("taskWriteBack pending (limit={},pending={},queue={})", limit, pending.size(), pendingQueue);
-        final List<BLEDevice> writeDevices = new ArrayList<>();
-        for (int i = 0; i < Math.min(limit, pending.size()); i++) {
-            writeDevices.add(pending.get(i));
+        final List<BLEDevice> readyForConnection = new ArrayList<>();
+        for (BLEDevice device : pending) {
+            if (device.peripheral() != null && readyForConnection.size() < capacity) {
+                readyForConnection.add(device);
+            }
         }
-        if (writeDevices.size() == 0) {
+        logger.debug("taskWriteBack summary (capacity={},pending={},queue={},connectingTo={})", capacity, pending.size(), pendingQueue, readyForConnection);
+        if (readyForConnection.size() == 0) {
             return;
         }
-        final ExecutorService executorService = Executors.newFixedThreadPool(Math.min(writeDevices.size(), BLESensorConfiguration.concurrentConnectionQuota));
-        for (final BLEDevice device : writeDevices) {
+        final CountDownLatch blocking = new CountDownLatch(readyForConnection.size());
+        for (final BLEDevice device : readyForConnection) {
             executorService.execute(new Runnable() {
                 @Override
                 public void run() {
-                    logger.debug("taskWriteBack request (device={})", device);
-                    writePayload(device);
+                    try {
+                        logger.debug("taskWriteBack request (device={})", device);
+                        writePayload(device);
+                    } catch (Throwable e) {
+                        logger.fault("taskWriteBack request, error (device={})", device, e);
+                    }
+                    blocking.countDown();
                 }
             });
         }
-        executorService.shutdown();
         try {
-            executorService.awaitTermination(30, TimeUnit.SECONDS);
+            blocking.await(1, TimeUnit.MINUTES);
         } catch (Throwable e) {
-            logger.fault("taskWriteBack request, timeout", e);
+            logger.fault("taskWriteBack, timeout (devices={})", readyForConnection, e);
         }
     }
 
@@ -716,9 +763,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
     }
 
-    private void readPayload(final BLEDevice device) {
+    private boolean readPayload(final BLEDevice device) {
         logger.debug("readPayload (device={})", device);
-        connect(device, "readPayload", BLESensorConfiguration.payloadCharacteristicUUID, new Callback<byte[]>() {
+        return connect(device, "readPayload", BLESensorConfiguration.payloadCharacteristicUUID, new Callback<byte[]>() {
             @Override
             public void accept(byte[] value) {
                 final PayloadData payloadData = new PayloadData(value);
@@ -727,9 +774,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }, null);
     }
 
-    private void readPayloadSharing(final BLEDevice device) {
+    private boolean readPayloadSharing(final BLEDevice device) {
         logger.debug("readPayloadSharing (device={})", device);
-        connect(device, "readPayloadSharing", BLESensorConfiguration.payloadSharingCharacteristicUUID, new Callback<byte[]>() {
+        return connect(device, "readPayloadSharing", BLESensorConfiguration.payloadSharingCharacteristicUUID, new Callback<byte[]>() {
             @Override
             public void accept(byte[] value) {
                 final List<PayloadData> payloadSharingData = payloadDataSupplier.payload(new Data(value));
@@ -738,16 +785,16 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }, null);
     }
 
-    private void writePayload(final BLEDevice device) {
+    private boolean writePayload(final BLEDevice device) {
         logger.debug("writePayload (device={})", device);
         // Write payload not possible for unknown or ignore devices
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
             logger.fault("writePayload denied, unknown operating system (device={})", device);
-            return;
+            return false;
         }
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
             logger.fault("writePayload denied, ignore device (device={})", device);
-            return;
+            return false;
         }
         // Establish signal characteristic based on operating system
         final UUID characteristicUUID =
@@ -769,6 +816,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
             device.writeRssi(connect(device, "writeRSSI", characteristicUUID, null, data));
         }
+        return true;
     }
 
     private static byte[] signalData(final byte actionCode, final byte[] data) {
@@ -869,10 +917,20 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
                 if (service == null) {
-                    logger.debug("task {}, onServicesDiscovered, service not found (device={})", task, device);
+                    logger.fault("task {}, onServicesDiscovered, service not found (device={})", task, device);
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     disconnect.accept("onServicesDiscovered|serviceNotFound");
                     return;
+                }
+                logger.debug("task {}, onServicesDiscovered, service found (device={})", task, device);
+                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+                    if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
+                        device.operatingSystem(BLEDeviceOperatingSystem.android);
+                        logger.debug("task {}, onServicesDiscovered, found Android signal characteristic (device={})", task, device);
+                    } else if (characteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
+                        device.operatingSystem(BLEDeviceOperatingSystem.ios);
+                        logger.debug("task {}, onServicesDiscovered, found iOS signal characteristic (device={})", task, device);
+                    }
                 }
                 final BluetoothGattCharacteristic characteristic = service.getCharacteristic(characteristicUUID);
                 if (characteristic != null) {
