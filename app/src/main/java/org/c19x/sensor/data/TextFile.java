@@ -8,10 +8,14 @@ import org.c19x.AppDelegate;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class TextFile {
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
     private File file;
+    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
     public TextFile(String filename) {
         final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
@@ -19,6 +23,12 @@ public class TextFile {
             folder.mkdirs();
         }
         file = new File(folder, filename);
+        executorService.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                MediaScannerConnection.scanFile(AppDelegate.getContext(), new String[]{file.getAbsolutePath()}, null, null);
+            }
+        }, 10, 10, TimeUnit.SECONDS);
     }
 
     /**
@@ -38,15 +48,14 @@ public class TextFile {
         }
     }
 
-    public boolean empty() {
+    public synchronized boolean empty() {
         return !file.exists() || file.length() == 0;
     }
 
     /// Append line to new or existing file
-    public void write(String line) {
+    public synchronized void write(String line) {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
-            MediaScannerConnection.scanFile(AppDelegate.getContext(), new String[]{file.getAbsolutePath()}, null, null);
             fileOutputStream.write((line + "\n").getBytes());
             fileOutputStream.flush();
             fileOutputStream.close();
@@ -56,10 +65,9 @@ public class TextFile {
     }
 
     /// Overwrite file content
-    public void overwrite(String content) {
+    public synchronized void overwrite(String content) {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file);
-            MediaScannerConnection.scanFile(AppDelegate.getContext(), new String[]{file.getAbsolutePath()}, null, null);
             fileOutputStream.write(content.getBytes());
             fileOutputStream.flush();
             fileOutputStream.close();

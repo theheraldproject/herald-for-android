@@ -68,9 +68,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
     private final Random random = new Random();
+    private final ScheduledExecutorService scanLoopQueue = Executors.newScheduledThreadPool(1);
     private BluetoothLeScanner bluetoothLeScanner;
     private ScanCallback scanCallback;
-    private ScheduledExecutorService scanLoopQueue;
+    private AtomicBoolean enabled = new AtomicBoolean(false);
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
@@ -83,6 +84,55 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         this.transmitter = transmitter;
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
+        startScanLoop();
+    }
+
+    private void startScanLoop() {
+        scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                if (enabled.get()) {
+                    logger.debug("scan (on={}ms,off={}-{}ms)", scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
+                    try {
+                        // Scan for fixed period, defined by scanOnDurationMillis
+                        final long timeStart = System.currentTimeMillis();
+                        startScan();
+                        try {
+                            Thread.sleep(scanOnDurationMillis);
+                        } catch (InterruptedException e) {
+                        }
+                        stopScan();
+                        final long timeStop = System.currentTimeMillis();
+                        final long periodScan = timeStop - timeStart;
+                        logger.debug("scanning period (on={}ms)", periodScan);
+
+                        // Process scan results
+                        operationQueue.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                processScanResults();
+                                final long timeProcess = System.currentTimeMillis();
+                                final long periodProcess = timeProcess - timeStop;
+                                logger.debug("scanning period (process={}ms)", periodProcess);
+
+                                // Rest for variable period
+                                final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
+                                try {
+                                    Thread.sleep(periodOffTarget);
+                                } catch (InterruptedException e) {
+                                }
+                                final long timeOff = System.currentTimeMillis();
+                                // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
+                                final long periodOff = (timeOff - timeProcess);
+                                logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
+                            }
+                        });
+                    } catch (Throwable e) {
+                        logger.fault("scanning period failure detected", e);
+                    }
+                }
+            }
+        }, 0, 500, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -93,20 +143,13 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     @Override
     public void start() {
         logger.debug("start");
-        if (scanLoopQueue != null) {
-            scanLoopQueue.shutdownNow();
-            scanLoopQueue = null;
-        }
-        scan("start");
+        enabled.set(true);
     }
 
     @Override
     public void stop() {
         logger.debug("stop");
-        if (scanLoopQueue != null) {
-            scanLoopQueue.shutdownNow();
-        }
-        stopScan();
+        enabled.set(false);
     }
 
 
@@ -120,63 +163,11 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
     }
 
-    private void scan(String source) {
-        logger.debug("scan (source={},on={}ms,off={}-{}ms)", source, scanOnDurationMillis, scanOffDurationMinimumMillis, scanOffDurationMaximumMillis);
-        // Previous implementation used recursive Handler.postDelay calls for on/off loop
-        // but that stops working after an indefinite period for unknown reason. Maybe
-        // due to Handler being backed by MainLooper? Executor and thread sleep seems
-        // to work just as well.
-        if (scanLoopQueue != null) {
-            logger.fault("scan denied, already started");
+    private void startScan() {
+        if (scanCallback != null) {
+            logger.fault("startScan denied, already started");
             return;
         }
-        scanLoopQueue = Executors.newScheduledThreadPool(1);
-        scanLoopQueue.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // Scan for fixed period, defined by scanOnDurationMillis
-                    final long timeStart = System.currentTimeMillis();
-                    startScan();
-                    try {
-                        Thread.sleep(scanOnDurationMillis);
-                    } catch (InterruptedException e) {
-                    }
-                    stopScan();
-                    final long timeStop = System.currentTimeMillis();
-                    final long periodScan = timeStop - timeStart;
-                    logger.debug("scanning period (on={}ms)", periodScan);
-
-                    // Process scan results
-                    operationQueue.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            processScanResults();
-                            final long timeProcess = System.currentTimeMillis();
-                            final long periodProcess = timeProcess - timeStop;
-                            logger.debug("scanning period (process={}ms)", periodProcess);
-
-                            // Rest for variable period
-                            final long periodOffTarget = scanOffDurationMinimumMillis + random.nextInt((int) (scanOffDurationMaximumMillis - scanOffDurationMinimumMillis));
-                            try {
-                                Thread.sleep(periodOffTarget);
-                            } catch (InterruptedException e) {
-                            }
-                            final long timeOff = System.currentTimeMillis();
-                            // Scheduled scan loop adds scanOffDurationMinimumMillis, thus no need to add to period off
-                            final long periodOff = (timeOff - timeProcess);
-                            logger.debug("scanning period (off={}ms,target={}ms)", periodOff, periodOffTarget);
-                        }
-                    });
-                } catch (Throwable e) {
-                    logger.fault("scanning period failure detected", e);
-                }
-            }
-        }, 0, 500, TimeUnit.MILLISECONDS);
-    }
-
-
-    private void startScan() {
         if (bluetoothLeScanner == null) {
             final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (bluetoothAdapter != null) {
@@ -189,10 +180,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }
         if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
             logger.fault("startScan denied, Bluetooth is not powered on");
-            return;
-        }
-        if (scanCallback != null) {
-            logger.fault("startScan denied, already started");
             return;
         }
         operationQueue.execute(new Runnable() {
