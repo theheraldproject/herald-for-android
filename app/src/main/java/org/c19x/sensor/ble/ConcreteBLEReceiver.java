@@ -35,7 +35,6 @@ import org.c19x.sensor.datatype.Tuple;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -53,7 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDelegate {
+public class ConcreteBLEReceiver extends ScanCallback implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(4).millis();
@@ -66,10 +65,8 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
     private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
-    private final ExecutorService executorService = Executors.newFixedThreadPool(BLESensorConfiguration.concurrentConnectionQuota);
     private BluetoothLeScanner bluetoothLeScanner;
-    private ScanCallback scanCallback;
-    private AtomicBoolean enabled = new AtomicBoolean(false);
+    private AtomicBoolean startScanLoop = new AtomicBoolean(false);
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
@@ -85,53 +82,73 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         bluetoothStateManager(bluetoothStateManager.state());
     }
 
+    // MARK:- BLEReceiver
+
     @Override
     public void add(SensorDelegate delegate) {
         delegates.add(delegate);
     }
 
     @Override
-    public void bluetoothStateManager(BluetoothState didUpdateState) {
-        logger.debug("didUpdateState (state={})", didUpdateState);
-        if (didUpdateState == BluetoothState.poweredOn) {
-            start();
-        } else if (didUpdateState == BluetoothState.poweredOff) {
-            stop();
-        }
-    }
-
-    @Override
     public void start() {
         logger.debug("start");
-        enabled.set(true);
-        startScanLoop();
+        // startScanLoop is started by Bluetooth state
     }
 
     @Override
     public void stop() {
         logger.debug("stop");
-        enabled.set(false);
+        // startScanLoop is stopped by Bluetooth state
     }
+
+    // MARK:- BluetoothStateManagerDelegate
+
+    @Override
+    public void bluetoothStateManager(BluetoothState didUpdateState) {
+        logger.debug("didUpdateState (state={})", didUpdateState);
+        if (didUpdateState == BluetoothState.poweredOn) {
+            startScanLoop();
+        }
+    }
+
+    // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat
 
     private void startScanLoop() {
         logger.debug("startScanLoop (on={},off={})", scanOnDurationMillis, scanOffDurationMillis);
-        startScan(new Callback<Boolean>() {
+        final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (bluetoothAdapter == null) {
+            logger.fault("startScanLoop denied, Bluetooth adapter unavailable");
+            return;
+        }
+        final BluetoothLeScanner bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+        if (bluetoothLeScanner == null) {
+            logger.fault("startScanLoop denied, Bluetooth LE scanner unavailable");
+            return;
+        }
+        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
+            logger.fault("startScanLoop denied, Bluetooth is not powered on");
+            return;
+        }
+        if (!startScanLoop.compareAndSet(false, true)) {
+            logger.fault("startScanLoop denied, already started");
+            return;
+        }
+        startScan(bluetoothLeScanner, new Callback<Boolean>() {
             @Override
             public void accept(Boolean value) {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        stopScan(new Callback<Boolean>() {
+                        stopScan(bluetoothLeScanner, new Callback<Boolean>() {
                             @Override
                             public void accept(Boolean value) {
-                                if (enabled.get()) {
-                                    handler.postDelayed(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            startScanLoop();
-                                        }
-                                    }, scanOffDurationMillis);
-                                }
+                                handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startScanLoop.set(false);
+                                        startScanLoop();
+                                    }
+                                }, scanOffDurationMillis);
                             }
                         });
                     }
@@ -140,42 +157,20 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
-    private void startScan(final Callback<Boolean> callback) {
+    /// Get BLE scanner and start scan
+    private void startScan(final BluetoothLeScanner bluetoothLeScanner, final Callback<Boolean> callback) {
         logger.debug("startScan");
-        if (scanCallback != null) {
-            logger.fault("startScan denied, already started");
-            return;
-        }
-        if (bluetoothLeScanner == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null) {
-                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-            }
-        }
-        if (bluetoothLeScanner == null) {
-            logger.fault("startScan denied, Bluetooth LE scanner unsupported");
-            return;
-        }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("startScan denied, Bluetooth is not powered on");
-            return;
-        }
-        if (!enabled.get()) {
-            logger.fault("startScan denied, not enabled");
-            return;
-        }
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
                 try {
-                    scanCallback = startScan(logger, bluetoothLeScanner, scanResults);
+                    scanForPeripherals(bluetoothLeScanner);
                     logger.debug("startScan successful");
                     if (callback != null) {
                         callback.accept(true);
                     }
                 } catch (Throwable e) {
                     logger.fault("startScan failed", e);
-                    scanCallback = null;
                     if (callback != null) {
                         callback.accept(false);
                     }
@@ -184,23 +179,33 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
-    private void stopScan(final Callback<Boolean> callback) {
+
+    /// Scan for devices advertising sensor service and all Apple devices as
+    // iOS background advert does not include service UUID. There is a risk
+    // that the sensor will spend time communicating with Apple devices that
+    // are not running the sensor code repeatedly, but there is no reliable
+    // way of filtering this as the service may be absent only because of
+    // transient issues. This will be handled in taskConnect.
+    private void scanForPeripherals(final BluetoothLeScanner bluetoothLeScanner) {
+        logger.debug("scanForPeripherals");
+        final List<ScanFilter> filter = new ArrayList<>(2);
+        filter.add(new ScanFilter.Builder().setManufacturerData(
+                BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
+        filter.add(new ScanFilter.Builder().setServiceUuid(
+                new ParcelUuid(BLESensorConfiguration.serviceUUID),
+                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                .build());
+        final ScanSettings settings = new ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                .setReportDelay(0)
+                .build();
+        bluetoothLeScanner.startScan(filter, settings, this);
+    }
+
+    /// Get BLE scanner and stop scan
+    private void stopScan(final BluetoothLeScanner bluetoothLeScanner, final Callback<Boolean> callback) {
         logger.debug("stopScan");
-        if (scanCallback == null) {
-            logger.fault("stopScan denied, already stopped");
-            return;
-        }
-        if (bluetoothLeScanner == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null) {
-                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-            }
-        }
-        if (bluetoothLeScanner == null) {
-            logger.fault("stopScan denied, Bluetooth LE scanner unsupported");
-            scanCallback = null;
-            return;
-        }
+        final ScanCallback scanCallback = this;
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
@@ -209,7 +214,6 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
                 } catch (Throwable e) {
                     logger.fault("stopScan warning, bluetoothLeScanner.stopScan error", e);
                 }
-                scanCallback = null;
                 try {
                     final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
                     if (bluetoothAdapter != null) {
@@ -229,39 +233,21 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         });
     }
 
-    /// Scan for devices advertising sensor service and all Apple devices as
-    // iOS background advert does not include service UUID. There is a risk
-    // that the sensor will spend time communicating with Apple devices that
-    // are not running the sensor code repeatedly, but there is no reliable
-    // way of filtering this as the service may be absent only because of
-    // transient issues. This will be handled in taskConnect.
-    private static ScanCallback startScan(final SensorLogger logger, final BluetoothLeScanner bluetoothLeScanner, final Collection<ScanResult> scanResults) {
-        final List<ScanFilter> filter = new ArrayList<>(2);
-        filter.add(new ScanFilter.Builder().setManufacturerData(
-                BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
-        filter.add(new ScanFilter.Builder().setServiceUuid(
-                new ParcelUuid(BLESensorConfiguration.serviceUUID),
-                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
-                .build());
-        final ScanSettings settings = new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-                .setReportDelay(0)
-                .build();
-        final ScanCallback callback = new ScanCallback() {
-            @Override
-            public void onScanResult(int callbackType, ScanResult result) {
-                scanResults.add(result);
-            }
 
-            @Override
-            public void onScanFailed(int errorCode) {
-                logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
-            }
-        };
-        bluetoothLeScanner.startScan(filter, settings, callback);
-        logger.debug("Scan started (filter={},settings={})", filter, settings);
-        return callback;
+    // MARK:- ScanCallback
+
+    /// Add scan result to scan results.
+    @Override
+    public void onScanResult(int callbackType, ScanResult result) {
+        logger.debug("onScanResult (result={})", result);
+        scanResults.add(result);
     }
+
+    @Override
+    public void onScanFailed(int errorCode) {
+        logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
+    }
+
 
     /// Process scan results.
     private void processScanResults() {
@@ -273,9 +259,9 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         // taskResolveDevicePeripherals(); // Unnecessary on Android
         taskRemoveExpiredDevices();
         // taskRemoveDuplicatePeripherals(); // Unnecessary on Android
-        taskConnect();
+//        taskConnect();
         final long t1 = System.currentTimeMillis();
-        taskWriteBack(devices, BLESensorConfiguration.concurrentConnectionQuota);
+//        taskWriteBack(devices);
         final long t2 = System.currentTimeMillis();
         logger.debug("processScanResults (results={},devices={},elapsed={}ms,read={}ms,write={}ms)", scanResults.size(), devices.size(), (t2 - t0), (t1 - t0), (t2 - t1));
     }
@@ -464,9 +450,10 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         final List<BLEDevice> connected = devicesSeparatedByConnectionState.getA("connected");
         final List<BLEDevice> disconnected = devicesSeparatedByConnectionState.getB("disconnected");
         final List<BLEDevice> pending = taskConnectPendingDevices(disconnected);
-        final Tuple<Integer, List<BLEDevice>> requestConnectionCapacity = taskConnectRequestConnectionCapacity(connected, pending);
-        final int capacity = requestConnectionCapacity.getA("capacity");
-        final List<BLEDevice> keepConnected = requestConnectionCapacity.getB("keepConnected");
+        final int capacity = BLESensorConfiguration.concurrentConnectionQuota - connected.size();
+//        final Tuple<Integer, List<BLEDevice>> requestConnectionCapacity = taskConnectRequestConnectionCapacity(connected, pending);
+//        final int capacity = requestConnectionCapacity.getA("capacity");
+//        final List<BLEDevice> keepConnected = requestConnectionCapacity.getB("keepConnected");
         taskConnectInitiateConnectionToPendingDevices(pending, capacity);
 //        taskConnectRefreshKeepConnectedDevices(keepConnected: keepConnected)
     }
@@ -600,47 +587,40 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         if (readyForConnection.size() == 0) {
             return;
         }
-        final CountDownLatch blocking = new CountDownLatch(readyForConnection.size());
         for (final BLEDevice device : readyForConnection) {
-            executorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        boolean successful = true;
-                        if (device.goal() == BLEDeviceGoal.payload || device.goal() == BLEDeviceGoal.operatingSystem) {
-                            logger.debug("taskConnect initiate connection, connect (device={})", device);
-                            successful = readPayload(device);
-                        } else if (device.goal() == BLEDeviceGoal.payloadSharing) {
-                            logger.debug("taskConnect initiate connection, connect (device={})", device);
-                            successful = readPayloadSharing(device);
-                        }
-                        if (successful) {
-                            logger.debug("taskConnect initiate connection, successful (device={})", device);
-                        } else {
-                            logger.fault("taskConnect initiate connection, failed (device={})", device);
-                        }
-                    } catch (Throwable e) {
-                        logger.fault("taskConnect initiate connection, error (device={})", device, e);
-                    }
-                    blocking.countDown();
+            try {
+                boolean successful = true;
+                logger.debug("taskConnect initiate connection, connect (device={})", device);
+                if (device.goal() == BLEDeviceGoal.payloadSharing) {
+                    successful = readPayloadSharing(device);
+                } else {
+                    successful = readPayload(device);
                 }
-            });
-        }
-        try {
-            blocking.await(1, TimeUnit.MINUTES);
-        } catch (Throwable e) {
-            logger.fault("taskConnect initiate connection, timeout (devices={})", readyForConnection, e);
+                if (successful) {
+                    logger.debug("taskConnect initiate connection, successful (device={})", device);
+                } else {
+                    logger.fault("taskConnect initiate connection, failed (device={})", device);
+                }
+            } catch (Throwable e) {
+                logger.fault("taskConnect initiate connection, error (device={})", device, e);
+            }
         }
     }
 
     /**
      * Write RSSI and payload data to central via signal characteristic if this device cannot transmit.
      */
-    private void taskWriteBack(final Set<BLEDevice> devices, final int capacity) {
-        logger.debug("taskWriteBack (transmitter={},devices={},capacity={})", transmitter.isSupported(), devices.size(), capacity);
+    private void taskWriteBack(final Set<BLEDevice> devices) {
         if (transmitter.isSupported()) {
             return;
         }
+        // Establish capacity
+        final Tuple<List<BLEDevice>, List<BLEDevice>> devicesSeparatedByConnectionState = taskConnectSeparateByConnectionState(database.devices());
+        final List<BLEDevice> connected = devicesSeparatedByConnectionState.getA("connected");
+        final List<BLEDevice> disconnected = devicesSeparatedByConnectionState.getB("disconnected");
+        final int capacity = BLESensorConfiguration.concurrentConnectionQuota - connected.size();
+        logger.debug("taskWriteBack (transmitter={},devices={},capacity={})", transmitter.isSupported(), devices.size(), capacity);
+
         // Prioritise devices to write payload (least recent first)
         // - RSSI data is always fresh enough given the devices are passed in from taskProcessScanResults
         final List<BLEDevice> pending = new ArrayList<>(devices.size());
@@ -670,72 +650,13 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         if (readyForConnection.size() == 0) {
             return;
         }
-        final CountDownLatch blocking = new CountDownLatch(readyForConnection.size());
         for (final BLEDevice device : readyForConnection) {
-            executorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        logger.debug("taskWriteBack request (device={})", device);
-                        writePayload(device);
-                    } catch (Throwable e) {
-                        logger.fault("taskWriteBack request, error (device={})", device, e);
-                    }
-                    blocking.countDown();
-                }
-            });
-        }
-        try {
-            blocking.await(1, TimeUnit.MINUTES);
-        } catch (Throwable e) {
-            logger.fault("taskWriteBack, timeout (devices={})", readyForConnection, e);
-        }
-    }
-
-
-    /**
-     * Write RSSI and payload data to central via signal characteristic if this device cannot transmit.
-     */
-    private void taskWriteBack(final Set<BLEDevice> devices) {
-        logger.debug("taskWriteBack (transmitter={})", transmitter.isSupported());
-        if (transmitter.isSupported()) {
-            return;
-        }
-        // Establish surplus concurrent connection capacity
-        final List<BLEDevice> connections = new ArrayList<>();
-        for (BLEDevice device : database.devices()) {
-            if (device.state() == BLEDeviceState.connected || device.state() == BLEDeviceState.connecting) {
-                connections.add(device);
+            try {
+                logger.debug("taskWriteBack request (device={})", device);
+                writeBack(device);
+            } catch (Throwable e) {
+                logger.fault("taskWriteBack request, error (device={})", device, e);
             }
-        }
-        final int capacity = BLESensorConfiguration.concurrentConnectionQuota - connections.size();
-        if (capacity <= 0) {
-            return;
-        }
-        // Prioritise devices to write payload (least recent first)
-        // - RSSI data is always fresh enough given the devices are passed in from taskProcessScanResults
-        final List<BLEDevice> pending = new ArrayList<>();
-        for (BLEDevice device : devices) {
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android) {
-                pending.add(device);
-            }
-        }
-        Collections.sort(pending, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceLastWriteBack().value, d0.timeIntervalSinceLastWriteBack().value);
-            }
-        });
-        // Initiate write back
-        final List<String> pendingQueue = new ArrayList<>();
-        for (BLEDevice device : pending) {
-            pendingQueue.add(device.operatingSystem() + ":" + device.timeIntervalSinceLastWriteBack().value);
-        }
-        logger.debug("taskWriteBack pending (capacity={},pending={},queue={})", capacity, pending.size(), pendingQueue);
-        for (int i = 0; i < capacity && i < pending.size(); i++) {
-            final BLEDevice device = pending.get(i);
-            logger.debug("taskWriteBack connect (goal=writePayload,device={})", device);
-            writePayload(device);
         }
     }
 
@@ -761,7 +682,7 @@ public class ConcreteBLEReceiver implements BLEReceiver, BluetoothStateManagerDe
         }, null);
     }
 
-    private boolean writePayload(final BLEDevice device) {
+    private boolean writeBack(final BLEDevice device) {
         logger.debug("writePayload (device={})", device);
         // Write payload not possible for unknown or ignore devices
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {

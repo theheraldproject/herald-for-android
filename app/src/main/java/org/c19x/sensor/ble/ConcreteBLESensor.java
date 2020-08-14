@@ -149,8 +149,12 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
      */
     public final static void checkPermissions(final Activity activity) {
         final String locationPermission = Manifest.permission.ACCESS_FINE_LOCATION;
+        final String backgroundLocationPermission = Manifest.permission.ACCESS_BACKGROUND_LOCATION;
         if (ActivityCompat.checkSelfPermission(activity, locationPermission) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(activity, new String[]{locationPermission}, 0);
+        }
+        if (ActivityCompat.checkSelfPermission(activity, backgroundLocationPermission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(activity, new String[]{backgroundLocationPermission}, 0);
         }
     }
 
