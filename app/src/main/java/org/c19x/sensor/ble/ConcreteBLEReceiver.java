@@ -458,30 +458,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 break;
             }
             logger.debug("processPendingDevices, connect (device={})", device);
-            connect(device, TimeInterval.seconds(20));
+            device.state(BLEDeviceState.connecting);
+            final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
             while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - startTime) < limit.millis()) {
                 try {
                     Thread.sleep(500);
                 } catch (Throwable e) {
                 }
             }
-        }
-    }
-
-    /// Connect to device
-    private void connect(final BLEDevice device, TimeInterval limit) {
-        device.state(BLEDeviceState.connecting);
-        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (device.state() != BLEDeviceState.disconnected) {
-                    logger.fault("connect, timeout (device={})", device);
-                    gatt.close();
-                }
-                device.state(BLEDeviceState.disconnected);
+            if (device.state() != BLEDeviceState.disconnected) {
+                logger.fault("processPendingDevices, timeout (device={})", device);
+                gatt.close();
             }
-        }, limit.millis());
+            device.state(BLEDeviceState.disconnected);
+        }
     }
 
     // MARK:- BluetoothStateManagerDelegate
@@ -554,51 +544,52 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.fault("nextTask, read failed (goal=payload,device={})", device);
                 return;
             }
-        } else if (!transmitter.isSupported()) {
-            final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
-            if (signalCharacteristic == null) {
-                logger.fault("nextTask, missing signal characteristic (goal=write,device={})", device);
-                gatt.disconnect();
-                return;
-            }
-            if (device.payloadData() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.hour.value) {
-                logger.debug("nextTask (goal=writePayload,device={})", device);
-                final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
-                signalCharacteristic.setValue(data);
-                signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                    logger.fault("nextTask, write failed (goal=writePayload,device={})", device);
+        } else {
+            if (!transmitter.isSupported()) {
+                final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+                if (signalCharacteristic == null) {
+                    logger.fault("nextTask, missing signal characteristic (goal=write,device={})", device);
                     gatt.disconnect();
                     return;
                 }
-            } else if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.seconds(15).value) {
-                logger.debug("nextTask (goal=writeRssi,device={})", device);
-                final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
-                signalCharacteristic.setValue(data);
-                signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                    logger.fault("nextTask, write failed (goal=writeRssi,device={})", device);
-                    gatt.disconnect();
-                    return;
-                }
-            } else if (transmitter instanceof ConcreteBLETransmitter) {
-                final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
-                if (payloadSharingData.identifiers.size() > 0 && device.timeIntervalSinceLastWritePayloadSharing().value > TimeInterval.minutes(2).value) {
-                    logger.debug("nextTask (goal=writePayloadSharing,device={},sharing={})", device, payloadSharingData.identifiers);
-                    final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
+                if (device.payloadData() != null && device.timeIntervalSinceLastWritePayload().value > TimeInterval.hour.value) {
+                    logger.debug("nextTask (goal=writePayload,device={})", device);
+                    final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
                     signalCharacteristic.setValue(data);
                     signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                     if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                        logger.fault("nextTask, write failed (goal=writePayloadSharing,device={})", device);
+                        logger.fault("nextTask, write failed (goal=writePayload,device={})", device);
                         gatt.disconnect();
+                    }
+                    return;
+                } else if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.seconds(15).value) {
+                    logger.debug("nextTask (goal=writeRssi,device={})", device);
+                    final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
+                    signalCharacteristic.setValue(data);
+                    signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                    if (!gatt.writeCharacteristic(signalCharacteristic)) {
+                        logger.fault("nextTask, write failed (goal=writeRssi,device={})", device);
+                        gatt.disconnect();
+                    }
+                    return;
+                } else if (transmitter instanceof ConcreteBLETransmitter) {
+                    final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
+                    if (payloadSharingData.identifiers.size() > 0 && device.timeIntervalSinceLastWritePayloadSharing().value > TimeInterval.minutes(2).value) {
+                        logger.debug("nextTask (goal=writePayloadSharing,device={},sharing={})", device, payloadSharingData.identifiers);
+                        final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
+                        signalCharacteristic.setValue(data);
+                        signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                        if (!gatt.writeCharacteristic(signalCharacteristic)) {
+                            logger.fault("nextTask, write failed (goal=writePayloadSharing,device={})", device);
+                            gatt.disconnect();
+                        }
                         return;
                     }
                 }
+                logger.debug("nextTask, write not required (goal=disconnect,device={})", device);
+            } else {
+                logger.debug("nextTask, no pending action (goal=disconnect,device={})", device);
             }
-            logger.debug("nextTask, write not required (goal=disconnect,device={})", device);
-            gatt.disconnect();
-        } else {
-            logger.debug("nextTask, no pending action (goal=disconnect,device={})", device);
             gatt.disconnect();
         }
     }
