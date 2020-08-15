@@ -4,13 +4,11 @@ import android.bluetooth.BluetoothDevice;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
-import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,7 +25,8 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     }
 
     @Override
-    public synchronized BLEDevice device(final TargetIdentifier identifier) {
+    public BLEDevice device(BluetoothDevice bluetoothDevice) {
+        final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
         BLEDevice device = database.get(identifier);
         if (device == null) {
             final BLEDevice newDevice = new BLEDevice(identifier, this);
@@ -43,32 +42,8 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
                 }
             });
         }
-        return device;
-    }
-
-    @Override
-    public synchronized BLEDevice device(BluetoothDevice bluetoothDevice) {
-        final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
-        final BLEDevice device = device(identifier);
         device.peripheral(bluetoothDevice);
         return device;
-    }
-
-    @Override
-    public BLEDevice device(PayloadData payload) {
-        for (BLEDevice device : devices()) {
-            final PayloadData existingPayloadData = device.payloadData();
-            if (existingPayloadData != null && existingPayloadData.equals(payload)) {
-                return device;
-            }
-        }
-        // Create temporary UUID, the taskRemoveDuplicatePeripherals function
-        // will delete this when a direct connection to the peripheral has been
-        // established
-        final TargetIdentifier identifier = new TargetIdentifier(UUID.randomUUID().toString());
-        final BLEDevice placeholder = device(identifier);
-        placeholder.payloadData(payload);
-        return placeholder;
     }
 
     @Override

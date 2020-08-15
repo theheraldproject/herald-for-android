@@ -6,6 +6,8 @@ public class TimeInterval {
     public static TimeInterval day = new TimeInterval(24 * 60 * 60);
     public static TimeInterval hour = new TimeInterval(60 * 60);
     public static TimeInterval minute = new TimeInterval(60);
+    public static TimeInterval zero = new TimeInterval(0);
+    public static TimeInterval never = new TimeInterval(Long.MAX_VALUE);
 
     public TimeInterval(long seconds) {
         this.value = seconds;
@@ -29,6 +31,9 @@ public class TimeInterval {
 
     @Override
     public String toString() {
+        if (value == never.value) {
+            return "never";
+        }
         return Long.toString(value);
     }
 }
