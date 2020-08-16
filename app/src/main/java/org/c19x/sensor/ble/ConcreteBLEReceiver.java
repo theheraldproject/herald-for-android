@@ -14,7 +14,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.os.ParcelUuid;
 
 import org.c19x.sensor.PayloadDataSupplier;
@@ -53,6 +53,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
+    private final HandlerThread handlerThread = new HandlerThread("Sensor.BLE.ConcreteBLEReceiver");
     private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
@@ -89,9 +90,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        this.handler = new Handler(Looper.getMainLooper());
+        handlerThread.start();
+        this.handler = new Handler(handlerThread.getLooper());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        handlerThread.quit();
+        super.finalize();
     }
 
     // MARK:- BLEReceiver
