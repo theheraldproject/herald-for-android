@@ -475,7 +475,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("processPendingDevices, connect (device={})", device);
             device.state(BLEDeviceState.connecting);
             final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
-            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < limit.millis()) {
+            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < TimeInterval.seconds(10).millis()) {
                 try {
                     Thread.sleep(250);
                 } catch (Throwable e) {
@@ -648,6 +648,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
                 signalCharacteristic.setValue(data);
                 signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                if (device.operatingSystem() == BLEDeviceOperatingSystem.android) {
+                    gatt.beginReliableWrite();
+                }
                 if (!gatt.writeCharacteristic(signalCharacteristic)) {
                     logger.fault("nextTask failed (task=writePayloadSharing,device={},reason=writeCharacteristicFailed)", device);
                     gatt.disconnect();

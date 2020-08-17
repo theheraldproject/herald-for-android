@@ -456,7 +456,6 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                         logger.fault("didReceiveWrite, invalid payload (central={},action=writePayload)", targetDevice);
                                     }
                                     onCharacteristicWriteSignalData.remove(device.getAddress());
-
                                 }
                                 break;
                             }
@@ -514,7 +513,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     }
                 } else {
                     if (responseNeeded) {
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, value);
+                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, value);
                     }
                 }
             }

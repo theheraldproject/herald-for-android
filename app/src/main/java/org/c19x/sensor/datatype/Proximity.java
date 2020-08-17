@@ -1,5 +1,7 @@
 package org.c19x.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 /// Raw data for estimating proximity between sensor and target, e.g. RSSI for BLE.
 public class Proximity {
     /// Unit of measurement, e.g. RSSI
@@ -15,5 +17,11 @@ public class Proximity {
     /// Get plain text description of proximity data
     public String description() {
         return unit + ":" + value;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return description();
     }
 }

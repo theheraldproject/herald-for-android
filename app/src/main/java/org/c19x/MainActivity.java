@@ -78,21 +78,31 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, TargetIdentifier didDetect) {
         this.didDetect++;
-        final TextView textView = findViewById(R.id.didDetect);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didDetect: " + this.didDetect + " (" + timestamp + ")";
-        textView.setText(text);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.didDetect);
+                textView.setText(text);
+            }
+        });
     }
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         this.didRead++;
         this.didReadPayloads.add(didRead.shortName());
-        final TextView textView = findViewById(R.id.didRead);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didRead: " + this.didRead + " (" + timestamp + ")";
-        textView.setText(text);
-        updateDetection();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.didRead);
+                textView.setText(text);
+                updateDetection();
+            }
+        });
     }
 
     @Override
@@ -101,28 +111,43 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         for (PayloadData payloadData : didShare) {
             this.didSharePayloads.add(payloadData.shortName());
         }
-        final TextView textView = findViewById(R.id.didShare);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didShare: " + this.didShare + " (" + timestamp + ")";
-        textView.setText(text);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.didShare);
+                textView.setText(text);
+            }
+        });
         updateDetection();
     }
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
         this.didMeasure++;
-        final TextView textView = findViewById(R.id.didMeasure);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didMeasure: " + this.didMeasure + " (" + timestamp + ")";
-        textView.setText(text);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.didMeasure);
+                textView.setText(text);
+            }
+        });
     }
 
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
         this.didVisit++;
-        final TextView textView = findViewById(R.id.didVisit);
         final String timestamp = dateFormatter.format(new Date());
         final String text = "didVisit: " + this.didVisit + " (" + timestamp + ")";
-        textView.setText(text);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.didVisit);
+                textView.setText(text);
+            }
+        });
     }
 }
