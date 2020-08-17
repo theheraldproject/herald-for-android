@@ -47,6 +47,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     // Scan ON/OFF durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(4).millis();
+    private final static int defaultMTU = 20;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
@@ -571,7 +572,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Write payload, rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
             // Write payload data as top priority
-            if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never) {
+            if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never ||
+                    (device.operatingSystem() == BLEDeviceOperatingSystem.android && device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(10).value)) {
                 return NextTask.writePayload;
             }
             // Write payload sharing data to iOS device if there is data to be shared (up to once every 2.5 minutes)
@@ -588,7 +590,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return NextTask.nothing;
     }
 
-
     private void nextTask(BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
@@ -598,47 +599,28 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 if (payloadCharacteristic == null) {
                     logger.fault("nextTask failed (task=readPayload,device={},reason=missingPayloadCharacteristic)", device);
                     gatt.disconnect();
-                    return;
+                    return; // => onConnectionStateChange
                 }
                 if (!gatt.readCharacteristic(payloadCharacteristic)) {
                     logger.fault("nextTask failed (task=readPayload,device={},reason=readCharacteristicFailed)", device);
                     gatt.disconnect();
-                    return;
+                    return; // => onConnectionStateChange
                 }
                 logger.debug("nextTask (task=readPayload,device={})", device);
-                return;
+                return; // => onCharacteristicRead | timeout
             }
             case writePayload: {
-                final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
-                if (signalCharacteristic == null) {
-                    logger.fault("nextTask failed (task=writePayload,device={},reason=missingSignalCharacteristic)", device);
-                    gatt.disconnect();
-                    return;
-                }
                 final PayloadData payloadData = transmitter.payloadData();
                 if (payloadData == null || payloadData.value == null || payloadData.value.length == 0) {
                     logger.fault("nextTask failed (task=writePayload,device={},reason=missingPayloadData)", device);
                     gatt.disconnect();
-                    return;
+                    return; // => onConnectionStateChange
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
-                signalCharacteristic.setValue(data);
-                signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                    logger.fault("nextTask failed (task=writePayload,device={},reason=writeCharacteristicFailed)", device);
-                    gatt.disconnect();
-                    return;
-                }
-                logger.debug("nextTask (task=writePayload,device={})", device);
+                writeSignalCharacteristic(gatt, NextTask.writePayload, data);
                 return;
             }
             case writePayloadSharing: {
-                final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
-                if (signalCharacteristic == null) {
-                    logger.fault("nextTask failed (task=writePayloadSharing,device={},reason=missingSignalCharacteristic)", device);
-                    gatt.disconnect();
-                    return;
-                }
                 final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
                 if (payloadSharingData == null) {
                     logger.fault("nextTask failed (task=writePayloadSharing,device={},reason=missingPayloadSharingData)", device);
@@ -646,17 +628,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return;
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
-                signalCharacteristic.setValue(data);
-                signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                if (device.operatingSystem() == BLEDeviceOperatingSystem.android) {
-                    gatt.beginReliableWrite();
-                }
-                if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                    logger.fault("nextTask failed (task=writePayloadSharing,device={},reason=writeCharacteristicFailed)", device);
-                    gatt.disconnect();
-                    return;
-                }
-                logger.debug("nextTask (task=writePayloadSharing,device={})", device);
+                writeSignalCharacteristic(gatt, NextTask.writePayloadSharing, data);
                 return;
             }
             case writeRSSI: {
@@ -673,19 +645,42 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return;
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
-                signalCharacteristic.setValue(data);
-                signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                    logger.fault("nextTask failed (task=writeRSSI,device={},reason=writeCharacteristicFailed)", device);
-                    gatt.disconnect();
-                    return;
-                }
-                logger.debug("nextTask (task=writeRSSI,device={})", device);
+                writeSignalCharacteristic(gatt, NextTask.writeRSSI, data);
                 return;
             }
         }
         logger.debug("nextTask (task=nothing,device={})", device);
         gatt.disconnect();
+    }
+
+    private void writeSignalCharacteristic(BluetoothGatt gatt, NextTask task, byte[] data) {
+        final BLEDevice device = database.device(gatt.getDevice());
+        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+        if (signalCharacteristic == null) {
+            logger.fault("writeSignalCharacteristic failed (task={},device={},reason=missingSignalCharacteristic)", task, device);
+            gatt.disconnect();
+            return;
+        }
+        if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
+            logger.fault("writeSignalCharacteristic failed (task={},device={},reason=notAndroidOrIos)", task, device);
+            gatt.disconnect();
+            return;
+        }
+        signalCharacteristic.setValue(data);
+        signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios || data.length <= defaultMTU) {
+            if (!gatt.writeCharacteristic(signalCharacteristic)) {
+                logger.fault("writeSignalCharacteristic failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
+                gatt.disconnect();
+            } else {
+                logger.debug("writeSignalCharacteristic (task={},dataLength={},device={})", task, data.length, device);
+                // => onCharacteristicWrite
+            }
+        } else {
+            logger.debug("writeSignalCharacteristic, request MTU change (task={},dataLength={},device={})", task, data.length, device);
+            gatt.requestMtu(5 + data.length);
+            // => onMtuChanged => writeCharacteristic => onCharacteristicWrite
+        }
     }
 
     @Override
@@ -716,6 +711,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
         final byte actionCode = (signalCharacteristic == null ? 0 : signalDataActionCode(signalCharacteristic.getValue()));
+        signalCharacteristic.setValue(new byte[0]);
         switch (actionCode) {
             case BLESensorConfiguration.signalCharacteristicActionWritePayload:
                 if (success) {
@@ -751,7 +747,61 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     @Override
     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
         final BLEDevice device = database.device(gatt.getDevice());
-        logger.debug("onMtuChanged (device={},status={},mtu={})", device, bleStatus(status), mtu);
+        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+        final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
+        final byte actionCode = (signalCharacteristic == null ? 0 : signalDataActionCode(signalCharacteristic.getValue()));
+        final byte[] data = (signalCharacteristic.getValue() == null ? new byte[0] : signalCharacteristic.getValue());
+        NextTask nextTask = NextTask.nothing;
+        switch (actionCode) {
+            case BLESensorConfiguration.signalCharacteristicActionWritePayload: {
+                nextTask = NextTask.writePayload;
+                break;
+            }
+            case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing: {
+                nextTask = NextTask.writePayloadSharing;
+                break;
+            }
+            case BLESensorConfiguration.signalCharacteristicActionWriteRSSI: {
+                nextTask = NextTask.writeRSSI;
+                break;
+            }
+        }
+        logger.debug("onMtuChanged (task={},device={},status={},mtu={})", nextTask, device, bleStatus(status), mtu);
+        if (nextTask == NextTask.nothing) {
+            nextTask(gatt);
+            return;
+        }
+        if (!gatt.writeCharacteristic(device.signalCharacteristic())) {
+            logger.fault("onMtuChanged failed (task={},device={},reason=writeCharacteristicFailed)", nextTask, device);
+            gatt.disconnect();
+            return;
+        }
+        if (!success) {
+            final long longWriteTimeout = 200 * (data.length / defaultMTU);
+            logger.debug("onMtuChanged denied, long write without response (task={},device={},timeout={})", nextTask, device, longWriteTimeout);
+            try {
+                Thread.sleep(longWriteTimeout);
+            } catch (Throwable e) {
+            }
+            // Assuming success
+            switch (nextTask) {
+                case writePayload: {
+                    device.registerWritePayload();
+                    break;
+                }
+                case writePayloadSharing: {
+                    device.registerWritePayloadSharing();
+                    break;
+                }
+                case writeRSSI: {
+                    device.registerWriteRssi();
+                    break;
+                }
+            }
+            // onCharacteristicWrite won't be called
+            nextTask(gatt);
+            return;
+        }
     }
 
     // MARK:- Signal characteristic data bundles
