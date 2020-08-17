@@ -250,6 +250,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.receiveOnly())) {
                 continue;
             }
+            // Payload is not the peer itself
+            if (peer.payloadData() != null && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
+                continue;
+            }
             // Payload is new to peer
             if (peer.payloadSharingData.contains(device.payloadData())) {
                 knownDevices.add(device);
