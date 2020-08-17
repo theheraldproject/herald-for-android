@@ -476,9 +476,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("processPendingDevices, connect (device={})", device);
             device.state(BLEDeviceState.connecting);
             final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
+            if (gatt == null) {
+                logger.fault("processPendingDevices, connect failed (device={})", device);
+                device.state(BLEDeviceState.disconnected);
+                continue;
+            }
+            // Wait for disconnection
             while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < TimeInterval.seconds(10).millis()) {
                 try {
-                    Thread.sleep(250);
+                    Thread.sleep(200);
                 } catch (Throwable e) {
                 }
             }
@@ -486,7 +492,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             boolean success = true;
             if (device.state() != BLEDeviceState.disconnected) {
                 logger.fault("processPendingDevices, timeout (device={})", device);
-                gatt.close();
+                try {
+                    gatt.close();
+                } catch (Throwable e) {
+                    logger.fault("processPendingDevices, close failed (device={})", device, e);
+                }
                 success = false;
             }
             device.state(BLEDeviceState.disconnected);
@@ -617,6 +627,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return; // => onConnectionStateChange
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
+                logger.debug("nextTask (task=writePayload,device={},dataLength={})", device, data.length);
                 writeSignalCharacteristic(gatt, NextTask.writePayload, data);
                 return;
             }
@@ -628,6 +639,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return;
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
+                logger.debug("nextTask (task=writePayloadSharing,device={},dataLength={})", device, data.length);
                 writeSignalCharacteristic(gatt, NextTask.writePayloadSharing, data);
                 return;
             }
@@ -645,6 +657,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return;
                 }
                 final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
+                logger.debug("nextTask (task=writeRSSI,device={},dataLength={})", device, data.length);
                 writeSignalCharacteristic(gatt, NextTask.writeRSSI, data);
                 return;
             }
