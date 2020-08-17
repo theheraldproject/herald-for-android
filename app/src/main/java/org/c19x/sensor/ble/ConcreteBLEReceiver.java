@@ -381,13 +381,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- House keeping tasks
 
-    /// Remove devices that have not been updated for over an hour, as the UUID
+    /// Remove devices that have not been updated for over 20 minutes, as the UUID
     // is likely to have changed after being out of range for over 20 minutes,
-    // so it will require discovery.
+    // so it will require discovery. Discovery is fast and cheap on Android.
     private void taskRemoveExpiredDevices() {
         final List<BLEDevice> devicesToRemove = new ArrayList<>();
         for (BLEDevice device : database.devices()) {
-            if (device.timeIntervalSinceLastUpdate().value > TimeInterval.hour.value) {
+            if (device.timeIntervalSinceLastUpdate().value > TimeInterval.minutes(20).value) {
                 devicesToRemove.add(device);
             }
         }
@@ -573,7 +573,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         if (!transmitter.isSupported()) {
             // Write payload data as top priority
             if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never ||
-                    (device.operatingSystem() == BLEDeviceOperatingSystem.android && device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(10).value)) {
+                    (device.operatingSystem() == BLEDeviceOperatingSystem.android && device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value)) {
                 return NextTask.writePayload;
             }
             // Write payload sharing data to iOS device if there is data to be shared (up to once every 2.5 minutes)
