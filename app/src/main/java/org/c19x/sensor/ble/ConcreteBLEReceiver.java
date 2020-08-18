@@ -46,8 +46,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
-    private final static long scanProcessDurationMillis = TimeInterval.seconds(8).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(30).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
+    private final static long scanProcessConnectTimeoutMillis = TimeInterval.seconds(5).millis();
     private final static int defaultMTU = 20;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
@@ -96,7 +97,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        timer.scheduleAtFixedRate(new ScanLoopTask(), 500, 500);
+        timer.scheduleAtFixedRate(new ScanLoopTask(), 1000, 1000);
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -259,7 +260,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                 .build());
         final ScanSettings settings = new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)
                 .build();
         bluetoothLeScanner.startScan(filter, settings, scanCallback);
@@ -517,7 +518,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 continue;
             }
             // Wait for connection
-            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < 4000) {
+            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < scanProcessConnectTimeoutMillis) {
                 try {
                     Thread.sleep(200);
                 } catch (Throwable e) {

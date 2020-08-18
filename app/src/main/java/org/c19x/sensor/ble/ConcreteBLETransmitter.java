@@ -294,7 +294,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             try {
                 byteArrayOutputStream.write(device.payloadData().value);
                 identifiers.add(device.identifier);
-                device.payloadSharingData.add(device.payloadData());
+                peer.payloadSharingData.add(device.payloadData());
             } catch (Throwable e) {
             }
         }
@@ -363,6 +363,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 final BLEDevice targetDevice = database.device(device);
                 final PayloadSharingData payloadSharingData = concreteBLETransmitter.payloadSharingData(targetDevice);
                 onCharacteristicReadPayloadSharingData.put(key, payloadSharingData);
+
                 return payloadSharingData;
             }
 
