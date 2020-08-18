@@ -11,6 +11,7 @@ import org.c19x.sensor.datatype.TimeInterval;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Queue;
 
 public class BLEDevice {
     /// Device registratiion timestamp
@@ -47,6 +48,8 @@ public class BLEDevice {
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
     private BluetoothGattCharacteristic payloadCharacteristic = null;
+    protected byte[] signalCharacteristicWriteValue = null;
+    protected Queue<byte[]> signalCharacteristicWriteQueue = null;
 
     /// Track connection timestamps
     private Date lastDiscoveredAt = null;

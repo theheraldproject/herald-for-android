@@ -44,9 +44,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
-    // Scan ON/OFF durations
-    private final static long scanOnDurationMillis = TimeInterval.seconds(8).millis();
-    private final static long scanOffDurationMillis = TimeInterval.seconds(4).millis();
+    // Scan ON/OFF/PROCESS durations
+    private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(10).millis();
+    private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
     private final static int defaultMTU = 20;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
@@ -95,7 +96,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        timer.scheduleAtFixedRate(new ScanLoopTask(), 1000, 1000);
+        timer.scheduleAtFixedRate(new ScanLoopTask(), 500, 500);
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -367,7 +368,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.ios_tbc);
                 }
             } else {
-                // Sensor service not found + Manufacturer not Apple should be impossible (!hasSensorService && !isAppleDevice)
+                // Sensor service not found + Manufacturer not Apple should be impossible
                 // as we are scanning for devices with sensor service or Apple device.
                 logger.fault("didDiscover, invalid non-Apple device without sensor service (device={})", device);
                 device.operatingSystem(BLEDeviceOperatingSystem.ignore);
@@ -428,7 +429,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final Tuple<List<BLEDevice>, List<BLEDevice>> devices = getDevices();
         final List<BLEDevice> disconnected = devices.getB("disconnected");
         final List<BLEDevice> pending = getDevicesWithPendingActions(disconnected);
-        connectPendingDevices(pending, TimeInterval.seconds(30));
+        connectPendingDevices(pending, scanProcessDurationMillis);
     }
 
     /// Separate devices by current connection state
@@ -482,7 +483,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     /// Initiate connection to pending devices, aim to complete within
     // given time limit but avoid early termination of started tasks
-    private void connectPendingDevices(List<BLEDevice> pending, TimeInterval limit) {
+    private void connectPendingDevices(List<BLEDevice> pending, long processTimeLimitMillis) {
         if (pending.size() == 0) {
             return;
         }
@@ -490,8 +491,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         for (BLEDevice device : pending) {
             // Stop process if exceeded time limit
             final long elapsedTime = System.currentTimeMillis() - timeStart;
-            if (elapsedTime > limit.millis()) {
-                logger.debug("processPendingDevices, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, limit.millis());
+            if (elapsedTime > processTimeLimitMillis) {
+                logger.debug("processPendingDevices, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, processTimeLimitMillis);
                 break;
             }
             // Connect to a device and give it the full time quota to complete pending tasks
@@ -507,7 +508,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 continue;
             }
             // Wait for disconnection
-            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < TimeInterval.seconds(10).millis()) {
+            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < processTimeLimitMillis) {
                 try {
                     Thread.sleep(200);
                 } catch (Throwable e) {
@@ -546,9 +547,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
             gatt.close();
             device.state(BLEDeviceState.disconnected);
-            if (status != 0) {
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-            }
+//            if (status != 0) {
+//                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+//            }
         }
     }
 
@@ -588,6 +589,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         nextTask(gatt);
     }
+
 
     private NextTask nextTaskForDevice(final BLEDevice device) {
         // No task for devices marked as .ignore
@@ -699,26 +701,76 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             gatt.disconnect();
             return;
         }
-        if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-            logger.fault("writeSignalCharacteristic failed (task={},device={},reason=notAndroidOrIos)", task, device);
+        if (data == null || data.length == 0) {
+            logger.fault("writeSignalCharacteristic failed (task={},device={},reason=missingData)", task, device);
             gatt.disconnect();
             return;
         }
-        signalCharacteristic.setValue(data);
-        signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios || data.length <= defaultMTU) {
+        if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
+            device.signalCharacteristicWriteValue = data;
+            device.signalCharacteristicWriteQueue = null;
+            signalCharacteristic.setValue(data);
+            signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
             if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                logger.fault("writeSignalCharacteristic failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
+                logger.fault("writeSignalCharacteristic to iOS failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
                 gatt.disconnect();
             } else {
-                logger.debug("writeSignalCharacteristic (task={},dataLength={},device={})", task, data.length, device);
+                logger.debug("writeSignalCharacteristic to iOS (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
             }
-        } else {
-            logger.debug("writeSignalCharacteristic, request MTU change (task={},dataLength={},device={})", task, data.length, device);
-            gatt.requestMtu(5 + data.length);
-            // => onMtuChanged => writeCharacteristic => onCharacteristicWrite
+            return;
         }
+        if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
+            device.signalCharacteristicWriteValue = data;
+            device.signalCharacteristicWriteQueue = fragmentDataByMtu(data, defaultMTU);
+            if (writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.failed) {
+                logger.fault("writeSignalCharacteristic to Android failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
+                gatt.disconnect();
+            } else {
+                logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
+                // => onCharacteristicWrite
+            }
+            return;
+        }
+    }
+
+    private enum WriteAndroidSignalCharacteristicResult {
+        moreToWrite, complete, failed
+    }
+
+    private WriteAndroidSignalCharacteristicResult writeAndroidSignalCharacteristic(BluetoothGatt gatt) {
+        final BLEDevice device = database.device(gatt.getDevice());
+        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+        if (signalCharacteristic == null) {
+            logger.fault("writeAndroidSignalCharacteristic failed (device={},reason=missingSignalCharacteristic)", device);
+            return WriteAndroidSignalCharacteristicResult.failed;
+        }
+        if (device.signalCharacteristicWriteQueue == null || device.signalCharacteristicWriteQueue.size() == 0) {
+            logger.debug("writeAndroidSignalCharacteristic completed (device={})", device);
+            return WriteAndroidSignalCharacteristicResult.complete;
+        }
+        logger.debug("writeAndroidSignalCharacteristic (device={},queue={})", device, device.signalCharacteristicWriteQueue.size());
+        final byte[] data = device.signalCharacteristicWriteQueue.poll();
+        signalCharacteristic.setValue(data);
+        signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        if (!gatt.writeCharacteristic(signalCharacteristic)) {
+            logger.fault("writeAndroidSignalCharacteristic failed (device={},reason=writeCharacteristicFailed)", device);
+            return WriteAndroidSignalCharacteristicResult.failed;
+        } else {
+            logger.debug("writeAndroidSignalCharacteristic (device={},remaining={})", device, device.signalCharacteristicWriteQueue.size());
+            return WriteAndroidSignalCharacteristicResult.moreToWrite;
+        }
+    }
+
+    /// Split data into fragments, where each fragment has length <= mtu
+    private Queue<byte[]> fragmentDataByMtu(byte[] data, int mtu) {
+        final Queue<byte[]> fragments = new ConcurrentLinkedQueue<>();
+        for (int i = 0; i < data.length; i += mtu) {
+            final byte[] fragment = new byte[Math.min(mtu, data.length - i)];
+            System.arraycopy(data, i, fragment, 0, fragment.length);
+            fragments.add(fragment);
+        }
+        return fragments;
     }
 
     @Override
@@ -748,8 +800,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         logger.debug("onCharacteristicWrite (device={},status={})", device, bleStatus(status));
         final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
-        final byte actionCode = (signalCharacteristic == null ? 0 : signalDataActionCode(signalCharacteristic.getValue()));
+        if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
+            if (success && writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.moreToWrite) {
+                return;
+            }
+        }
+        final byte actionCode = signalDataActionCode(device.signalCharacteristicWriteValue);
         signalCharacteristic.setValue(new byte[0]);
+        device.signalCharacteristicWriteValue = null;
+        device.signalCharacteristicWriteQueue = null;
         switch (actionCode) {
             case BLESensorConfiguration.signalCharacteristicActionWritePayload:
                 if (success) {

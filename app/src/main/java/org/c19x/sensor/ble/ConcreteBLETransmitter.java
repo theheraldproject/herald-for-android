@@ -366,13 +366,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 return payloadSharingData;
             }
 
-            private byte[] onCharacteristicWriteSignalData(BluetoothDevice device, int requestId, int offset, byte[] value) {
+            private byte[] onCharacteristicWriteSignalData(BluetoothDevice device, byte[] value) {
                 final String key = device.getAddress();
                 final byte[] partialData = (onCharacteristicWriteSignalData.containsKey(key) ? onCharacteristicWriteSignalData.get(key) : new byte[0]);
-                byte[] data = new byte[Math.max(partialData.length, offset + (value == null ? 0 : value.length))];
+                byte[] data = new byte[partialData.length + (value == null ? 0 : value.length)];
                 System.arraycopy(partialData, 0, data, 0, partialData.length);
                 if (value != null) {
-                    System.arraycopy(value, 0, data, offset, value.length);
+                    System.arraycopy(value, 0, data, partialData.length, value.length);
                 }
                 onCharacteristicWriteSignalData.put(key, data);
                 return data;
@@ -429,7 +429,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         (value != null ? value.length : "null")
                 );
                 if (characteristic.getUuid() == BLESensorConfiguration.androidSignalCharacteristicUUID) {
-                    final byte[] data = onCharacteristicWriteSignalData(device, requestId, offset, value);
+                    final byte[] data = onCharacteristicWriteSignalData(device, value);
                     if (data.length > 0) {
                         final byte actionCode = data[0];
                         switch (actionCode) {
