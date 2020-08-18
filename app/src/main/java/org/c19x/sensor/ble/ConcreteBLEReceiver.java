@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
-    private final static long scanProcessDurationMillis = TimeInterval.seconds(10).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(8).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
     private final static int defaultMTU = 20;
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
@@ -488,6 +488,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return;
         }
         final long timeStart = System.currentTimeMillis();
+        int devicesProcessed = 0;
         for (BLEDevice device : pending) {
             // Stop process if exceeded time limit
             final long elapsedTime = System.currentTimeMillis() - timeStart;
@@ -495,16 +496,40 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("processPendingDevices, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, processTimeLimitMillis);
                 break;
             }
+            if (devicesProcessed > 0) {
+                final long predictedElapsedTime = Math.round((elapsedTime / (double) devicesProcessed) * (devicesProcessed + 1));
+                if (predictedElapsedTime > processTimeLimitMillis) {
+                    logger.debug("processPendingDevices, likely to exceed time limit soon (elapsed={}ms,devicesProcessed={},predicted={}ms,limit={}ms)", elapsedTime, devicesProcessed, predictedElapsedTime, processTimeLimitMillis);
+                    break;
+                }
+            }
             // Connect to a device and give it the full time quota to complete pending tasks
             // as once the connection has been initiated, it is wasteful to terminate the
             // connection early to meet overall limit
             final long timeConnect = System.currentTimeMillis();
+            devicesProcessed++;
             logger.debug("processPendingDevices, connect (device={})", device);
             device.state(BLEDeviceState.connecting);
             final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
             if (gatt == null) {
                 logger.fault("processPendingDevices, connect failed (device={})", device);
                 device.state(BLEDeviceState.disconnected);
+                continue;
+            }
+            // Wait for connection
+            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < 4000) {
+                try {
+                    Thread.sleep(200);
+                } catch (Throwable e) {
+                }
+            }
+            if (device.state() != BLEDeviceState.connected) {
+                logger.fault("processPendingDevices, connect timeout (device={})", device);
+                try {
+                    gatt.close();
+                } catch (Throwable e) {
+                    logger.fault("processPendingDevices, close failed (device={})", device, e);
+                }
                 continue;
             }
             // Wait for disconnection
@@ -514,8 +539,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 } catch (Throwable e) {
                 }
             }
-            // Timeout connection if required, and always set state to disconnected
             boolean success = true;
+            // Timeout connection if required, and always set state to disconnected
             if (device.state() != BLEDeviceState.disconnected) {
                 logger.fault("processPendingDevices, timeout (device={})", device);
                 try {
