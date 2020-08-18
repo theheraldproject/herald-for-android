@@ -13,8 +13,6 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.ParcelUuid;
 
 import org.c19x.sensor.PayloadDataSupplier;
@@ -37,6 +35,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -54,8 +54,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final HandlerThread handlerThread = new HandlerThread("Sensor.BLE.ConcreteBLEReceiver");
-    private final Handler handler;
+    private final Timer timer = new Timer("Sensor.BLE.ConcreteBLEReceiver.Timer");
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -96,16 +95,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        handlerThread.start();
-        this.handler = new Handler(handlerThread.getLooper());
+        timer.scheduleAtFixedRate(new ScanLoopTask(), 1000, 1000);
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        handlerThread.quit();
-        super.finalize();
     }
 
     // MARK:- BLEReceiver
@@ -132,67 +124,100 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     @Override
     public void bluetoothStateManager(BluetoothState didUpdateState) {
         logger.debug("didUpdateState (state={})", didUpdateState);
-        if (didUpdateState == BluetoothState.poweredOn) {
-            startScanLoop();
-        }
     }
 
     // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat
 
-    private void startScanLoop() {
-        logger.debug("startScanLoop (on={},off={})", scanOnDurationMillis, scanOffDurationMillis);
-        final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (bluetoothAdapter == null) {
-            logger.fault("startScanLoop denied, Bluetooth adapter unavailable");
-            return;
+    private enum ScanLoopState {
+        scanStarting, scanStarted, scanStopping, scanStopped
+    }
+
+    private class ScanLoopTask extends TimerTask {
+        private long timerLastRunTime = -1;
+
+        private ScanLoopState scanLoopState = ScanLoopState.scanStopped;
+        private long lastStateChangeAt = System.currentTimeMillis();
+
+        private void state(ScanLoopState state) {
+            final long now = System.currentTimeMillis();
+            final long elapsed = now - lastStateChangeAt;
+            logger.debug("timer, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
+            this.scanLoopState = state;
+            lastStateChangeAt = now;
         }
-        final BluetoothLeScanner bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-        if (bluetoothLeScanner == null) {
-            logger.fault("startScanLoop denied, Bluetooth LE scanner unavailable");
-            return;
+
+        private long timeSincelastStateChange() {
+            return System.currentTimeMillis() - lastStateChangeAt;
         }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("startScanLoop denied, Bluetooth is not powered on");
-            return;
+
+        private BluetoothLeScanner bluetoothLeScanner() {
+            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (bluetoothAdapter == null) {
+                logger.fault("ScanLoop denied, Bluetooth adapter unavailable");
+                return null;
+            }
+            final BluetoothLeScanner bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+            if (bluetoothLeScanner == null) {
+                logger.fault("ScanLoop denied, Bluetooth LE scanner unavailable");
+                return null;
+            }
+            return bluetoothLeScanner;
         }
-        if (!startScanLoop.compareAndSet(false, true)) {
-            logger.fault("startScanLoop denied, already started");
-            return;
-        }
-        final long timeStarting = System.currentTimeMillis();
-        logger.debug("startScanLoop, starting");
-        startScan(bluetoothLeScanner, new Callback<Boolean>() {
-            @Override
-            public void accept(Boolean value) {
-                final long timeStarted = System.currentTimeMillis();
-                logger.debug("startScanLoop, started (elapsed={}ms)", (timeStarted - timeStarting));
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        final long timeStopping = System.currentTimeMillis();
-                        logger.debug("startScanLoop, stopping (elapsed={}ms)", (timeStopping - timeStarted));
+
+        public void run() {
+            final long now = System.currentTimeMillis();
+            if (timerLastRunTime == -1) {
+                timerLastRunTime = now;
+                return;
+            }
+            final long elapsed = now - timerLastRunTime;
+            timerLastRunTime = now;
+            logger.debug("timer (elapsed={}ms)", elapsed);
+
+            switch (scanLoopState) {
+                case scanStopped: {
+                    if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
+                        final long period = timeSincelastStateChange();
+                        if (period >= scanOffDurationMillis) {
+                            logger.debug("timer, start scan (stop={}ms)", period);
+                            final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
+                            if (bluetoothLeScanner == null) {
+                                logger.fault("timer, start scan denied, Bluetooth LE scanner unavailable");
+                                return;
+                            }
+                            state(ScanLoopState.scanStarting);
+                            startScan(bluetoothLeScanner, new Callback<Boolean>() {
+                                @Override
+                                public void accept(Boolean value) {
+                                    state(value ? ScanLoopState.scanStarted : ScanLoopState.scanStopped);
+                                }
+                            });
+                        }
+                    }
+                    break;
+                }
+                case scanStarted: {
+                    final long period = timeSincelastStateChange();
+                    if (period >= scanOnDurationMillis) {
+                        logger.debug("timer, stop scan (scan={}ms)", period);
+                        final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
+                        if (bluetoothLeScanner == null) {
+                            logger.fault("timer, stop scan denied, Bluetooth LE scanner unavailable");
+                            return;
+                        }
+                        state(ScanLoopState.scanStopping);
                         stopScan(bluetoothLeScanner, new Callback<Boolean>() {
                             @Override
                             public void accept(Boolean value) {
-                                final long timeStopped = System.currentTimeMillis();
-                                logger.debug("startScanLoop, stopped (elapsed={}ms)", (timeStopped - timeStopping));
-                                handler.postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        final long timeRestart = System.currentTimeMillis();
-                                        logger.debug("startScanLoop, restart (elapsed={}ms)", (timeRestart - timeStopped));
-                                        startScanLoop.set(false);
-                                        logger.debug("startScanLoop (total={}ms)", (timeRestart - timeStarting));
-                                        startScanLoop();
-                                    }
-                                }, scanOffDurationMillis);
+                                state(ScanLoopState.scanStopped);
                             }
                         });
                     }
-                }, scanOnDurationMillis);
+                }
             }
-        });
+        }
     }
+
 
     /// Get BLE scanner and start scan
     private void startScan(final BluetoothLeScanner bluetoothLeScanner, final Callback<Boolean> callback) {
