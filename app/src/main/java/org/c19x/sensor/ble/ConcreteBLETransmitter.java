@@ -524,11 +524,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
-                super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
                 final BLEDevice targetDevice = database.device(device);
                 final TargetIdentifier targetIdentifier = targetDevice.identifier;
                 if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID) {
-                    logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payload)", targetDevice, requestId, offset);
                     final PayloadData payloadData = onCharacteristicReadPayloadData(device, requestId);
                     if (offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
