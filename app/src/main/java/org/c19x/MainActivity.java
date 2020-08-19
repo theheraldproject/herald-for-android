@@ -1,16 +1,20 @@
 package org.c19x;
 
+import android.Manifest;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import org.c19x.sensor.R;
 import org.c19x.sensor.SensorArray;
 import org.c19x.sensor.SensorDelegate;
-import org.c19x.sensor.ble.ConcreteBLESensor;
+import org.c19x.sensor.data.ConcreteSensorLogger;
+import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
@@ -19,6 +23,7 @@ import org.c19x.sensor.datatype.TargetIdentifier;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,8 +31,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
 public class MainActivity extends AppCompatActivity implements SensorDelegate {
-    private PowerManager.WakeLock wakeLock;
+    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "MainActivity");
+    /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
+    private final static int permissionRequestCode = 1249951875;
+    /// Test UI specific data, not required for production solution.
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("MMdd HH:mm:ss");
     private long didDetect = 0, didRead = 0, didMeasure = 0, didShare = 0, didVisit = 0;
     private final Map<TargetIdentifier, String> payloads = new ConcurrentHashMap<>();
@@ -39,27 +49,57 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Ensure app has location permission for Bluetooth
-        ConcreteBLESensor.checkPermissions(this);
+        // REQUIRED : Ensure app has all required permissions
+        requestPermissions();
 
-        // Use wake lock to keep CPU awake
-        //wakeLock = ConcreteBLESensor.getWakeLock(this);
-
-
-        // Gather data from sensor for presentation
+        // Test UI specific process to gather data from sensor for presentation
         AppDelegate.getAppDelegate().sensor.add(this);
-
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
         ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor).payloadData().shortName());
     }
 
-    @Override
-    protected void onDestroy() {
-        if (wakeLock != null) {
-            wakeLock.release();
+    /// REQUIRED : Request application permissions for sensor operation.
+    private void requestPermissions() {
+        // Check and request permissions
+        final List<String> requiredPermissions = new ArrayList<>();
+        requiredPermissions.add(Manifest.permission.BLUETOOTH);
+        requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
+        requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        requiredPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+        requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
+        requiredPermissions.add(Manifest.permission.WAKE_LOCK);
+        final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[requiredPermissions.size()]);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(requiredPermissionsArray, permissionRequestCode);
+        } else {
+            ActivityCompat.requestPermissions(this, requiredPermissionsArray, permissionRequestCode);
         }
-        super.onDestroy();
     }
+
+    /// REQUIRED : Handle permission results.
+    @Override
+    public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == permissionRequestCode) {
+            boolean permissionsGranted = true;
+            for (int i = 0; i < permissions.length; i++) {
+                final String permission = permissions[i];
+                if (grantResults[i] != PERMISSION_GRANTED) {
+                    logger.fault("Permission denied (permission={})", permission);
+                    permissionsGranted = false;
+                } else {
+                    logger.debug("Permission granted (permission={})", permission);
+                }
+            }
+
+            if (!permissionsGranted) {
+                logger.fault("Application does not have all required permissions to start (permissions={})", Arrays.asList(permissions));
+            }
+        }
+    }
+
+    // MARK:- Test UI specific functions, not required in production solution.
 
     private void updateDetection() {
         runOnUiThread(new Runnable() {

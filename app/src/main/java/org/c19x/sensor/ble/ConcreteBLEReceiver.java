@@ -43,13 +43,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
+    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
-    private final static long scanProcessDurationMillis = TimeInterval.seconds(30).millis();
+    private final static long scanRestDurationMillis = TimeInterval.seconds(2).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(60).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long scanProcessConnectTimeoutMillis = TimeInterval.seconds(5).millis();
+    private final static long scanProcessConnectTimeoutMillis = TimeInterval.seconds(10).millis();
     private final static int defaultMTU = 20;
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
@@ -66,13 +67,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            logger.debug("onScanResult (result={})", result);
+            //logger.debug("onScanResult (result={})", result);
             scanResults.add(result);
         }
 
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
-            logger.debug("onBatchScanResults (results=)", results.size());
+            //logger.debug("onBatchScanResults (results=)", results.size());
             for (ScanResult scanResult : results) {
                 onScanResult(0, scanResult);
             }
@@ -131,17 +132,17 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat
 
     private enum ScanLoopState {
-        scanStarting, scanStarted, scanStopping, scanStopped
+        scanStarting, scanStarted, scanStopping, scanStopped, processing, processed
     }
 
     private class ScanLoopTask extends TimerTask {
-        private ScanLoopState scanLoopState = ScanLoopState.scanStopped;
+        private ScanLoopState scanLoopState = ScanLoopState.processed;
         private long lastStateChangeAt = System.currentTimeMillis();
 
         private void state(ScanLoopState state) {
             final long now = System.currentTimeMillis();
             final long elapsed = now - lastStateChangeAt;
-            logger.debug("timer, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
+            logger.debug("ScanLoop, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
             this.scanLoopState = state;
             lastStateChangeAt = now;
         }
@@ -166,11 +167,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         public void run() {
             switch (scanLoopState) {
-                case scanStopped: {
+                case processed: {
                     if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
                         final long period = timeSincelastStateChange();
                         if (period >= scanOffDurationMillis) {
-                            logger.debug("scanLoopTask, start scan (stop={}ms)", period);
+                            logger.debug("scanLoopTask, start scan (process={}ms)", period);
                             final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
                             if (bluetoothLeScanner == null) {
                                 logger.fault("scanLoopTask, start scan denied, Bluetooth LE scanner unavailable");
@@ -204,6 +205,23 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                             }
                         });
                     }
+                    break;
+                }
+                case scanStopped: {
+                    if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
+                        final long period = timeSincelastStateChange();
+                        if (period >= scanRestDurationMillis) {
+                            logger.debug("scanLoopTask, start processing (stop={}ms)", period);
+                            state(ScanLoopState.processing);
+                            processScanResults(new Callback<Boolean>() {
+                                @Override
+                                public void accept(Boolean value) {
+                                    state(ScanLoopState.processed);
+                                }
+                            });
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -255,6 +273,24 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         bluetoothLeScanner.startScan(filter, settings, scanCallback);
     }
 
+    private void processScanResults(final Callback<Boolean> callback) {
+        logger.debug("processScanResults");
+        operationQueue.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    processScanResults();
+                    logger.debug("processScanResults, processed scan results");
+                } catch (Throwable e) {
+                    logger.fault("processScanResults warning, processScanResults error", e);
+                    callback.accept(false);
+                }
+                logger.debug("processScanResults successful");
+                callback.accept(true);
+            }
+        });
+    }
+
     /// Get BLE scanner and stop scan
     private void stopScan(final BluetoothLeScanner bluetoothLeScanner, final Callback<Boolean> callback) {
         logger.debug("stopScan");
@@ -275,12 +311,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.debug("stopScan, cancelled discovery");
                 } catch (Throwable e) {
                     logger.fault("stopScan warning, bluetoothAdapter.cancelDiscovery error", e);
-                }
-                try {
-                    processScanResults();
-                    logger.debug("stopScan, processed scan results");
-                } catch (Throwable e) {
-                    logger.fault("stopScan warning, processScanResults error", e);
                 }
                 logger.debug("stopScan successful");
                 callback.accept(true);
@@ -388,13 +418,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- House keeping tasks
 
-    /// Remove devices that have not been updated for over 20 minutes, as the UUID
+    /// Remove devices that have not been updated for over 15 minutes, as the UUID
     // is likely to have changed after being out of range for over 20 minutes,
     // so it will require discovery. Discovery is fast and cheap on Android.
     private void taskRemoveExpiredDevices() {
         final List<BLEDevice> devicesToRemove = new ArrayList<>();
         for (BLEDevice device : database.devices()) {
-            if (device.timeIntervalSinceLastUpdate().value > TimeInterval.minutes(20).value) {
+            if (device.timeIntervalSinceLastUpdate().value > TimeInterval.minutes(15).value) {
                 devicesToRemove.add(device);
             }
         }

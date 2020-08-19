@@ -66,12 +66,15 @@ public class BLETimer {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final Thread timerThread;
     private final PowerManager powerManager;
+    private final PowerManager.WakeLock wakeLock;
     private long lastTick = 0;
     private Runnable runnable = null;
 
     public BLETimer(Context context) {
         this.context = context;
         powerManager = (PowerManager) context.getSystemService(android.content.Context.POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Sensor:BLETimer");
+        wakeLock.acquire();
         timerThread = new Thread(new Runnable() {
             private long last = 0;
 
@@ -93,6 +96,11 @@ public class BLETimer {
         timerThread.setPriority(Thread.MAX_PRIORITY);
         timerThread.setName("Sensor.BLETimer");
         timerThread.start();
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        wakeLock.release();
     }
 
     public void timerTask(final TimerTask timerTask) {
@@ -130,7 +138,7 @@ public class BLETimer {
         }
     }
 
-    public String powerSource() {
+    private String powerSource() {
         final Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         final int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
         switch (plugged) {

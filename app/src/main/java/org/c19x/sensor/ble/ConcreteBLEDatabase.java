@@ -9,13 +9,15 @@ import org.c19x.sensor.datatype.TargetIdentifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEDatabase");
-    private List<BLEDatabaseDelegate> delegates = new ArrayList<>();
+    private Queue<BLEDatabaseDelegate> delegates = new ConcurrentLinkedQueue<>();
     private Map<TargetIdentifier, BLEDevice> database = new ConcurrentHashMap<>();
     private final ExecutorService queue = Executors.newSingleThreadExecutor();
 

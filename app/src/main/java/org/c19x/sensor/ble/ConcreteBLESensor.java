@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.os.PowerManager;
 
 import androidx.core.app.ActivityCompat;
 
@@ -19,15 +18,15 @@ import org.c19x.sensor.datatype.ProximityMeasurementUnit;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.SensorType;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLESensor");
     private final Context context;
-    private final List<SensorDelegate> delegates = new ArrayList<>();
+    private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final BLEDatabase database = new ConcreteBLEDatabase();
     private final BluetoothStateManager bluetoothStateManager;
     private final BLETransmitter transmitter;
@@ -143,18 +142,6 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
         }
     }
 
-    /**
-     * Keep CPU awake for BLESensor. Add this to Activity. Use WakeLock.release() to release lock when app closes.
-     *
-     * @param activity
-     * @return
-     */
-    public final static PowerManager.WakeLock getWakeLock(final Activity activity) {
-        final PowerManager powerManager = (PowerManager) activity.getSystemService(android.content.Context.POWER_SERVICE);
-        final PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, activity.getClass().getName());
-        wakeLock.acquire();
-        return wakeLock;
-    }
 
 
 }
