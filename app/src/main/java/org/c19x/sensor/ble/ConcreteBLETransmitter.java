@@ -409,14 +409,15 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @Override
-            public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+            public void onConnectionStateChange(BluetoothDevice bluetoothDevice, int status, int newState) {
+                final BLEDevice device = database.device(bluetoothDevice);
                 logger.debug("onConnectionStateChange (device={},status={},newState={})",
                         device, status, onConnectionStateChangeStatusToString(newState));
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    // Register central
-                    database.device(device);
+                    device.state(BLEDeviceState.connected);
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    removeData(device);
+                    device.state(BLEDeviceState.disconnected);
+                    removeData(bluetoothDevice);
                 }
             }
 

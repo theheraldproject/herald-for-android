@@ -35,7 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
-import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -56,7 +55,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final Timer timer = new Timer("Sensor.BLE.ConcreteBLEReceiver.Timer");
+    private final BLETimer timer;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -97,7 +96,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
-        timer.scheduleAtFixedRate(new ScanLoopTask(), 1000, 1000);
+        this.timer = new BLETimer(context);
+        timer.timerTask(new ScanLoopTask());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -135,8 +135,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     }
 
     private class ScanLoopTask extends TimerTask {
-        private long timerLastRunTime = -1;
-
         private ScanLoopState scanLoopState = ScanLoopState.scanStopped;
         private long lastStateChangeAt = System.currentTimeMillis();
 
@@ -167,24 +165,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
 
         public void run() {
-            final long now = System.currentTimeMillis();
-            if (timerLastRunTime == -1) {
-                timerLastRunTime = now;
-                return;
-            }
-            final long elapsed = now - timerLastRunTime;
-            timerLastRunTime = now;
-            logger.debug("timer (elapsed={}ms)", elapsed);
-
             switch (scanLoopState) {
                 case scanStopped: {
                     if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
                         final long period = timeSincelastStateChange();
                         if (period >= scanOffDurationMillis) {
-                            logger.debug("timer, start scan (stop={}ms)", period);
+                            logger.debug("scanLoopTask, start scan (stop={}ms)", period);
                             final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
                             if (bluetoothLeScanner == null) {
-                                logger.fault("timer, start scan denied, Bluetooth LE scanner unavailable");
+                                logger.fault("scanLoopTask, start scan denied, Bluetooth LE scanner unavailable");
                                 return;
                             }
                             state(ScanLoopState.scanStarting);
@@ -201,10 +190,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 case scanStarted: {
                     final long period = timeSincelastStateChange();
                     if (period >= scanOnDurationMillis) {
-                        logger.debug("timer, stop scan (scan={}ms)", period);
+                        logger.debug("scanLoopTask, stop scan (scan={}ms)", period);
                         final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
                         if (bluetoothLeScanner == null) {
-                            logger.fault("timer, stop scan denied, Bluetooth LE scanner unavailable");
+                            logger.fault("scanLoopTask, stop scan denied, Bluetooth LE scanner unavailable");
                             return;
                         }
                         state(ScanLoopState.scanStopping);
@@ -339,15 +328,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
             // Read RSSI from scan result
             device.rssi(new RSSI(scanResult.getRssi()));
-            // Don't ignore devices forever just because
-            // sensor service or characteristic was not
-            // found at some point. Check again every 5
-            // minutes.
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore &&
-                    device.timeIntervalSinceLastOperatingSystemUpdate().value > TimeInterval.minutes(5).value) {
-                logger.debug("didDiscover, switching ignore to unknown (device={})", device);
-                device.operatingSystem(BLEDeviceOperatingSystem.unknown);
-            }
             // Identify operating system from scan record where possible
             // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
             // - Sensor service found + Manufacturer not Apple -> Android
@@ -427,10 +407,21 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     // MARK:- Connect task
 
     private void taskConnect() {
+        correctConnectedForTooLong();
         final Tuple<List<BLEDevice>, List<BLEDevice>> devices = getDevices();
         final List<BLEDevice> disconnected = devices.getB("disconnected");
         final List<BLEDevice> pending = getDevicesWithPendingActions(disconnected);
         connectPendingDevices(pending, scanProcessDurationMillis);
+    }
+
+    /// Connections should not be held for more than 1 minute, likely to have not received onConnectionStateChange callback.
+    private void correctConnectedForTooLong() {
+        for (BLEDevice device : database.devices()) {
+            if (device.state() == BLEDeviceState.connected && device.timeIntervalSinceConnected().value > TimeInterval.minute.value) {
+                logger.debug("taskConnect correct device connection state (device={})", device);
+                device.state(BLEDeviceState.disconnected);
+            }
+        }
     }
 
     /// Separate devices by current connection state
@@ -504,6 +495,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     break;
                 }
             }
+            if (device.state() == BLEDeviceState.connected) {
+                logger.debug("processPendingDevices, connect denied, already connected to transmitter (device={})", device);
+                continue;
+            }
             // Connect to a device and give it the full time quota to complete pending tasks
             // as once the connection has been initiated, it is wasteful to terminate the
             // connection early to meet overall limit
@@ -573,9 +568,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
             gatt.close();
             device.state(BLEDeviceState.disconnected);
-//            if (status != 0) {
-//                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-//            }
+            if (status != 0) {
+                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+            }
         }
     }
 
@@ -619,7 +614,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     private NextTask nextTaskForDevice(final BLEDevice device) {
         // No task for devices marked as .ignore
+        if (device.ignore()) {
+            return NextTask.nothing;
+        }
+        // If marked as ignore but ignore has expired, change to unknown
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
+            logger.debug("nextTaskForDevice, switching ignore to unknown (device={},reason=ignoreExpired)", device);
+            device.operatingSystem(BLEDeviceOperatingSystem.unknown);
+        }
+        // No task for devices marked as receive only (no advert to connect to)
+        if (device.receiveOnly()) {
             return NextTask.nothing;
         }
         // Resolve or confirm operating system by reading payload which

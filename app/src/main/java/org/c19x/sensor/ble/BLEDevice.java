@@ -44,6 +44,9 @@ public class BLEDevice {
     private BLE_TxPower txPower;
     /// Is device receive only?
     private boolean receiveOnly = false;
+    /// Ignore logic
+    private TimeInterval ignoreForDuration = null;
+    private Date ignoreUntil = null;
 
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
@@ -78,6 +81,16 @@ public class BLEDevice {
             max = Math.max(max, rssiLastUpdatedAt.getTime());
         }
         return new Date(max);
+    }
+
+    public TimeInterval timeIntervalSinceConnected() {
+        if (state() != BLEDeviceState.connected) {
+            return TimeInterval.zero;
+        }
+        if (lastConnectedAt == null) {
+            return TimeInterval.zero;
+        }
+        return new TimeInterval((new Date().getTime() - lastConnectedAt.getTime()) / 1000);
     }
 
     public TimeInterval upTime() {
@@ -134,9 +147,11 @@ public class BLEDevice {
     }
 
     public void peripheral(BluetoothDevice peripheral) {
-        this.peripheral = peripheral;
-        lastUpdatedAt = new Date();
-        delegate.device(this, BLEDeviceAttribute.peripheral);
+        if (this.peripheral != peripheral) {
+            this.peripheral = peripheral;
+            lastUpdatedAt = new Date();
+            delegate.device(this, BLEDeviceAttribute.peripheral);
+        }
     }
 
     public BLEDeviceState state() {
@@ -164,7 +179,30 @@ public class BLEDevice {
         this.operatingSystem = operatingSystem;
         lastUpdatedAt = new Date();
         operatingSystemLastUpdatedAt = lastUpdatedAt;
+        // Set ignore timer
+        if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
+            if (ignoreForDuration == null) {
+                ignoreForDuration = TimeInterval.minutes(2);
+            } else if (ignoreForDuration.value < TimeInterval.minutes(16).value) {
+                ignoreForDuration = new TimeInterval(ignoreForDuration.value * 2);
+            }
+            ignoreUntil = new Date(lastUpdatedAt.getTime() + ignoreForDuration.millis());
+        } else {
+            ignoreForDuration = null;
+            ignoreUntil = null;
+        }
         delegate.device(this, BLEDeviceAttribute.operatingSystem);
+    }
+
+    /// Should ignore this device for now.
+    public boolean ignore() {
+        if (ignoreUntil == null) {
+            return false;
+        }
+        if (new Date().getTime() < ignoreUntil.getTime()) {
+            return true;
+        }
+        return false;
     }
 
     public PayloadData payloadData() {
