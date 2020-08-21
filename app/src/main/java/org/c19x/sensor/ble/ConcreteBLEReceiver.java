@@ -23,19 +23,20 @@ import org.c19x.sensor.datatype.BluetoothState;
 import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.RSSI;
+import org.c19x.sensor.datatype.Sample;
 import org.c19x.sensor.datatype.TimeInterval;
 import org.c19x.sensor.datatype.Tuple;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -46,10 +47,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
-    private final static long scanRestDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long scanProcessDurationMillis = TimeInterval.seconds(60).millis();
+    private final static long scanRestDurationMillis = TimeInterval.seconds(1).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(20).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long scanProcessConnectTimeoutMillis = TimeInterval.seconds(10).millis();
+    private final static Sample timeToConnectDevice = new Sample(3000, 10);
     private final static int defaultMTU = 20;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
@@ -135,20 +136,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         scanStarting, scanStarted, scanStopping, scanStopped, processing, processed
     }
 
-    private class ScanLoopTask extends TimerTask {
+    private class ScanLoopTask implements Callback<Long> {
         private ScanLoopState scanLoopState = ScanLoopState.processed;
         private long lastStateChangeAt = System.currentTimeMillis();
 
-        private void state(ScanLoopState state) {
-            final long now = System.currentTimeMillis();
+        private void state(final long now, ScanLoopState state) {
             final long elapsed = now - lastStateChangeAt;
             logger.debug("ScanLoop, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
             this.scanLoopState = state;
             lastStateChangeAt = now;
         }
 
-        private long timeSincelastStateChange() {
-            return System.currentTimeMillis() - lastStateChangeAt;
+        private long timeSincelastStateChange(final long now) {
+            return now - lastStateChangeAt;
         }
 
         private BluetoothLeScanner bluetoothLeScanner() {
@@ -165,11 +165,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return bluetoothLeScanner;
         }
 
-        public void run() {
+        @Override
+        public void accept(final Long now) {
             switch (scanLoopState) {
                 case processed: {
                     if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
-                        final long period = timeSincelastStateChange();
+                        final long period = timeSincelastStateChange(now);
                         if (period >= scanOffDurationMillis) {
                             logger.debug("scanLoopTask, start scan (process={}ms)", period);
                             final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
@@ -177,11 +178,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                                 logger.fault("scanLoopTask, start scan denied, Bluetooth LE scanner unavailable");
                                 return;
                             }
-                            state(ScanLoopState.scanStarting);
+                            state(now, ScanLoopState.scanStarting);
                             startScan(bluetoothLeScanner, new Callback<Boolean>() {
                                 @Override
                                 public void accept(Boolean value) {
-                                    state(value ? ScanLoopState.scanStarted : ScanLoopState.scanStopped);
+                                    state(now, value ? ScanLoopState.scanStarted : ScanLoopState.scanStopped);
                                 }
                             });
                         }
@@ -189,7 +190,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     break;
                 }
                 case scanStarted: {
-                    final long period = timeSincelastStateChange();
+                    final long period = timeSincelastStateChange(now);
                     if (period >= scanOnDurationMillis) {
                         logger.debug("scanLoopTask, stop scan (scan={}ms)", period);
                         final BluetoothLeScanner bluetoothLeScanner = bluetoothLeScanner();
@@ -197,11 +198,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                             logger.fault("scanLoopTask, stop scan denied, Bluetooth LE scanner unavailable");
                             return;
                         }
-                        state(ScanLoopState.scanStopping);
+                        state(now, ScanLoopState.scanStopping);
                         stopScan(bluetoothLeScanner, new Callback<Boolean>() {
                             @Override
                             public void accept(Boolean value) {
-                                state(ScanLoopState.scanStopped);
+                                state(now, ScanLoopState.scanStopped);
                             }
                         });
                     }
@@ -209,14 +210,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
                 case scanStopped: {
                     if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
-                        final long period = timeSincelastStateChange();
+                        final long period = timeSincelastStateChange(now);
                         if (period >= scanRestDurationMillis) {
                             logger.debug("scanLoopTask, start processing (stop={}ms)", period);
-                            state(ScanLoopState.processing);
+                            state(now, ScanLoopState.processing);
                             processScanResults(new Callback<Boolean>() {
                                 @Override
                                 public void accept(Boolean value) {
-                                    state(ScanLoopState.processed);
+                                    state(now, ScanLoopState.processed);
                                 }
                             });
                         }
@@ -327,7 +328,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Identify devices discovered in last scan
         final Set<BLEDevice> devices = didDiscover();
         taskRemoveExpiredDevices();
-        taskConnect();
+        taskConnect(devices);
         final long t1 = System.currentTimeMillis();
         logger.debug("processScanResults (results={},devices={},elapsed={}ms)", scanResults.size(), devices.size(), (t1 - t0));
     }
@@ -436,9 +437,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- Connect task
 
-    private void taskConnect() {
+    private void taskConnect(Collection<BLEDevice> discovered) {
         correctConnectedForTooLong();
-        final Tuple<List<BLEDevice>, List<BLEDevice>> devices = getDevices();
+        final Tuple<List<BLEDevice>, List<BLEDevice>> devices = getDevices(discovered);
         final List<BLEDevice> disconnected = devices.getB("disconnected");
         final List<BLEDevice> pending = getDevicesWithPendingActions(disconnected);
         connectPendingDevices(pending, scanProcessDurationMillis);
@@ -455,8 +456,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     }
 
     /// Separate devices by current connection state
-    private Tuple<List<BLEDevice>, List<BLEDevice>> getDevices() {
-        final List<BLEDevice> devices = database.devices();
+    private Tuple<List<BLEDevice>, List<BLEDevice>> getDevices(Collection<BLEDevice> devices) {
         final List<BLEDevice> connected = new ArrayList<>(devices.size());
         final List<BLEDevice> disconnected = new ArrayList<>(devices.size());
         for (BLEDevice device : devices) {
@@ -481,23 +481,64 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     /// Establish pending connections for disconnected devices
     private List<BLEDevice> getDevicesWithPendingActions(List<BLEDevice> disconnected) {
-        final List<BLEDevice> pending = new ArrayList<>(disconnected.size());
+        final List<BLEDevice> writeRSSI = new ArrayList<>();
+        final List<BLEDevice> readPayload = new ArrayList<>();
+        final List<BLEDevice> otherTasks = new ArrayList<>();
         for (BLEDevice device : disconnected) {
-            if (nextTaskForDevice(device) != NextTask.nothing) {
-                pending.add(device);
+            final NextTask task = nextTaskForDevice(device);
+            if (task == NextTask.writeRSSI) {
+                writeRSSI.add(device);
+            } else if (task == NextTask.readPayload) {
+                readPayload.add(device);
+            } else if (nextTaskForDevice(device) != NextTask.nothing) {
+                otherTasks.add(device);
             }
         }
-        Collections.sort(pending, new Comparator<BLEDevice>() {
+        Collections.sort(writeRSSI, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalSinceConnected().value, d0.timeIntervalSinceConnected().value);
+            }
+        });
+        Collections.sort(readPayload, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.timeIntervalSinceConnected().value, d0.timeIntervalSinceConnected().value);
+            }
+        });
+        Collections.sort(otherTasks, new Comparator<BLEDevice>() {
             @Override
             public int compare(BLEDevice d0, BLEDevice d1) {
                 return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
             }
         });
+        final List<BLEDevice> pending = new ArrayList<>(disconnected.size());
+        pending.addAll(writeRSSI);
+        pending.addAll(readPayload);
+        pending.addAll(otherTasks);
+        // De-duplicate by payload
+        for (int i = pending.size(); i-- > 0; ) {
+            final BLEDevice device = pending.get(i);
+            if (device.payloadData() == null) {
+                continue;
+            }
+            for (int j = i - 1; j-- > 0; ) {
+                final BLEDevice higherPriorityDevice = pending.get(j);
+                if (higherPriorityDevice.payloadData() == null) {
+                    continue;
+                }
+                if (higherPriorityDevice.payloadData().equals(device.payloadData())) {
+                    pending.remove(i);
+                    break;
+                }
+            }
+        }
         if (pending.size() > 0) {
             logger.debug("taskConnect pending summary (devices={})", pending.size());
             for (int i = 0; i < pending.size(); i++) {
                 final BLEDevice device = pending.get(i);
-                logger.debug("taskConnect pending, queue (priority={},device={},timeSinceLastRequest={}})", i + 1, device, device.timeIntervalSinceLastConnectRequestedAt());
+                final NextTask nextTask = nextTaskForDevice(device);
+                logger.debug("taskConnect pending, queue (priority={},device={},task={},timeSinceLastRequest={}})", i + 1, device, nextTask, device.timeIntervalSinceLastConnectRequestedAt());
             }
         }
         return pending;
@@ -534,7 +575,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // connection early to meet overall limit
             final long timeConnect = System.currentTimeMillis();
             devicesProcessed++;
-            logger.debug("processPendingDevices, connect (device={})", device);
+            final long connectTimeout = Math.min((long) Math.ceil(timeToConnectDevice.max()), 10000);
+            logger.debug("processPendingDevices, connect (device={},timeout={},statistics={})", device, connectTimeout, timeToConnectDevice);
             device.state(BLEDeviceState.connecting);
             final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
             if (gatt == null) {
@@ -543,7 +585,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 continue;
             }
             // Wait for connection
-            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < scanProcessConnectTimeoutMillis) {
+            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < connectTimeout) {
                 try {
                     Thread.sleep(200);
                 } catch (Throwable e) {
@@ -557,6 +599,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.fault("processPendingDevices, close failed (device={})", device, e);
                 }
                 continue;
+            } else {
+                final long connectElapsed = System.currentTimeMillis() - timeConnect;
+                timeToConnectDevice.add(connectElapsed);
+                logger.debug("processPendingDevices, connected (device={},elapsed={}ms)", device, connectElapsed);
             }
             // Wait for disconnection
             while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < processTimeLimitMillis) {
@@ -601,6 +647,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (status != 0) {
                 device.operatingSystem(BLEDeviceOperatingSystem.ignore);
             }
+        } else {
+            logger.debug("onConnectionStateChange (device={},status={},state={})", device, bleStatus(status), bleState(newState));
         }
     }
 
@@ -669,8 +717,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Write payload, rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
             // Write payload data as top priority
-            if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never ||
-                    (device.operatingSystem() == BLEDeviceOperatingSystem.android && device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value)) {
+            if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never) {
                 return NextTask.writePayload;
             }
             // Write payload sharing data to iOS device if there is data to be shared (up to once every 2.5 minutes)
@@ -680,7 +727,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return NextTask.writePayloadSharing;
             }
             // Write RSSI as frequently as possible
-            if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.seconds(15).value) {
+            if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.seconds(30).value) {
                 return NextTask.writeRSSI;
             }
         }
@@ -899,66 +946,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 break;
         }
         nextTask(gatt);
-    }
-
-    @Override
-    public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
-        final BLEDevice device = database.device(gatt.getDevice());
-        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
-        final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
-        final byte actionCode = (signalCharacteristic == null ? 0 : signalDataActionCode(signalCharacteristic.getValue()));
-        final byte[] data = (signalCharacteristic.getValue() == null ? new byte[0] : signalCharacteristic.getValue());
-        NextTask nextTask = NextTask.nothing;
-        switch (actionCode) {
-            case BLESensorConfiguration.signalCharacteristicActionWritePayload: {
-                nextTask = NextTask.writePayload;
-                break;
-            }
-            case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing: {
-                nextTask = NextTask.writePayloadSharing;
-                break;
-            }
-            case BLESensorConfiguration.signalCharacteristicActionWriteRSSI: {
-                nextTask = NextTask.writeRSSI;
-                break;
-            }
-        }
-        logger.debug("onMtuChanged (task={},device={},status={},mtu={})", nextTask, device, bleStatus(status), mtu);
-        if (nextTask == NextTask.nothing) {
-            nextTask(gatt);
-            return;
-        }
-        if (!gatt.writeCharacteristic(device.signalCharacteristic())) {
-            logger.fault("onMtuChanged failed (task={},device={},reason=writeCharacteristicFailed)", nextTask, device);
-            gatt.disconnect();
-            return;
-        }
-        if (!success) {
-            final long longWriteTimeout = 200 * (data.length / defaultMTU);
-            logger.debug("onMtuChanged denied, long write without response (task={},device={},timeout={})", nextTask, device, longWriteTimeout);
-            try {
-                Thread.sleep(longWriteTimeout);
-            } catch (Throwable e) {
-            }
-            // Assuming success
-            switch (nextTask) {
-                case writePayload: {
-                    device.registerWritePayload();
-                    break;
-                }
-                case writePayloadSharing: {
-                    device.registerWritePayloadSharing();
-                    break;
-                }
-                case writeRSSI: {
-                    device.registerWriteRssi();
-                    break;
-                }
-            }
-            // onCharacteristicWrite won't be called
-            nextTask(gatt);
-            return;
-        }
     }
 
     // MARK:- Signal characteristic data bundles

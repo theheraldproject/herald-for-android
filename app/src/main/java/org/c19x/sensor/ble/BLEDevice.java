@@ -28,10 +28,6 @@ public class BLEDevice {
     private BLEDeviceState state = BLEDeviceState.disconnected;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
-    /// Device operating system last update timestamp, this is used to switch .ignore to .unknown at regular intervals
-    // such that Apple devices not advertising the sensor service don't waste too much processing time, yet not completely
-    // ignored forever, as the sensor service may become available later.
-    private Date operatingSystemLastUpdatedAt = null;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     private PayloadData payloadData;
     /// Payload data last update timestamp, this is used to determine what needs to be shared with peers.
@@ -83,6 +79,14 @@ public class BLEDevice {
         return new Date(max);
     }
 
+    public Date lastConnectRequestedAt() {
+        return lastConnectRequestedAt;
+    }
+
+    public Date lastConnectedAt() {
+        return lastConnectedAt;
+    }
+
     public TimeInterval timeIntervalSinceConnected() {
         if (state() != BLEDeviceState.connected) {
             return TimeInterval.zero;
@@ -116,11 +120,6 @@ public class BLEDevice {
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     public TimeInterval timeIntervalSinceLastUpdate() {
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
-    }
-
-    /// Time interval since last operating system update, this is used to invalidate ignored Apple devices
-    public TimeInterval timeIntervalSinceLastOperatingSystemUpdate() {
-        return new TimeInterval((new Date().getTime() - operatingSystemLastUpdatedAt.getTime()) / 1000);
     }
 
     /// Time interval between last connection request, this is used to priortise disconnections
@@ -178,7 +177,6 @@ public class BLEDevice {
     public void operatingSystem(BLEDeviceOperatingSystem operatingSystem) {
         this.operatingSystem = operatingSystem;
         lastUpdatedAt = new Date();
-        operatingSystemLastUpdatedAt = lastUpdatedAt;
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
             if (ignoreForDuration == null) {

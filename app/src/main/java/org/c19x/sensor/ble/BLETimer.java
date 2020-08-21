@@ -9,11 +9,12 @@ import android.os.PowerManager;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
+import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Sample;
 
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 ///
 
@@ -67,7 +68,7 @@ public class BLETimer {
     private final Thread timerThread;
     private final PowerManager powerManager;
     private final PowerManager.WakeLock wakeLock;
-    private long lastTick = 0;
+    private final AtomicLong now = new AtomicLong(0);
     private Runnable runnable = null;
 
     public BLETimer(Context context) {
@@ -81,13 +82,16 @@ public class BLETimer {
             @Override
             public void run() {
                 while (true) {
-                    final long now = System.currentTimeMillis();
-                    if (now - last >= 1000) {
-                        runTimerTask();
-                        last = now;
+                    now.set(System.currentTimeMillis());
+                    final long elapsed = now.get() - last;
+                    if (elapsed >= 1000) {
+                        if (last != 0) {
+                            runTimerTask(elapsed);
+                        }
+                        last = now.get();
                     }
                     try {
-                        Thread.sleep(200);
+                        Thread.sleep(500);
                     } catch (Throwable e) {
                     }
                 }
@@ -103,27 +107,22 @@ public class BLETimer {
         wakeLock.release();
     }
 
-    public void timerTask(final TimerTask timerTask) {
+    public void timerTask(final Callback<Long> timerTask) {
         runnable = new Runnable() {
             @Override
             public void run() {
-                timerTask.run();
+                timerTask.accept(now.get());
             }
         };
     }
 
-    private void runTimerTask() {
-        final long now = System.currentTimeMillis();
-        if (lastTick != 0) {
-            final long elapsed = now - lastTick;
-            sample.add(elapsed);
-            final String idleMode = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? Boolean.toString(powerManager.isDeviceIdleMode()) : "N/A");
-            logger.debug("timer (elapsed={},count={},mean={},sd={},min={},max={},idle={},powerSaving={},powerSource={})",
-                    elapsed, sample.count(), round(sample.mean()), round(sample.standardDeviation()),
-                    round(sample.min()), round(sample.max()),
-                    idleMode, powerManager.isPowerSaveMode(), powerSource());
-        }
-        lastTick = now;
+    private void runTimerTask(final long elapsed) {
+        sample.add(elapsed);
+        final String idleMode = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? Boolean.toString(powerManager.isDeviceIdleMode()) : "N/A");
+        logger.debug("timer (elapsed={},count={},mean={},sd={},min={},max={},idle={},powerSaving={},powerSource={})",
+                elapsed, sample.count(), round(sample.mean()), round(sample.standardDeviation()),
+                round(sample.min()), round(sample.max()),
+                idleMode, powerManager.isPowerSaveMode(), powerSource());
         if (runnable == null) {
             return;
         }

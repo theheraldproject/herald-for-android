@@ -8,6 +8,12 @@ public class Sample {
     public Sample() {
     }
 
+    public Sample(final double x, final int n) {
+        for (int i = n; i-- > 0; ) {
+            add(x);
+        }
+    }
+
     public void add(final double x) {
         final long n1 = n;
         n++;
@@ -47,6 +53,16 @@ public class Sample {
         }
     }
 
+    public Double upperBound(final double standardDeviations) {
+        final Double mean = mean();
+        final Double sd = standardDeviation();
+        if (mean != null && sd != null) {
+            return mean + standardDeviations * sd;
+        } else {
+            return null;
+        }
+    }
+
     public Double min() {
         if (n > 0) {
             return min;
@@ -61,5 +77,10 @@ public class Sample {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "[count=" + count() + ",mean=" + mean() + ",sd=" + standardDeviation() + ",min=" + min() + ",max=" + max() + "]";
     }
 }
