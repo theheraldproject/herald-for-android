@@ -4,6 +4,7 @@ import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
+import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -59,5 +60,9 @@ public class ContactLog implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
         textFile.write(timestamp() + "," + sensor.name() + ",,,,,,5," + csv(didVisit.description()));
+    }
+
+    @Override
+    public void sensor(SensorType sensor, SensorError didFail) {
     }
 }

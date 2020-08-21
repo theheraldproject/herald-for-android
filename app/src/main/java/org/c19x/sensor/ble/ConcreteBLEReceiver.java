@@ -24,15 +24,13 @@ import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.Sample;
+import org.c19x.sensor.datatype.SensorError;
+import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TimeInterval;
-import org.c19x.sensor.datatype.Tuple;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
@@ -48,9 +46,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
     private final static long scanRestDurationMillis = TimeInterval.seconds(1).millis();
-    private final static long scanProcessDurationMillis = TimeInterval.seconds(20).millis();
+    private final static long scanProcessDurationMillis = TimeInterval.seconds(60).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
-    private final static Sample timeToConnectDevice = new Sample(3000, 10);
+    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(12).millis();
+    private final static Sample timeToConnectDevice = new Sample();
+    private final static Sample timeToProcessDevice = new Sample();
     private final static int defaultMTU = 20;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
@@ -84,6 +84,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         public void onScanFailed(int errorCode) {
             logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
             super.onScanFailed(errorCode);
+            final SensorError sensorError = new SensorError("BLEReceiver.onScanFailed(" + onScanFailedErrorCodeToString(errorCode) + ")");
+            for (SensorDelegate delegate : delegates) {
+                delegate.sensor(SensorType.BLE, sensorError);
+            }
         }
     };
     private BluetoothLeScanner bluetoothLeScanner;
@@ -326,11 +330,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final long t0 = System.currentTimeMillis();
         logger.debug("processScanResults (results={})", scanResults.size());
         // Identify devices discovered in last scan
-        final Set<BLEDevice> devices = didDiscover();
+        final List<BLEDevice> didDiscover = didDiscover();
         taskRemoveExpiredDevices();
-        taskConnect(devices);
+        taskCorrectConnectionStatus();
+        taskConnect(didDiscover);
         final long t1 = System.currentTimeMillis();
-        logger.debug("processScanResults (results={},devices={},elapsed={}ms)", scanResults.size(), devices.size(), (t1 - t0));
+        logger.debug("processScanResults (results={},devices={},elapsed={}ms)", scanResults.size(), didDiscover.size(), (t1 - t0));
     }
 
     // MARK:- didDiscover
@@ -339,9 +344,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
      * Process scan results to ...
      * 1. Create BLEDevice from scan result for new devices
      * 2. Read RSSI
-     * 3. Identify operating system
+     * 3. Identify operating system where possible
      */
-    private Set<BLEDevice> didDiscover() {
+    private List<BLEDevice> didDiscover() {
         // Take current copy of concurrently modifiable scan results
         final List<ScanResult> scanResultList = new ArrayList<>(scanResults.size());
         while (scanResults.size() > 0) {
@@ -350,12 +355,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         // Process scan results and return devices created/updated in scan results
         logger.debug("didDiscover (scanResults={})", scanResultList.size());
-        final Set<BLEDevice> devices = new HashSet<>();
+        final Set<BLEDevice> deviceSet = new HashSet<>();
+        final List<BLEDevice> devices = new ArrayList<>();
         for (ScanResult scanResult : scanResultList) {
             final BLEDevice device = database.device(scanResult.getDevice());
             device.registerDiscovery();
-            if (devices.add(device)) {
+            if (deviceSet.add(device)) {
                 logger.debug("didDiscover (device={})", device);
+                devices.add(device);
             }
             // Read RSSI from scan result
             device.rssi(new RSSI(scanResult.getRssi()));
@@ -435,201 +442,112 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    // MARK:- Connect task
-
-    private void taskConnect(Collection<BLEDevice> discovered) {
-        correctConnectedForTooLong();
-        final Tuple<List<BLEDevice>, List<BLEDevice>> devices = getDevices(discovered);
-        final List<BLEDevice> disconnected = devices.getB("disconnected");
-        final List<BLEDevice> pending = getDevicesWithPendingActions(disconnected);
-        connectPendingDevices(pending, scanProcessDurationMillis);
-    }
-
     /// Connections should not be held for more than 1 minute, likely to have not received onConnectionStateChange callback.
-    private void correctConnectedForTooLong() {
+    private void taskCorrectConnectionStatus() {
         for (BLEDevice device : database.devices()) {
             if (device.state() == BLEDeviceState.connected && device.timeIntervalSinceConnected().value > TimeInterval.minute.value) {
-                logger.debug("taskConnect correct device connection state (device={})", device);
+                logger.debug("taskCorrectConnectionStatus (device={})", device);
                 device.state(BLEDeviceState.disconnected);
             }
         }
     }
 
-    /// Separate devices by current connection state
-    private Tuple<List<BLEDevice>, List<BLEDevice>> getDevices(Collection<BLEDevice> devices) {
-        final List<BLEDevice> connected = new ArrayList<>(devices.size());
-        final List<BLEDevice> disconnected = new ArrayList<>(devices.size());
-        for (BLEDevice device : devices) {
-            if (device.peripheral() == null) {
-                continue;
-            }
-            if (device.state() == BLEDeviceState.connected) {
-                connected.add(device);
-            } else if (device.state() == BLEDeviceState.disconnected) {
-                disconnected.add(device);
-            }
-        }
-        logger.debug("taskConnect status summary (connected={},disconnected={}})", connected.size(), disconnected.size());
-        for (BLEDevice device : connected) {
-            logger.debug("taskConnect status connected (device={},upTime={})", device, device.upTime());
-        }
-        for (BLEDevice device : disconnected) {
-            logger.debug("taskConnect status disconnected (device={},downTime={})", device, device.downTime());
-        }
-        return new Tuple<>("connected", connected, "disconnected", disconnected);
-    }
 
-    /// Establish pending connections for disconnected devices
-    private List<BLEDevice> getDevicesWithPendingActions(List<BLEDevice> disconnected) {
-        final List<BLEDevice> writeRSSI = new ArrayList<>();
-        final List<BLEDevice> readPayload = new ArrayList<>();
-        final List<BLEDevice> otherTasks = new ArrayList<>();
-        for (BLEDevice device : disconnected) {
-            final NextTask task = nextTaskForDevice(device);
-            if (task == NextTask.writeRSSI) {
-                writeRSSI.add(device);
-            } else if (task == NextTask.readPayload) {
-                readPayload.add(device);
-            } else if (nextTaskForDevice(device) != NextTask.nothing) {
-                otherTasks.add(device);
-            }
-        }
-        Collections.sort(writeRSSI, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceConnected().value, d0.timeIntervalSinceConnected().value);
-            }
-        });
-        Collections.sort(readPayload, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceConnected().value, d0.timeIntervalSinceConnected().value);
-            }
-        });
-        Collections.sort(otherTasks, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.timeIntervalSinceLastConnectRequestedAt().value, d0.timeIntervalSinceLastConnectRequestedAt().value);
-            }
-        });
-        final List<BLEDevice> pending = new ArrayList<>(disconnected.size());
-        pending.addAll(writeRSSI);
-        pending.addAll(readPayload);
-        pending.addAll(otherTasks);
-        // De-duplicate by payload
-        for (int i = pending.size(); i-- > 0; ) {
-            final BLEDevice device = pending.get(i);
-            if (device.payloadData() == null) {
-                continue;
-            }
-            for (int j = i - 1; j-- > 0; ) {
-                final BLEDevice higherPriorityDevice = pending.get(j);
-                if (higherPriorityDevice.payloadData() == null) {
-                    continue;
-                }
-                if (higherPriorityDevice.payloadData().equals(device.payloadData())) {
-                    pending.remove(i);
-                    break;
-                }
-            }
-        }
-        if (pending.size() > 0) {
-            logger.debug("taskConnect pending summary (devices={})", pending.size());
-            for (int i = 0; i < pending.size(); i++) {
-                final BLEDevice device = pending.get(i);
-                final NextTask nextTask = nextTaskForDevice(device);
-                logger.debug("taskConnect pending, queue (priority={},device={},task={},timeSinceLastRequest={}})", i + 1, device, nextTask, device.timeIntervalSinceLastConnectRequestedAt());
-            }
-        }
-        return pending;
-    }
+    // MARK:- Connect task
 
-    /// Initiate connection to pending devices, aim to complete within
-    // given time limit but avoid early termination of started tasks
-    private void connectPendingDevices(List<BLEDevice> pending, long processTimeLimitMillis) {
-        if (pending.size() == 0) {
-            return;
-        }
+    private void taskConnect(final List<BLEDevice> discovered) {
+        // Clever connection prioritisation is pointless here as devices
+        // like the Samsung A10 and A20 changes mac address on every scan
+        // call, so optimising new device handling is more effective.
         final long timeStart = System.currentTimeMillis();
         int devicesProcessed = 0;
-        for (BLEDevice device : pending) {
+        for (BLEDevice device : discovered) {
             // Stop process if exceeded time limit
             final long elapsedTime = System.currentTimeMillis() - timeStart;
-            if (elapsedTime > processTimeLimitMillis) {
-                logger.debug("processPendingDevices, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, processTimeLimitMillis);
+            if (elapsedTime >= scanProcessDurationMillis) {
+                logger.debug("taskConnect, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, scanProcessDurationMillis);
                 break;
             }
             if (devicesProcessed > 0) {
                 final long predictedElapsedTime = Math.round((elapsedTime / (double) devicesProcessed) * (devicesProcessed + 1));
-                if (predictedElapsedTime > processTimeLimitMillis) {
-                    logger.debug("processPendingDevices, likely to exceed time limit soon (elapsed={}ms,devicesProcessed={},predicted={}ms,limit={}ms)", elapsedTime, devicesProcessed, predictedElapsedTime, processTimeLimitMillis);
+                if (predictedElapsedTime > scanProcessDurationMillis) {
+                    logger.debug("taskConnect, likely to exceed time limit soon (elapsed={}ms,devicesProcessed={},predicted={}ms,limit={}ms)", elapsedTime, devicesProcessed, predictedElapsedTime, scanProcessDurationMillis);
                     break;
                 }
             }
-            if (device.state() == BLEDeviceState.connected) {
-                logger.debug("processPendingDevices, connect denied, already connected to transmitter (device={})", device);
+            if (nextTaskForDevice(device) == NextTask.nothing) {
+                logger.debug("taskConnect, no pending action (device={})", device);
                 continue;
             }
-            // Connect to a device and give it the full time quota to complete pending tasks
-            // as once the connection has been initiated, it is wasteful to terminate the
-            // connection early to meet overall limit
-            final long timeConnect = System.currentTimeMillis();
+            taskConnectDevice(device);
             devicesProcessed++;
-            final long connectTimeout = Math.min((long) Math.ceil(timeToConnectDevice.max()), 10000);
-            logger.debug("processPendingDevices, connect (device={},timeout={},statistics={})", device, connectTimeout, timeToConnectDevice);
-            device.state(BLEDeviceState.connecting);
-            final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
-            if (gatt == null) {
-                logger.fault("processPendingDevices, connect failed (device={})", device);
-                device.state(BLEDeviceState.disconnected);
-                continue;
-            }
-            // Wait for connection
-            while (device.state() != BLEDeviceState.connected && (System.currentTimeMillis() - timeConnect) < connectTimeout) {
-                try {
-                    Thread.sleep(200);
-                } catch (Throwable e) {
-                }
-            }
-            if (device.state() != BLEDeviceState.connected) {
-                logger.fault("processPendingDevices, connect timeout (device={})", device);
-                try {
-                    gatt.close();
-                } catch (Throwable e) {
-                    logger.fault("processPendingDevices, close failed (device={})", device, e);
-                }
-                continue;
-            } else {
-                final long connectElapsed = System.currentTimeMillis() - timeConnect;
-                timeToConnectDevice.add(connectElapsed);
-                logger.debug("processPendingDevices, connected (device={},elapsed={}ms)", device, connectElapsed);
-            }
-            // Wait for disconnection
-            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < processTimeLimitMillis) {
-                try {
-                    Thread.sleep(200);
-                } catch (Throwable e) {
-                }
-            }
-            boolean success = true;
-            // Timeout connection if required, and always set state to disconnected
-            if (device.state() != BLEDeviceState.disconnected) {
-                logger.fault("processPendingDevices, timeout (device={})", device);
-                try {
-                    gatt.close();
-                } catch (Throwable e) {
-                    logger.fault("processPendingDevices, close failed (device={})", device, e);
-                }
-                success = false;
-            }
+        }
+    }
+
+    private void taskConnectDevice(final BLEDevice device) {
+        if (device.state() == BLEDeviceState.connected) {
+            logger.debug("taskConnectDevice, already connected to transmitter (device={})", device);
+            return;
+        }
+        // Connect (timeout at 95% = 2 SD)
+        final long timeConnect = System.currentTimeMillis();
+        logger.debug("taskConnectDevice, connect (device={})", device);
+        device.state(BLEDeviceState.connecting);
+        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
+        if (gatt == null) {
+            logger.fault("taskConnectDevice, connect failed (device={})", device);
             device.state(BLEDeviceState.disconnected);
-            final long timeDisconnect = System.currentTimeMillis();
-            if (success) {
-                logger.debug("processPendingDevices, disconnect (success=true,elapsed={}ms,device={})", (timeDisconnect - timeConnect), device);
-            } else {
-                logger.fault("processPendingDevices, disconnect (success=false,elapsed={}ms,device={})", (timeDisconnect - timeConnect), device);
+            return;
+        }
+        // Wait for connection
+        while (device.state() != BLEDeviceState.connected && device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < timeToConnectDeviceLimitMillis) {
+            try {
+                Thread.sleep(200);
+            } catch (Throwable e) {
             }
         }
+        if (device.state() != BLEDeviceState.connected) {
+            logger.fault("taskConnectDevice, connect timeout (device={})", device);
+            try {
+                gatt.close();
+            } catch (Throwable e) {
+                logger.fault("taskConnectDevice, close failed (device={})", device, e);
+            }
+            return;
+        } else {
+            final long connectElapsed = System.currentTimeMillis() - timeConnect;
+            // Add sample to adaptive connection timeout
+            timeToConnectDevice.add(connectElapsed);
+            logger.debug("taskConnectDevice, connected (device={},elapsed={}ms,statistics={})", device, connectElapsed, timeToConnectDevice);
+        }
+        // Wait for disconnection
+        while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < scanProcessDurationMillis) {
+            try {
+                Thread.sleep(500);
+            } catch (Throwable e) {
+            }
+        }
+        boolean success = true;
+        // Timeout connection if required, and always set state to disconnected
+        if (device.state() != BLEDeviceState.disconnected) {
+            logger.fault("taskConnectDevice, disconnect timeout (device={})", device);
+            try {
+                gatt.close();
+            } catch (Throwable e) {
+                logger.fault("taskConnectDevice, close failed (device={})", device, e);
+            }
+            success = false;
+        }
+        device.state(BLEDeviceState.disconnected);
+        final long timeDisconnect = System.currentTimeMillis();
+        final long timeElapsed = (timeDisconnect - timeConnect);
+        if (success) {
+            timeToProcessDevice.add(timeElapsed);
+            logger.debug("taskConnectDevice, complete (success=true,device={},elapsed={}ms,statistics={})", device, timeElapsed, timeToProcessDevice);
+        } else {
+            logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
+        }
+
     }
 
     // MARK:- BluetoothStateManagerDelegate

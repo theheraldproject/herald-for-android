@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
-import android.os.Build;
 import android.os.PowerManager;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
@@ -118,11 +117,11 @@ public class BLETimer {
 
     private void runTimerTask(final long elapsed) {
         sample.add(elapsed);
-        final String idleMode = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? Boolean.toString(powerManager.isDeviceIdleMode()) : "N/A");
-        logger.debug("timer (elapsed={},count={},mean={},sd={},min={},max={},idle={},powerSaving={},powerSource={})",
-                elapsed, sample.count(), round(sample.mean()), round(sample.standardDeviation()),
-                round(sample.min()), round(sample.max()),
-                idleMode, powerManager.isPowerSaveMode(), powerSource());
+//        final String idleMode = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? Boolean.toString(powerManager.isDeviceIdleMode()) : "N/A");
+//        logger.debug("timer (elapsed={},count={},mean={},sd={},min={},max={},idle={},powerSaving={},powerSource={})",
+//                elapsed, sample.count(), round(sample.mean()), round(sample.standardDeviation()),
+//                round(sample.min()), round(sample.max()),
+//                idleMode, powerManager.isPowerSaveMode(), powerSource());
         if (runnable == null) {
             return;
         }

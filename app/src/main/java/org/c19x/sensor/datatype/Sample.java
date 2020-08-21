@@ -14,7 +14,7 @@ public class Sample {
         }
     }
 
-    public void add(final double x) {
+    public synchronized void add(final double x) {
         final long n1 = n;
         n++;
         final double delta = x - m1;

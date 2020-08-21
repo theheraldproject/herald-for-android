@@ -4,6 +4,7 @@ import android.Manifest;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -18,6 +19,7 @@ import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
+import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -193,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         final String payloadShortName = payloads.get(fromTarget);
         if (payloadShortName != null) {
             didReadPayloads.put(payloadShortName, new Date());
+            updateDetection();
         }
         runOnUiThread(new Runnable() {
             @Override
@@ -213,6 +216,20 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
             public void run() {
                 final TextView textView = findViewById(R.id.didVisit);
                 textView.setText(text);
+            }
+        });
+    }
+
+    @Override
+    public void sensor(SensorType sensor, SensorError didFail) {
+        final String timestamp = dateFormatter.format(new Date());
+        final String text = "ERROR: " + didFail.description + " (" + timestamp + ")";
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final TextView textView = findViewById(R.id.error);
+                textView.setText(text);
+                textView.setVisibility(View.VISIBLE);
             }
         });
     }
