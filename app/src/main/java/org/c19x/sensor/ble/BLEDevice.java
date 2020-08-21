@@ -79,14 +79,6 @@ public class BLEDevice {
         return new Date(max);
     }
 
-    public Date lastConnectRequestedAt() {
-        return lastConnectRequestedAt;
-    }
-
-    public Date lastConnectedAt() {
-        return lastConnectedAt;
-    }
-
     public TimeInterval timeIntervalSinceConnected() {
         if (state() != BLEDeviceState.connected) {
             return TimeInterval.zero;
