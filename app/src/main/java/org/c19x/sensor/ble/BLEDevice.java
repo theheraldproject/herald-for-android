@@ -180,9 +180,9 @@ public class BLEDevice {
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
             if (ignoreForDuration == null) {
-                ignoreForDuration = TimeInterval.minutes(5);
-            } else if (ignoreForDuration.value < TimeInterval.minutes(20).value) {
-                ignoreForDuration = new TimeInterval(Math.round(ignoreForDuration.value * 1.5));
+                ignoreForDuration = TimeInterval.minute;
+            } else if (ignoreForDuration.value < TimeInterval.minutes(3).value) {
+                ignoreForDuration = new TimeInterval(Math.round(ignoreForDuration.value * 1.2));
             }
             ignoreUntil = new Date(lastUpdatedAt.getTime() + ignoreForDuration.millis());
         } else {
