@@ -26,6 +26,7 @@ import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.Sample;
 import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
+import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.TimeInterval;
 
 import java.nio.ByteBuffer;
@@ -626,26 +627,32 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // triggers characteristic discovery to confirm the operating system
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown ||
                 device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
+            logger.debug("nextTaskForDevice (device={},task=readPayload|OS)", device);
             return NextTask.readPayload;
         }
         // Get payload as top priority
         if (device.payloadData() == null) {
+            logger.debug("nextTaskForDevice (device={},task=readPayload)", device);
             return NextTask.readPayload;
         }
         // Write payload, rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
             // Write payload data as top priority
             if (device.timeIntervalSinceLastWritePayload() == TimeInterval.never) {
+                logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
                 return NextTask.writePayload;
             }
-            // Write payload sharing data to iOS device if there is data to be shared (up to once every 2.5 minutes)
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios &&
-                    device.timeIntervalSinceLastWritePayloadSharing().value > TimeInterval.seconds(150).value &&
-                    ((ConcreteBLETransmitter) transmitter).payloadSharingData(device).identifiers.size() > 0) {
+            // Write payload sharing data to iOS device if there is data to be shared (alternate between payload sharing and write RSSI)
+            final List<TargetIdentifier> writePayloadSharingIdentifiers = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device).identifiers;
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
+                    && writePayloadSharingIdentifiers.size() > 0
+                    && device.timeIntervalSinceLastWritePayloadSharing().value >= device.timeIntervalSinceLastWriteRssi().value) {
+                logger.debug("nextTaskForDevice (device={},task=writePayloadSharing,identifiers={},elapsed={})", device, writePayloadSharingIdentifiers, device.timeIntervalSinceLastWritePayloadSharing());
                 return NextTask.writePayloadSharing;
             }
-            // Write RSSI as frequently as possible
-            if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value > TimeInterval.seconds(30).value) {
+            // Write RSSI as frequently as reasonable
+            if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value >= TimeInterval.seconds(15).value) {
+                logger.debug("nextTaskForDevice (device={},task=writeRSSI,elapsed={})", device, device.timeIntervalSinceLastWriteRssi());
                 return NextTask.writeRSSI;
             }
         }
