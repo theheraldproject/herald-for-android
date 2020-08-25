@@ -26,19 +26,17 @@ import org.c19x.sensor.datatype.BluetoothState;
 import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
+import org.c19x.sensor.datatype.PayloadSharingData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
-import org.c19x.sensor.datatype.Proximity;
-import org.c19x.sensor.datatype.ProximityMeasurementUnit;
+import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.SensorType;
+import org.c19x.sensor.datatype.SignalCharacteristicData;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -222,87 +220,6 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
     }
 
-    protected static class PayloadSharingData {
-        public final List<TargetIdentifier> identifiers;
-        public final Data data;
-
-        private PayloadSharingData(List<TargetIdentifier> identifiers, Data data) {
-            this.identifiers = identifiers;
-            this.data = data;
-        }
-    }
-
-    /// Determine what payload data to share with peer
-    protected PayloadSharingData payloadSharingData(BLEDevice peer) {
-        // Get other devices that were seen recently by this device
-        final List<BLEDevice> unknownDevices = new ArrayList<>();
-        final List<BLEDevice> knownDevices = new ArrayList<>();
-        for (BLEDevice device : database.devices()) {
-            // Device was seen recently
-            if (device.timeIntervalSinceLastUpdate().value >= BLESensorConfiguration.payloadSharingExpiryTimeInterval.value) {
-                continue;
-            }
-            // Device has payload
-            if (device.payloadData() == null) {
-                continue;
-            }
-            // Device is iOS or receive only (Samsung J6)
-            if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.receiveOnly())) {
-                continue;
-            }
-            // Payload is not the peer itself
-            if (peer.payloadData() != null && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
-                continue;
-            }
-            // Payload is new to peer
-            if (peer.payloadSharingData.contains(device.payloadData())) {
-                knownDevices.add(device);
-            } else {
-                unknownDevices.add(device);
-            }
-        }
-        // Most recently seen unknown devices first
-        final List<BLEDevice> devices = new ArrayList<>();
-        Collections.sort(unknownDevices, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
-            }
-        });
-        Collections.sort(knownDevices, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
-            }
-        });
-        devices.addAll(unknownDevices);
-        devices.addAll(knownDevices);
-        // Limit how much to share to avoid oversized data transfers over BLE (512 bytes limit according to spec, 510 with response, iOS requires response)
-        final List<TargetIdentifier> identifiers = new ArrayList<>();
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        for (BLEDevice device : devices) {
-            if (device.payloadData() == null) {
-                continue;
-            }
-            // Sharing only one for Android devices
-            if (peer.operatingSystem() == BLEDeviceOperatingSystem.android && identifiers.size() >= 1) {
-                break;
-            }
-            if (device.payloadData().value.length + byteArrayOutputStream.toByteArray().length > (2 * 129)) {
-                break;
-            }
-            try {
-                byteArrayOutputStream.write(device.payloadData().value);
-                identifiers.add(device.identifier);
-                peer.payloadSharingData.add(device.payloadData());
-            } catch (Throwable e) {
-            }
-        }
-        final Data data = new Data(byteArrayOutputStream.toByteArray());
-        return new PayloadSharingData(identifiers, data);
-    }
-
-
     private static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
@@ -361,9 +278,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     return onCharacteristicReadPayloadSharingData.get(key);
                 }
                 final BLEDevice targetDevice = database.device(device);
-                final PayloadSharingData payloadSharingData = concreteBLETransmitter.payloadSharingData(targetDevice);
+                final PayloadSharingData payloadSharingData = database.payloadSharingData(targetDevice);
                 onCharacteristicReadPayloadSharingData.put(key, payloadSharingData);
-
                 return payloadSharingData;
             }
 
@@ -430,97 +346,65 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID) ? "signal" : "unknown"),
                         (value != null ? value.length : "null")
                 );
-                if (characteristic.getUuid() == BLESensorConfiguration.androidSignalCharacteristicUUID) {
-                    final byte[] data = onCharacteristicWriteSignalData(device, value);
-                    if (data.length > 0) {
-                        final byte actionCode = data[0];
-                        switch (actionCode) {
-                            case BLESensorConfiguration.signalCharacteristicActionWritePayload: {
-                                logger.debug("didReceiveWrite (central={},action=writePayload)", targetDevice);
-                                // writePayload data format
-                                // 0-0 : actionCode
-                                // 1-2 : payload data count in bytes (Int16)
-                                // 3.. : payload data
-                                final Short payloadDataCount = int16(data, 1);
-                                if (payloadDataCount != null && data.length == (3 + payloadDataCount.intValue())) {
-                                    logger.debug("didReceiveWrite -> didDetect={}", targetDevice);
-                                    for (SensorDelegate delegate : delegates) {
-                                        delegate.sensor(SensorType.BLE, targetIdentifier);
-                                    }
-                                    final Data payloadDataBytes = new Data(data).subdata(3);
-                                    if (payloadDataBytes != null) {
-                                        final PayloadData payloadData = new PayloadData(payloadDataBytes.value);
-                                        logger.debug("didReceiveWrite -> didRead={},fromTarget={}", payloadData, targetDevice);
-                                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
-                                        targetDevice.receiveOnly(true);
-                                        targetDevice.payloadData(payloadData);
-                                        for (SensorDelegate delegate : delegates) {
-                                            delegate.sensor(SensorType.BLE, payloadData, targetIdentifier);
-                                        }
-                                    } else {
-                                        // Should never happen given range check earlier
-                                        logger.fault("didReceiveWrite, invalid payload (central={},action=writePayload)", targetDevice);
-                                    }
-                                    onCharacteristicWriteSignalData.remove(device.getAddress());
-                                }
-                                break;
-                            }
-                            case BLESensorConfiguration.signalCharacteristicActionWriteRSSI: {
-                                logger.debug("didReceiveWrite (central={},action=writeRSSI)", targetDevice);
-                                // writeRSSI data format
-                                // 0-0 : actionCode
-                                // 1-2 : rssi value (Int16)
-                                final Short rssiValue = int16(data, 1);
-                                if (rssiValue != null) {
-                                    final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, rssiValue.doubleValue());
-                                    logger.debug("didReceiveWrite -> didMeasure={},fromTarget={}", proximity, targetDevice);
-                                    targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
-                                    targetDevice.receiveOnly(true);
-                                    for (SensorDelegate delegate : delegates) {
-                                        delegate.sensor(SensorType.BLE, proximity, targetIdentifier);
-                                    }
-                                } else {
-                                    logger.fault("didReceiveWrite, invalid request (central={},action=writeRSSI)", targetDevice);
-                                }
-                                break;
-                            }
-                            case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing: {
-                                logger.debug("didReceiveWrite (central={},action=writePayloadSharing)", targetDevice);
-                                // writePayloadSharing data format
-                                // 0-0 : actionCode
-                                // 1-2 : payload sharing data count in bytes (Int16)
-                                // 3.. : payload sharing data (to be parsed by payload data supplier)
-                                final Short payloadDataCount = int16(data, 1);
-                                if (payloadDataCount != null && data.length == (3 + payloadDataCount.intValue())) {
-                                    final Data payloadData = new Data(data).subdata(3);
-                                    if (payloadData != null) {
-                                        final List<PayloadData> didSharePayloadData = payloadDataSupplier.payload(payloadData);
-                                        logger.debug("didReceiveWrite -> didShare={},fromTarget={}}", didSharePayloadData, targetDevice);
-                                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
-                                        targetDevice.receiveOnly(true);
-                                        for (SensorDelegate delegate : delegates) {
-                                            delegate.sensor(SensorType.BLE, didSharePayloadData, targetIdentifier);
-                                        }
-                                    } else {
-                                        // Should never happen given range check earlier
-                                        logger.fault("didReceiveWrite, invalid payload (central={},action=writePayloadSharing)", targetDevice);
-                                    }
-                                }
-                                break;
-                            }
-                            default: {
-                                logger.fault("didReceiveWrite (central={},action=unknown,actionCode={})", targetDevice, actionCode);
-                                break;
-                            }
-                        }
-                    }
-                    if (responseNeeded) {
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
-                    }
-                } else {
+                if (characteristic.getUuid() != BLESensorConfiguration.androidSignalCharacteristicUUID) {
                     if (responseNeeded) {
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, value);
                     }
+                    return;
+                }
+                final Data data = new Data(onCharacteristicWriteSignalData(device, value));
+                switch (SignalCharacteristicData.detect(data)) {
+                    case rssi: {
+                        final RSSI rssi = SignalCharacteristicData.decodeWriteRSSI(data);
+                        if (rssi == null) {
+                            logger.fault("didReceiveWrite, invalid request (central={},action=writeRSSI)", targetDevice);
+                            break;
+                        }
+                        logger.debug("didReceiveWrite (dataType=rssi,central={},rssi={})", targetDevice, rssi);
+                        // Only receive-only Android devices write RSSI
+                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                        targetDevice.receiveOnly(true);
+                        targetDevice.rssi(rssi);
+                        break;
+                    }
+                    case payload: {
+                        final PayloadData payloadData = SignalCharacteristicData.decodeWritePayload(data);
+                        if (payloadData == null) {
+                            // Fragmented payload data may be incomplete
+                            break;
+                        }
+                        logger.debug("didReceiveWrite (dataType=payload,central={},payload={})", targetDevice, payloadData);
+                        // Only receive-only Android devices write payload
+                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                        targetDevice.receiveOnly(true);
+                        targetDevice.payloadData(payloadData);
+                        onCharacteristicWriteSignalData.remove(device.getAddress());
+                        break;
+                    }
+                    case payloadSharing: {
+                        final PayloadSharingData payloadSharingData = SignalCharacteristicData.decodeWritePayloadSharing(data);
+                        if (payloadSharingData == null) {
+                            // Fragmented payload sharing data may be incomplete
+                            break;
+                        }
+                        final List<PayloadData> didSharePayloadData = payloadDataSupplier.payload(payloadSharingData.data);
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, didSharePayloadData, targetIdentifier);
+                        }
+                        // Only Android devices write payload sharing
+                        targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                        targetDevice.rssi(payloadSharingData.rssi);
+                        logger.debug("didReceiveWrite (dataType=payloadSharing,central={},payloadSharingData={})", targetDevice, didSharePayloadData);
+                        for (final PayloadData payloadData : didSharePayloadData) {
+                            final BLEDevice sharedDevice = database.device(payloadData);
+                            sharedDevice.operatingSystem(BLEDeviceOperatingSystem.shared);
+                            sharedDevice.rssi(payloadSharingData.rssi);
+                        }
+                        break;
+                    }
+                }
+                if (responseNeeded) {
+                    server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
                 }
             }
 
@@ -540,14 +424,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     }
                 } else if (characteristic.getUuid() == BLESensorConfiguration.payloadSharingCharacteristicUUID) {
                     final PayloadSharingData payloadSharingData = onCharacteristicReadPayloadSharingData(device, requestId);
-                    if (payloadSharingData.identifiers.size() == 0 || payloadSharingData.data.value.length == 0) {
-                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared=[])", targetDevice, requestId, offset);
+                    if (payloadSharingData.data.value.length == 0) {
+                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared=0)", targetDevice, requestId, offset);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
                     } else if (offset > payloadSharingData.data.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payloadSharing,dataLength={})", targetDevice, requestId, offset, payloadSharingData.data.value.length);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);
                     } else {
-                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared={})", targetDevice, requestId, offset, payloadSharingData.identifiers);
+                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared={})", targetDevice, requestId, offset, payloadSharingData.data.value.length);
                         final byte[] value = Arrays.copyOfRange(payloadSharingData.data.value, offset, payloadSharingData.data.value.length);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
                     }

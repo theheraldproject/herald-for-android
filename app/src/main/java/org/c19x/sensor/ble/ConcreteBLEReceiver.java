@@ -21,16 +21,17 @@ import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.BluetoothState;
 import org.c19x.sensor.datatype.Callback;
+import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
+import org.c19x.sensor.datatype.PayloadSharingData;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.Sample;
 import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
-import org.c19x.sensor.datatype.TargetIdentifier;
+import org.c19x.sensor.datatype.SignalCharacteristicData;
+import org.c19x.sensor.datatype.SignalCharacteristicDataType;
 import org.c19x.sensor.datatype.TimeInterval;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -379,7 +380,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 device.operatingSystem(BLEDeviceOperatingSystem.ios);
             } else if (hasSensorService && !isAppleDevice) {
                 // Definitely Android device offering sensor service
-                device.operatingSystem(BLEDeviceOperatingSystem.android);
+                device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
             } else if (!hasSensorService && isAppleDevice) {
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
@@ -643,18 +644,29 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return NextTask.writePayload;
             }
             // Write payload sharing data to iOS device if there is data to be shared (alternate between payload sharing and write RSSI)
-            final List<TargetIdentifier> writePayloadSharingIdentifiers = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device).identifiers;
+            final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
-                    && writePayloadSharingIdentifiers.size() > 0
+                    && payloadSharingData.data.value.length > 0
                     && device.timeIntervalSinceLastWritePayloadSharing().value >= TimeInterval.seconds(15).value
                     && device.timeIntervalSinceLastWritePayloadSharing().value >= device.timeIntervalSinceLastWriteRssi().value) {
-                logger.debug("nextTaskForDevice (device={},task=writePayloadSharing,identifiers={},elapsed={})", device, writePayloadSharingIdentifiers, device.timeIntervalSinceLastWritePayloadSharing());
+                logger.debug("nextTaskForDevice (device={},task=writePayloadSharing,dataLength={},elapsed={})", device, payloadSharingData.data.value.length, device.timeIntervalSinceLastWritePayloadSharing());
                 return NextTask.writePayloadSharing;
             }
             // Write RSSI as frequently as reasonable
             if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value >= TimeInterval.seconds(15).value) {
                 logger.debug("nextTaskForDevice (device={},task=writeRSSI,elapsed={})", device, device.timeIntervalSinceLastWriteRssi());
                 return NextTask.writeRSSI;
+            }
+        }
+        // Write payload sharing data to iOS
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
+            // Write payload sharing data to iOS device if there is data to be shared
+            final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
+                    && payloadSharingData.data.value.length > 0
+                    && device.timeIntervalSinceLastWritePayloadSharing().value >= TimeInterval.seconds(15).value) {
+                logger.debug("nextTaskForDevice (device={},task=writePayloadSharing,dataLength={},elapsed={})", device, payloadSharingData.data.value.length, device.timeIntervalSinceLastWritePayloadSharing());
+                return NextTask.writePayloadSharing;
             }
         }
         return NextTask.nothing;
@@ -686,21 +698,21 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
-                final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayload, transmitter.payloadData().value);
-                logger.debug("nextTask (task=writePayload,device={},dataLength={})", device, data.length);
-                writeSignalCharacteristic(gatt, NextTask.writePayload, data);
+                final Data data = SignalCharacteristicData.encodeWritePayload(transmitter.payloadData());
+                logger.debug("nextTask (task=writePayload,device={},dataLength={})", device, data.value.length);
+                writeSignalCharacteristic(gatt, NextTask.writePayload, data.value);
                 return;
             }
             case writePayloadSharing: {
-                final ConcreteBLETransmitter.PayloadSharingData payloadSharingData = ((ConcreteBLETransmitter) transmitter).payloadSharingData(device);
+                final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
                 if (payloadSharingData == null) {
                     logger.fault("nextTask failed (task=writePayloadSharing,device={},reason=missingPayloadSharingData)", device);
                     gatt.disconnect();
                     return;
                 }
-                final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing, payloadSharingData.data.value);
-                logger.debug("nextTask (task=writePayloadSharing,device={},dataLength={})", device, data.length);
-                writeSignalCharacteristic(gatt, NextTask.writePayloadSharing, data);
+                final Data data = SignalCharacteristicData.encodeWritePayloadSharing(payloadSharingData);
+                logger.debug("nextTask (task=writePayloadSharing,device={},dataLength={})", device, data.value.length);
+                writeSignalCharacteristic(gatt, NextTask.writePayloadSharing, data.value);
                 return;
             }
             case writeRSSI: {
@@ -716,9 +728,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return;
                 }
-                final byte[] data = signalData(BLESensorConfiguration.signalCharacteristicActionWriteRSSI, device.rssi().value);
-                logger.debug("nextTask (task=writeRSSI,device={},dataLength={})", device, data.length);
-                writeSignalCharacteristic(gatt, NextTask.writeRSSI, data);
+                final Data data = SignalCharacteristicData.encodeWriteRssi(rssi);
+                logger.debug("nextTask (task=writeRSSI,device={},dataLength={})", device, data.value.length);
+                writeSignalCharacteristic(gatt, NextTask.writeRSSI, data.value);
                 return;
             }
         }
@@ -838,12 +850,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return;
             }
         }
-        final byte actionCode = signalDataActionCode(device.signalCharacteristicWriteValue);
+        final SignalCharacteristicDataType signalCharacteristicDataType = SignalCharacteristicData.detect(new Data(device.signalCharacteristicWriteValue));
         signalCharacteristic.setValue(new byte[0]);
         device.signalCharacteristicWriteValue = null;
         device.signalCharacteristicWriteQueue = null;
-        switch (actionCode) {
-            case BLESensorConfiguration.signalCharacteristicActionWritePayload:
+        switch (signalCharacteristicDataType) {
+            case payload:
                 if (success) {
                     logger.debug("onCharacteristicWrite, write payload success (device={})", device);
                     device.registerWritePayload();
@@ -851,7 +863,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.fault("onCharacteristicWrite, write payload failed (device={})", device);
                 }
                 break;
-            case BLESensorConfiguration.signalCharacteristicActionWriteRSSI:
+            case rssi:
                 if (success) {
                     logger.debug("onCharacteristicWrite, write RSSI success (device={})", device);
                     device.registerWriteRssi();
@@ -859,7 +871,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.fault("onCharacteristicWrite, write RSSI failed (device={})", device);
                 }
                 break;
-            case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing:
+            case payloadSharing:
                 if (success) {
                     logger.debug("onCharacteristicWrite, write payload sharing success (device={})", device);
                     device.registerWritePayloadSharing();
@@ -868,39 +880,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
                 break;
             default:
-                logger.fault("onCharacteristicWrite, write unknown data (device={},actionCode={},success={})", device, actionCode, success);
+                logger.fault("onCharacteristicWrite, write unknown data (device={},success={})", device, success);
                 break;
         }
         nextTask(gatt);
-    }
-
-    // MARK:- Signal characteristic data bundles
-
-    private static byte[] signalData(final byte actionCode, final byte[] data) {
-        return signalData(actionCode, data.length, data);
-    }
-
-    private static byte[] signalData(final byte actionCode, final int shortValue) {
-        return signalData(actionCode, shortValue, null);
-    }
-
-    private static byte[] signalData(final byte actionCode, final int shortValue, final byte[] data) {
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + (data == null ? 0 : data.length));
-        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        byteBuffer.put(0, actionCode);
-        byteBuffer.putShort(1, Integer.valueOf(shortValue).shortValue());
-        if (data != null) {
-            byteBuffer.position(3);
-            byteBuffer.put(data);
-        }
-        return byteBuffer.array();
-    }
-
-    private static byte signalDataActionCode(byte[] signalData) {
-        if (signalData == null || signalData.length == 0) {
-            return 0;
-        }
-        return signalData[0];
     }
 
     // MARK:- Bluetooth code transformers

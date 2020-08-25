@@ -167,7 +167,6 @@ public class BLEDevice {
     }
 
     public void operatingSystem(BLEDeviceOperatingSystem operatingSystem) {
-        this.operatingSystem = operatingSystem;
         lastUpdatedAt = new Date();
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
@@ -181,7 +180,10 @@ public class BLEDevice {
             ignoreForDuration = null;
             ignoreUntil = null;
         }
-        delegate.device(this, BLEDeviceAttribute.operatingSystem);
+        if (this.operatingSystem != operatingSystem) {
+            this.operatingSystem = operatingSystem;
+            delegate.device(this, BLEDeviceAttribute.operatingSystem);
+        }
     }
 
     /// Should ignore this device for now.

@@ -3,6 +3,7 @@ package org.c19x.sensor.datatype;
 import android.bluetooth.BluetoothDevice;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /// Ephemeral identifier for detected target (e.g. smartphone, beacon, place).
 // This is likely to be an UUID but using String for variable identifier length.
@@ -16,6 +17,11 @@ public class TargetIdentifier {
     /// Create target identifier based on bluetooth device address
     public TargetIdentifier(BluetoothDevice bluetoothDevice) {
         this.value = bluetoothDevice.getAddress();
+    }
+
+    /// Create random target identifier
+    public TargetIdentifier() {
+        this.value = UUID.randomUUID().toString();
     }
 
     @Override

@@ -23,7 +23,7 @@ public class ForegroundService extends Service {
         logger.debug("onStartCommand");
         Tuple<Integer, Notification> notification = AppDelegate.getAppDelegate().notification();
         if (notification.b == null) {
-            notification = AppDelegate.getAppDelegate().notification("Contact Tracing", "Starting ...");
+            notification = AppDelegate.getAppDelegate().notification("Contact Tracing", "Sensor is working");
         }
         startForeground(notification.a, notification.b);
         super.onStartCommand(intent, flags, startId);
