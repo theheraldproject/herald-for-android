@@ -26,9 +26,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEDatabase");
-    private Queue<BLEDatabaseDelegate> delegates = new ConcurrentLinkedQueue<>();
-    private Map<TargetIdentifier, BLEDevice> database = new ConcurrentHashMap<>();
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEDatabase");
+    private final Queue<BLEDatabaseDelegate> delegates = new ConcurrentLinkedQueue<>();
+    private final Map<TargetIdentifier, BLEDevice> database = new ConcurrentHashMap<>();
     private final ExecutorService queue = Executors.newSingleThreadExecutor();
 
     @Override

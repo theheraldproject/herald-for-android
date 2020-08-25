@@ -12,7 +12,7 @@ public class SignalCharacteristicData {
     // writeRSSI data format
     // 0-0 : actionCode
     // 1-2 : rssi value (Int16)
-    public final static Data encodeWriteRssi(final RSSI rssi) {
+    public static Data encodeWriteRssi(final RSSI rssi) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWriteRSSI);
@@ -21,7 +21,7 @@ public class SignalCharacteristicData {
     }
 
     /// Decode write RSSI data bundle
-    public final static RSSI decodeWriteRSSI(final Data data) {
+    public static RSSI decodeWriteRSSI(final Data data) {
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteRSSI) {
             return null;
         }
@@ -40,7 +40,7 @@ public class SignalCharacteristicData {
     // 0-0 : actionCode
     // 1-2 : payload data count in bytes (Int16)
     // 3.. : payload data
-    public final static Data encodeWritePayload(final PayloadData payloadData) {
+    public static Data encodeWritePayload(final PayloadData payloadData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + payloadData.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWritePayload);
@@ -51,7 +51,7 @@ public class SignalCharacteristicData {
     }
 
     /// Decode write payload data bundle
-    public final static PayloadData decodeWritePayload(final Data data) {
+    public static PayloadData decodeWritePayload(final Data data) {
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayload) {
             return null;
         }
@@ -69,8 +69,7 @@ public class SignalCharacteristicData {
         if (payloadDataBytes == null) {
             return null;
         }
-        final PayloadData payloadData = new PayloadData(payloadDataBytes.value);
-        return payloadData;
+        return new PayloadData(payloadDataBytes.value);
     }
 
     /// Encode write payload sharing data bundle
@@ -79,7 +78,7 @@ public class SignalCharacteristicData {
     // 1-2 : rssi value (Int16)
     // 3-4 : payload sharing data count in bytes (Int16)
     // 5.. : payload sharing data
-    public final static Data encodeWritePayloadSharing(final PayloadSharingData payloadSharingData) {
+    public static Data encodeWritePayloadSharing(final PayloadSharingData payloadSharingData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(5 + payloadSharingData.data.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing);
@@ -91,7 +90,7 @@ public class SignalCharacteristicData {
     }
 
     /// Decode write payload data bundle
-    public final static PayloadSharingData decodeWritePayloadSharing(final Data data) {
+    public static PayloadSharingData decodeWritePayloadSharing(final Data data) {
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing) {
             return null;
         }
@@ -113,12 +112,11 @@ public class SignalCharacteristicData {
         if (payloadSharingDataBytes == null) {
             return null;
         }
-        final PayloadSharingData payloadSharingData = new PayloadSharingData(new RSSI(rssiValue.intValue()), payloadSharingDataBytes);
-        return payloadSharingData;
+        return new PayloadSharingData(new RSSI(rssiValue.intValue()), payloadSharingDataBytes);
     }
 
     /// Detect signal characteristic data bundle type
-    public final static SignalCharacteristicDataType detect(Data data) {
+    public static SignalCharacteristicDataType detect(Data data) {
         switch (signalDataActionCode(data.value)) {
             case BLESensorConfiguration.signalCharacteristicActionWriteRSSI:
                 return SignalCharacteristicDataType.rssi;

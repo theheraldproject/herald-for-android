@@ -2,12 +2,12 @@ package org.c19x.sensor.datatype;
 
 /// Time interval in seconds.
 public class TimeInterval {
-    public long value;
+    public final long value;
     public static TimeInterval day = new TimeInterval(24 * 60 * 60);
-    public static TimeInterval hour = new TimeInterval(60 * 60);
-    public static TimeInterval minute = new TimeInterval(60);
-    public static TimeInterval zero = new TimeInterval(0);
-    public static TimeInterval never = new TimeInterval(Long.MAX_VALUE);
+    public static final TimeInterval hour = new TimeInterval(60 * 60);
+    public static final TimeInterval minute = new TimeInterval(60);
+    public static final TimeInterval zero = new TimeInterval(0);
+    public static final TimeInterval never = new TimeInterval(Long.MAX_VALUE);
 
     public TimeInterval(long seconds) {
         this.value = seconds;

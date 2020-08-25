@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class MainActivity extends AppCompatActivity implements SensorDelegate {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "MainActivity");
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "MainActivity");
     /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
     /// Test UI specific data, not required for production solution.

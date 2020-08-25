@@ -14,7 +14,7 @@ import org.c19x.sensor.datatype.BluetoothState;
  * Monitors bluetooth state changes.
  */
 public class ConcreteBluetoothStateManager implements BluetoothStateManager {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBluetoothStateManager");
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBluetoothStateManager");
     private BluetoothState state;
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override

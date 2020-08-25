@@ -57,7 +57,7 @@ public class BLEDevice {
     private Date lastDisconnectedAt = null;
 
     /// Payload data already shared with this peer
-    protected List<PayloadData> payloadSharingData = new ArrayList<>();
+    protected final List<PayloadData> payloadSharingData = new ArrayList<>();
 
     /// Track write timestamps
     private Date lastWritePayloadAt = null;

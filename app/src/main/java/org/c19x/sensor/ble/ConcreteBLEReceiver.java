@@ -15,7 +15,6 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.ParcelUuid;
 
-import org.c19x.sensor.PayloadDataSupplier;
 import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
@@ -41,10 +40,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
     private final static long scanRestDurationMillis = TimeInterval.seconds(1).millis();
@@ -56,7 +54,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final static int defaultMTU = 20;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
-    private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
     private final BLETimer timer;
@@ -92,16 +89,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
         }
     };
-    private BluetoothLeScanner bluetoothLeScanner;
-    private AtomicBoolean startScanLoop = new AtomicBoolean(false);
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
      */
-    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, PayloadDataSupplier payloadDataSupplier, BLEDatabase database, BLETransmitter transmitter) {
+    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLEDatabase database, BLETransmitter transmitter) {
         this.context = context;
         this.bluetoothStateManager = bluetoothStateManager;
-        this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
         this.transmitter = transmitter;
         this.timer = new BLETimer(context);
@@ -767,7 +761,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
             device.signalCharacteristicWriteValue = data;
-            device.signalCharacteristicWriteQueue = fragmentDataByMtu(data, defaultMTU);
+            device.signalCharacteristicWriteQueue = fragmentDataByMtu(data);
             if (writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.failed) {
                 logger.fault("writeSignalCharacteristic to Android failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
                 gatt.disconnect();
@@ -808,10 +802,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     }
 
     /// Split data into fragments, where each fragment has length <= mtu
-    private Queue<byte[]> fragmentDataByMtu(byte[] data, int mtu) {
+    private Queue<byte[]> fragmentDataByMtu(byte[] data) {
         final Queue<byte[]> fragments = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < data.length; i += mtu) {
-            final byte[] fragment = new byte[Math.min(mtu, data.length - i)];
+        for (int i = 0; i < data.length; i += ConcreteBLEReceiver.defaultMTU) {
+            final byte[] fragment = new byte[Math.min(ConcreteBLEReceiver.defaultMTU, data.length - i)];
             System.arraycopy(data, i, fragment, 0, fragment.length);
             fragments.add(fragment);
         }
@@ -907,36 +901,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-
-    private static String onCharacteristicWriteStatusToString(final int status) {
-        switch (status) {
-            case BluetoothGatt.GATT_SUCCESS:
-                return "GATT_SUCCESS";
-            case BluetoothGatt.GATT_CONNECTION_CONGESTED:
-                return "GATT_CONNECTION_CONGESTED";
-            case BluetoothGatt.GATT_FAILURE:
-                return "GATT_FAILURE";
-            case BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION:
-                return "GATT_INSUFFICIENT_AUTHENTICATION";
-            case BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION:
-                return "GATT_INSUFFICIENT_ENCRYPTION";
-            case BluetoothGatt.GATT_INVALID_ATTRIBUTE_LENGTH:
-                return "GATT_INVALID_ATTRIBUTE_LENGTH";
-            case BluetoothGatt.GATT_INVALID_OFFSET:
-                return "GATT_INVALID_OFFSET";
-            case BluetoothGatt.GATT_READ_NOT_PERMITTED:
-                return "GATT_READ_NOT_PERMITTED";
-            case BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED:
-                return "GATT_REQUEST_NOT_SUPPORTED";
-            case BluetoothGatt.GATT_SERVER:
-                return "GATT_SERVER";
-            case BluetoothGatt.GATT_WRITE_NOT_PERMITTED:
-                return "GATT_WRITE_NOT_PERMITTED";
-            default:
-                return "UNKNOWN_STATUS_" + status;
-        }
-    }
-
     private static String onScanFailedErrorCodeToString(final int errorCode) {
         switch (errorCode) {
             case ScanCallback.SCAN_FAILED_ALREADY_STARTED:
@@ -951,6 +915,4 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return "UNKNOWN_ERROR_CODE_" + errorCode;
         }
     }
-
-
 }

@@ -17,8 +17,8 @@ import java.util.List;
 
 /// Sensor array for combining multiple detection and tracking methods.
 public class SensorArray implements Sensor {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
-    private List<Sensor> sensorArray = new ArrayList<>();
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
+    private final List<Sensor> sensorArray = new ArrayList<>();
 
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";

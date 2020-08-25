@@ -10,7 +10,7 @@ import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.Tuple;
 
 public class ForegroundService extends Service {
-    private SensorLogger logger = new ConcreteSensorLogger("App", "ForegroundService");
+    private final SensorLogger logger = new ConcreteSensorLogger("App", "ForegroundService");
 
     @Override
     public void onCreate() {

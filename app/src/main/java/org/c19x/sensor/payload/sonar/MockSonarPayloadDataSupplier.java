@@ -10,8 +10,8 @@ import java.util.List;
 
 /// Mock SONAR payload supplier for simulating payload transfer of the same size to test C19X-SENSOR
 public class MockSonarPayloadDataSupplier implements SonarPayloadDataSupplier {
-    private static int length = 129;
-    private int identifier;
+    private static final int length = 129;
+    private final int identifier;
 
     public MockSonarPayloadDataSupplier(int identifier) {
         this.identifier = identifier;
@@ -29,8 +29,7 @@ public class MockSonarPayloadDataSupplier implements SonarPayloadDataSupplier {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(length);
         byteBuffer.position(3);
         byteBuffer.put(networkByteOrderData(identifier).value);
-        final PayloadData payloadData = new PayloadData(byteBuffer.array());
-        return payloadData;
+        return new PayloadData(byteBuffer.array());
     }
 
     @Override

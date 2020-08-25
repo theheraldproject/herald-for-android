@@ -1,9 +1,9 @@
 package org.c19x.sensor.datatype;
 
 public class Triple<A, B, C> {
-    public A a;
-    public B b;
-    public C c;
+    public final A a;
+    public final B b;
+    public final C c;
 
     public Triple(A a, B b, C c) {
         this.a = a;

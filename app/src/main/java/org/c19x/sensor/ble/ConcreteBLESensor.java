@@ -1,11 +1,6 @@
 package org.c19x.sensor.ble;
 
-import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
-import android.content.pm.PackageManager;
-
-import androidx.core.app.ActivityCompat;
 
 import org.c19x.sensor.PayloadDataSupplier;
 import org.c19x.sensor.Sensor;
@@ -25,7 +20,6 @@ import java.util.concurrent.Executors;
 
 public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLESensor");
-    private final Context context;
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final BLEDatabase database = new ConcreteBLEDatabase();
     private final BluetoothStateManager bluetoothStateManager;
@@ -34,10 +28,9 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
 
     public ConcreteBLESensor(Context context, PayloadDataSupplier payloadDataSupplier) {
-        this.context = context;
         bluetoothStateManager = new ConcreteBluetoothStateManager(context);
         transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, payloadDataSupplier, database);
-        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, payloadDataSupplier, database, transmitter);
+        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, database, transmitter);
         database.add(this);
     }
 
@@ -87,7 +80,7 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
                 if (rssi == null) {
                     return;
                 }
-                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, new Double(rssi.value));
+                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, Double.valueOf(rssi.value));
                 logger.debug("didMeasure (device={},proximity={})", device, proximity.description());
                 operationQueue.execute(new Runnable() {
                     @Override
@@ -125,23 +118,4 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
     public void bleDatabaseDidDelete(BLEDevice device) {
         logger.debug("didDelete (device={})", device.identifier);
     }
-
-    /**
-     * Check permissions for BLESensor. Add this to Activity.
-     *
-     * @param activity
-     */
-    public final static void checkPermissions(final Activity activity) {
-        final String locationPermission = Manifest.permission.ACCESS_FINE_LOCATION;
-        final String backgroundLocationPermission = Manifest.permission.ACCESS_BACKGROUND_LOCATION;
-        if (ActivityCompat.checkSelfPermission(activity, locationPermission) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(activity, new String[]{locationPermission}, 0);
-        }
-        if (ActivityCompat.checkSelfPermission(activity, backgroundLocationPermission) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(activity, new String[]{backgroundLocationPermission}, 0);
-        }
-    }
-
-
-
 }

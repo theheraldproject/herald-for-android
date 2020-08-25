@@ -13,9 +13,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TextFile {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
-    private File file;
-    private ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+    private final File file;
+    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
     public TextFile(String filename) {
         final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
@@ -37,7 +37,7 @@ public class TextFile {
      * @param context
      * @return
      */
-    private final static File getRootFolder(final Context context) {
+    private static File getRootFolder(final Context context) {
         // Get SD card or emulated external storage. By convention (really!?)
         // SD card is reported after emulated storage, so select the last folder
         final File[] externalMediaDirs = context.getExternalMediaDirs();

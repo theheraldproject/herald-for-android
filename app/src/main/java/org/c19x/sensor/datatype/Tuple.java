@@ -2,8 +2,8 @@ package org.c19x.sensor.datatype;
 
 public class Tuple<A, B> {
     private final String labelA, labelB;
-    public A a;
-    public B b;
+    public final A a;
+    public final B b;
 
     public Tuple(A a, B b) {
         this("a", a, "b", b);

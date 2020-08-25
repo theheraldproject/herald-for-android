@@ -53,7 +53,7 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_E
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS;
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final ConcreteBLETransmitter self = this;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
@@ -258,9 +258,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         // Data = rssi (4 bytes int) + payload (remaining bytes)
         final AtomicReference<BluetoothGattServer> server = new AtomicReference<>(null);
         final BluetoothGattServerCallback callback = new BluetoothGattServerCallback() {
-            private Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
-            private Map<String, PayloadSharingData> onCharacteristicReadPayloadSharingData = new ConcurrentHashMap<>();
-            private Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
+            private final Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
+            private final Map<String, PayloadSharingData> onCharacteristicReadPayloadSharingData = new ConcurrentHashMap<>();
+            private final Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
             private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device, int requestId) {
                 final String key = device.getAddress();
@@ -422,19 +422,6 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
                         logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payload)", targetDevice, requestId, offset);
                     }
-                } else if (characteristic.getUuid() == BLESensorConfiguration.payloadSharingCharacteristicUUID) {
-                    final PayloadSharingData payloadSharingData = onCharacteristicReadPayloadSharingData(device, requestId);
-                    if (payloadSharingData.data.value.length == 0) {
-                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared=0)", targetDevice, requestId, offset);
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
-                    } else if (offset > payloadSharingData.data.value.length) {
-                        logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payloadSharing,dataLength={})", targetDevice, requestId, offset, payloadSharingData.data.value.length);
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);
-                    } else {
-                        logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payloadSharing,shared={})", targetDevice, requestId, offset, payloadSharingData.data.value.length);
-                        final byte[] value = Arrays.copyOfRange(payloadSharingData.data.value, offset, payloadSharingData.data.value.length);
-                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
-                    }
                 } else {
                     logger.fault("didReceiveRead (central={},characteristic=unknown)", targetDevice);
                     server.get().sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, 0, null);
@@ -473,16 +460,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BLESensorConfiguration.payloadCharacteristicUUID,
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ);
-        final BluetoothGattCharacteristic payloadSharingCharacteristic = new BluetoothGattCharacteristic(
-                BLESensorConfiguration.payloadSharingCharacteristicUUID,
-                BluetoothGattCharacteristic.PROPERTY_READ,
-                BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
         service.addCharacteristic(payloadCharacteristic);
-        service.addCharacteristic(payloadSharingCharacteristic);
         bluetoothGattServer.addService(service);
-        logger.debug("setGattService (service={},signalCharacteristic={},payloadCharacteristic={},payloadSharingCharacteristic={})",
-                service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid(), payloadSharingCharacteristic.getUuid());
+        logger.debug("setGattService (service={},signalCharacteristic={},payloadCharacteristic={})",
+                service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid());
     }
 
     private static String onConnectionStateChangeStatusToString(final int state) {

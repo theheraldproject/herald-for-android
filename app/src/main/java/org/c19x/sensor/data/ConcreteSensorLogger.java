@@ -47,11 +47,11 @@ public class ConcreteSensorLogger implements SensorLogger {
         log(SensorLoggerLevel.fault, message, values);
     }
 
-    private final static String tag(String subsystem, String category) {
+    private static String tag(String subsystem, String category) {
         return subsystem + "::" + category;
     }
 
-    private final static void outputLog(final SensorLoggerLevel level, final String tag, final String message, final Object... values) {
+    private static void outputLog(final SensorLoggerLevel level, final String tag, final String message, final Object... values) {
         final Throwable throwable = getThrowable(values);
         switch (level) {
             case debug: {
@@ -81,7 +81,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private final static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
+    private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
         final Throwable throwable = getThrowable(values);
         final String timestamp = dateFormatter.format(new Date());
         final String csvMessage = render(message, values).replace('\"', '\'');
@@ -91,7 +91,7 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
 
-    private final static Throwable getThrowable(final Object... values) {
+    private static Throwable getThrowable(final Object... values) {
         if (values.length > 0 && values[values.length - 1] instanceof Throwable) {
             return (Throwable) values[values.length - 1];
         } else {
@@ -99,7 +99,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private final static String render(final String message, final Object... values) {
+    private static String render(final String message, final Object... values) {
         if (values.length == 0) {
             return message;
         } else {
