@@ -28,7 +28,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    public void log(SensorLoggerLevel level, String message, final Object... values) {
+    private void log(SensorLoggerLevel level, String message, final Object... values) {
         if (!suppress(level)) {
             outputLog(level, tag(subsystem, category), message, values);
             outputStream(level, subsystem, category, message, values);

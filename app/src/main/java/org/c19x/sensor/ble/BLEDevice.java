@@ -247,6 +247,7 @@ public class BLEDevice {
         return new TimeInterval((new Date().getTime() - lastWritePayloadSharingAt.getTime()) / 1000);
     }
 
+    @Override
     public String toString() {
         return description();
     }

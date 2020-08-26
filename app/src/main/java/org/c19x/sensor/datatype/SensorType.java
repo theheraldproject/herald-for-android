@@ -5,9 +5,9 @@ public enum SensorType {
     /// Bluetooth Low Energy (BLE)
     BLE,
     /// GPS location sensor
-    GPS,
-    /// Physical beacon, e.g. iBeacon
-    BEACON,
-    /// Ultrasound audio beacon.
-    ULTRASOUND
+    GPS
+//    /// Physical beacon, e.g. iBeacon
+//    BEACON,
+//    /// Ultrasound audio beacon.
+//    ULTRASOUND
 }

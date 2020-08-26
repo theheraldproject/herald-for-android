@@ -8,7 +8,6 @@ import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
 /// CSV contact log for post event analysis and visualisation
 public class DetectionLog implements SensorDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
     private final PayloadData payloadData;
     private final String deviceName = android.os.Build.MODEL;
