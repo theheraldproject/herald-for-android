@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Queue;
 
 public class BLEDevice {
-    /// Device registratiion timestamp
+    /// Device registration timestamp
     public final Date createdAt;
     /// Last time anything changed, e.g. attribute update
     public Date lastUpdatedAt;
@@ -30,12 +30,8 @@ public class BLEDevice {
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     private PayloadData payloadData;
-    /// Payload data last update timestamp, this is used to determine what needs to be shared with peers.
-    private Date payloadDataLastUpdatedAt = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
     private RSSI rssi;
-    /// RSSI last update timestamp, this is used to track last advertised at without relying on didDiscover
-    private Date rssiLastUpdatedAt = null;
     /// Transmit power data where available (only provided by Android devices)
     private BLE_TxPower txPower;
     /// Is device receive only?
@@ -52,9 +48,7 @@ public class BLEDevice {
 
     /// Track connection timestamps
     private Date lastDiscoveredAt = null;
-    private Date lastConnectRequestedAt = null;
     private Date lastConnectedAt = null;
-    private Date lastDisconnectedAt = null;
 
     /// Payload data already shared with this peer
     protected final List<PayloadData> payloadSharingData = new ArrayList<>();
@@ -63,21 +57,6 @@ public class BLEDevice {
     private Date lastWritePayloadAt = null;
     private Date lastWriteRssiAt = null;
     private Date lastWritePayloadSharingAt = null;
-
-    /// Last advert timestamp, inferred from payloadDataLastUpdatedAt, rssiLastUpdatedAt
-    public Date lastAdvertAt() {
-        long max = createdAt.getTime();
-        if (lastDiscoveredAt != null) {
-            max = Math.max(max, lastDiscoveredAt.getTime());
-        }
-        if (payloadDataLastUpdatedAt != null) {
-            max = Math.max(max, payloadDataLastUpdatedAt.getTime());
-        }
-        if (rssiLastUpdatedAt != null) {
-            max = Math.max(max, rssiLastUpdatedAt.getTime());
-        }
-        return new Date(max);
-    }
 
     public TimeInterval timeIntervalSinceConnected() {
         if (state() != BLEDeviceState.connected) {
@@ -89,37 +68,9 @@ public class BLEDevice {
         return new TimeInterval((new Date().getTime() - lastConnectedAt.getTime()) / 1000);
     }
 
-    public TimeInterval upTime() {
-        if (state() == BLEDeviceState.disconnected) {
-            return TimeInterval.zero;
-        }
-        if (payloadDataLastUpdatedAt == null) {
-            return TimeInterval.zero;
-        }
-        return new TimeInterval((lastAdvertAt().getTime() - payloadDataLastUpdatedAt.getTime()) / 1000);
-    }
-
-    public TimeInterval downTime() {
-        if (state() == BLEDeviceState.connected) {
-            return TimeInterval.zero;
-        }
-        if (lastDisconnectedAt == null) {
-            return new TimeInterval((new Date().getTime() - createdAt.getTime()) / 1000);
-        }
-        return new TimeInterval((new Date().getTime() - lastDisconnectedAt.getTime()) / 1000);
-    }
-
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     public TimeInterval timeIntervalSinceLastUpdate() {
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
-    }
-
-    /// Time interval between last connection request, this is used to priortise disconnections
-    public TimeInterval timeIntervalSinceLastConnectRequestedAt() {
-        if (lastConnectRequestedAt == null) {
-            return TimeInterval.never;
-        }
-        return new TimeInterval((new Date().getTime() - lastConnectRequestedAt.getTime()) / 1000);
     }
 
     public String description() {
@@ -152,12 +103,8 @@ public class BLEDevice {
     public void state(BLEDeviceState state) {
         this.state = state;
         lastUpdatedAt = new Date();
-        if (state == BLEDeviceState.connecting) {
-            lastConnectRequestedAt = lastUpdatedAt;
-        } else if (state == BLEDeviceState.connected) {
+        if (state == BLEDeviceState.connected) {
             lastConnectedAt = lastUpdatedAt;
-        } else if (state == BLEDeviceState.disconnected) {
-            lastDisconnectedAt = lastUpdatedAt;
         }
         delegate.device(this, BLEDeviceAttribute.state);
     }
@@ -204,7 +151,6 @@ public class BLEDevice {
     public void payloadData(PayloadData payloadData) {
         this.payloadData = payloadData;
         lastUpdatedAt = new Date();
-        payloadDataLastUpdatedAt = lastUpdatedAt;
         delegate.device(this, BLEDeviceAttribute.payloadData);
     }
 
@@ -215,7 +161,6 @@ public class BLEDevice {
     public void rssi(RSSI rssi) {
         this.rssi = rssi;
         lastUpdatedAt = new Date();
-        rssiLastUpdatedAt = lastUpdatedAt;
         delegate.device(this, BLEDeviceAttribute.rssi);
     }
 

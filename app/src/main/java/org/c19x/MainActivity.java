@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         requiredPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
         requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
         requiredPermissions.add(Manifest.permission.WAKE_LOCK);
-        final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[requiredPermissions.size()]);
+        final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(requiredPermissionsArray, permissionRequestCode);
         } else {
@@ -115,7 +115,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
                 }
                 for (String payloadShortName : didSharePayloads.keySet()) {
                     payloadShortNames.put(payloadShortName, (payloadShortNames.containsKey(payloadShortName) ? "read,shared" : "shared"));
-                    payloadLastSeenDates.put(payloadShortName, new Date(Math.max(didReadPayloads.get(payloadShortName).getTime(), didSharePayloads.get(payloadShortName).getTime())));
+                    final Date didReadPayloadTime = didReadPayloads.get(payloadShortName);
+                    final Date didSharePayloadTime = didSharePayloads.get(payloadShortName);
+                    payloadLastSeenDates.put(payloadShortName, new Date(
+                            Math.max((didReadPayloadTime == null ? 0 : didReadPayloadTime.getTime()),
+                                    (didSharePayloadTime == null ? 0 : didSharePayloadTime.getTime()))));
                 }
                 final List<String> payloadShortNameList = new ArrayList<>(payloadShortNames.keySet());
                 Collections.sort(payloadShortNameList);
@@ -124,10 +128,14 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
                     stringBuilder.append(payloadShortName);
                     stringBuilder.append(" [");
                     stringBuilder.append(payloadShortNames.get(payloadShortName));
-                    stringBuilder.append("] (");
-                    final String timestamp = dateFormatter.format(payloadLastSeenDates.get(payloadShortName));
-                    stringBuilder.append(timestamp);
-                    stringBuilder.append(")\n");
+                    stringBuilder.append("]");
+                    final Date lastSeen = payloadLastSeenDates.get(payloadShortName);
+                    if (lastSeen != null) {
+                        stringBuilder.append(" (");
+                        stringBuilder.append(dateFormatter.format(lastSeen));
+                        stringBuilder.append(")");
+                    }
+                    stringBuilder.append("\n");
                 }
                 ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + payloadShortNames.size() + ")");
                 final TextView textView = findViewById(R.id.payloads);

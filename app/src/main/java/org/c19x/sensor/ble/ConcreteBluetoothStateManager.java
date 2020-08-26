@@ -19,7 +19,7 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() == BluetoothAdapter.ACTION_STATE_CHANGED) {
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
                 try {
                     final int nativeState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                     logger.debug("Bluetooth state changed (nativeState={})", nativeState);

@@ -161,7 +161,6 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         }
         // Limit how much to share to avoid oversized data transfers over BLE
         // (512 bytes limit according to spec, 510 with response, iOS requires response)
-        final List<TargetIdentifier> identifiers = new ArrayList<>();
         final Set<PayloadData> sharedPayloads = new HashSet<>(devices.size());
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         for (BLEDevice device : devices) {
@@ -179,10 +178,10 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
             }
             try {
                 byteArrayOutputStream.write(payloadData.value);
-                identifiers.add(device.identifier);
                 peer.payloadSharingData.add(payloadData);
                 sharedPayloads.add(payloadData);
             } catch (Throwable e) {
+                logger.fault("Failed to append payload sharing data", e);
             }
         }
         final Data data = new Data(byteArrayOutputStream.toByteArray());

@@ -82,7 +82,6 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
     private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
-        final Throwable throwable = getThrowable(values);
         final String timestamp = dateFormatter.format(new Date());
         final String csvMessage = render(message, values).replace('\"', '\'');
         final String quotedMessage = (message.contains(",") ? "\"" + csvMessage + "\"" : csvMessage);

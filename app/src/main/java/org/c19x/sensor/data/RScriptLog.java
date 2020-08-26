@@ -35,10 +35,6 @@ public class RScriptLog implements SensorDelegate {
         return dateFormatter.format(new Date());
     }
 
-    private String csv(String value) {
-        return TextFile.csv(value);
-    }
-
     // MARK:- SensorDelegate
 
     @Override
@@ -64,7 +60,7 @@ public class RScriptLog implements SensorDelegate {
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final String timestamp = timestamp();
         for (PayloadData payload : didShare) {
-            if (payload.shortName() == payloadData.shortName()) {
+            if (payload.shortName().equals(payloadData.shortName())) {
                 continue;
             }
             textFile.write(timestamp + "," + payload.shortName() + "," + deviceName + ",android," + deviceOS);

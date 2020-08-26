@@ -3,7 +3,6 @@ package org.c19x.sensor.ble;
 import android.content.Context;
 
 import org.c19x.sensor.PayloadDataSupplier;
-import org.c19x.sensor.Sensor;
 import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
@@ -18,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
+public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLESensor");
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final BLEDatabase database = new ConcreteBLEDatabase();
@@ -80,7 +79,7 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
                 if (rssi == null) {
                     return;
                 }
-                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, Double.valueOf(rssi.value));
+                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value);
                 logger.debug("didMeasure (device={},proximity={})", device, proximity.description());
                 operationQueue.execute(new Runnable() {
                     @Override
@@ -109,7 +108,6 @@ public class ConcreteBLESensor implements Sensor, BLEDatabaseDelegate {
                 break;
             }
             default: {
-                return;
             }
         }
     }

@@ -8,12 +8,6 @@ public class Sample {
     public Sample() {
     }
 
-    public Sample(final double x, final int n) {
-        for (int i = n; i-- > 0; ) {
-            add(x);
-        }
-    }
-
     public synchronized void add(final double x) {
         final long n1 = n;
         n++;
@@ -48,16 +42,6 @@ public class Sample {
     public Double standardDeviation() {
         if (n > 1) {
             return StrictMath.sqrt(m2 / (n - 1d));
-        } else {
-            return null;
-        }
-    }
-
-    public Double upperBound(final double standardDeviations) {
-        final Double mean = mean();
-        final Double sd = standardDeviation();
-        if (mean != null && sd != null) {
-            return mean + standardDeviations * sd;
         } else {
             return null;
         }

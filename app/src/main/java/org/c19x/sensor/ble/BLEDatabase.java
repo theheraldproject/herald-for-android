@@ -8,7 +8,7 @@ import org.c19x.sensor.datatype.TargetIdentifier;
 
 import java.util.List;
 
-/// Registry for collating sniplets of information from asynchronous BLE operations.
+/// Registry for collating fragments of information from asynchronous BLE operations.
 public interface BLEDatabase {
     /// Add delegate for handling database events
     void add(BLEDatabaseDelegate delegate);

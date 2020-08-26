@@ -11,7 +11,6 @@ import org.c19x.sensor.datatype.TargetIdentifier;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,10 +31,6 @@ public class DetectionLog implements SensorDelegate {
         write();
     }
 
-    private String timestamp() {
-        return dateFormatter.format(new Date());
-    }
-
     private String csv(String value) {
         return TextFile.csv(value);
     }
@@ -51,7 +46,7 @@ public class DetectionLog implements SensorDelegate {
         content.append(csv(payloadData.shortName()));
         final List<String> payloadList = new ArrayList<>(payloads.size());
         for (String payload : payloads.keySet()) {
-            if (payload == payloadData.shortName()) {
+            if (payload.equals(payloadData.shortName())) {
                 continue;
             }
             payloadList.add(payload);

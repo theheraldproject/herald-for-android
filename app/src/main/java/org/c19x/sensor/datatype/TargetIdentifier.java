@@ -10,10 +10,6 @@ import java.util.UUID;
 public class TargetIdentifier {
     public final String value;
 
-    public TargetIdentifier(String value) {
-        this.value = value;
-    }
-
     /// Create target identifier based on bluetooth device address
     public TargetIdentifier(BluetoothDevice bluetoothDevice) {
         this.value = bluetoothDevice.getAddress();

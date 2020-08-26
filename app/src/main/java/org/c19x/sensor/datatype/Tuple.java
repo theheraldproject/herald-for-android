@@ -16,14 +16,6 @@ public class Tuple<A, B> {
         this.b = b;
     }
 
-    public A getA(String labelA) {
-        return a;
-    }
-
-    public B getB(String labelB) {
-        return b;
-    }
-
     @Override
     public String toString() {
         return "(" + labelA + "=" + a + "," + labelB + "=" + b + ")";

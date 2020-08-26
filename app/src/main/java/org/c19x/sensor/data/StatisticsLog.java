@@ -51,7 +51,7 @@ public class StatisticsLog implements SensorDelegate {
         }
         final Date now = new Date();
         payloadToTime.put(payload, now);
-        sample.add((now.getTime() - time.getTime()) / 1000);
+        sample.add((now.getTime() - time.getTime()) / 1000d);
         write();
     }
 

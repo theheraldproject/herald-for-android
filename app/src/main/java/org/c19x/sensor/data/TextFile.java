@@ -20,7 +20,9 @@ public class TextFile {
     public TextFile(String filename) {
         final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
         if (!folder.exists()) {
-            folder.mkdirs();
+            if (!folder.mkdirs()) {
+                logger.fault("Make folder failed (folder={})", folder);
+            }
         }
         file = new File(folder, filename);
         executorService.scheduleWithFixedDelay(new Runnable() {
@@ -34,8 +36,8 @@ public class TextFile {
     /**
      * Get root folder for SD card or emulated external storage.
      *
-     * @param context
-     * @return
+     * @param context Application context.
+     * @return Root folder.
      */
     private static File getRootFolder(final Context context) {
         // Get SD card or emulated external storage. By convention (really!?)

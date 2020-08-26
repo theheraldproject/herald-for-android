@@ -372,10 +372,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (hasSensorService && isAppleDevice) {
                 // Definitely iOS device offering sensor service in foreground mode
                 device.operatingSystem(BLEDeviceOperatingSystem.ios);
-            } else if (hasSensorService && !isAppleDevice) {
+            } else if (hasSensorService) { // !isAppleDevice implied
                 // Definitely Android device offering sensor service
                 device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
-            } else if (!hasSensorService && isAppleDevice) {
+            } else if (isAppleDevice) { // !hasSensorService implied
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
@@ -500,6 +500,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             try {
                 Thread.sleep(200);
             } catch (Throwable e) {
+                logger.fault("Timer interrupted", e);
             }
         }
         if (device.state() != BLEDeviceState.connected) {
@@ -521,6 +522,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             try {
                 Thread.sleep(500);
             } catch (Throwable e) {
+                logger.fault("Timer interrupted", e);
             }
         }
         boolean success = true;
@@ -769,7 +771,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
             }
-            return;
         }
     }
 

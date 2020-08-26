@@ -2,7 +2,7 @@ package org.c19x.sensor.datatype;
 
 /// RSSI in dBm.
 public class RSSI {
-    public int value = 0;
+    public final int value;
 
     public RSSI(int value) {
         this.value = value;

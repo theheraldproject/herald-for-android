@@ -29,7 +29,7 @@ public interface BLETransmitter extends Sensor {
     /**
      * Is transmitter supported.
      *
-     * @return
+     * @return True if BLE advertising is supported.
      */
     boolean isSupported();
 }

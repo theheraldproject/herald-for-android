@@ -14,8 +14,6 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.ParcelUuid;
 
 import org.c19x.sensor.PayloadDataSupplier;
@@ -33,14 +31,11 @@ import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.SignalCharacteristicData;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,14 +49,11 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_A
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
-    private final ConcreteBLETransmitter self = this;
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
-    private final Handler handler;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
-    private final Random random = new Random();
     private BluetoothLeAdvertiser bluetoothLeAdvertiser;
     private BluetoothGattServer bluetoothGattServer;
     private AdvertiseCallback advertiseCallback;
@@ -75,7 +67,6 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         this.bluetoothStateManager = bluetoothStateManager;
         this.payloadDataSupplier = payloadDataSupplier;
         this.database = database;
-        this.handler = new Handler(Looper.getMainLooper());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -193,7 +184,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
-                bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, self, database);
+                bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
                 setGattService(logger, context, bluetoothGattServer);
                 advertiseCallback = startAdvertising(logger, bluetoothLeAdvertiser);
             }
@@ -249,7 +240,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         return callback;
     }
 
-    private static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final ConcreteBLETransmitter concreteBLETransmitter, final BLEDatabase database) {
+    private static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final BLEDatabase database) {
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             logger.fault("Bluetooth unsupported");
@@ -259,10 +250,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         final AtomicReference<BluetoothGattServer> server = new AtomicReference<>(null);
         final BluetoothGattServerCallback callback = new BluetoothGattServerCallback() {
             private final Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
-            private final Map<String, PayloadSharingData> onCharacteristicReadPayloadSharingData = new ConcurrentHashMap<>();
             private final Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
-            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device, int requestId) {
+            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device) {
                 final String key = device.getAddress();
                 if (onCharacteristicReadPayloadData.containsKey(key)) {
                     return onCharacteristicReadPayloadData.get(key);
@@ -272,20 +262,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 return payloadData;
             }
 
-            private PayloadSharingData onCharacteristicReadPayloadSharingData(BluetoothDevice device, int requestId) {
-                final String key = device.getAddress();
-                if (onCharacteristicReadPayloadSharingData.containsKey(key)) {
-                    return onCharacteristicReadPayloadSharingData.get(key);
-                }
-                final BLEDevice targetDevice = database.device(device);
-                final PayloadSharingData payloadSharingData = database.payloadSharingData(targetDevice);
-                onCharacteristicReadPayloadSharingData.put(key, payloadSharingData);
-                return payloadSharingData;
-            }
-
             private byte[] onCharacteristicWriteSignalData(BluetoothDevice device, byte[] value) {
                 final String key = device.getAddress();
-                final byte[] partialData = (onCharacteristicWriteSignalData.containsKey(key) ? onCharacteristicWriteSignalData.get(key) : new byte[0]);
+                byte[] partialData = onCharacteristicWriteSignalData.get(key);
+                if (partialData == null) {
+                    partialData = new byte[0];
+                }
                 byte[] data = new byte[partialData.length + (value == null ? 0 : value.length)];
                 System.arraycopy(partialData, 0, data, 0, partialData.length);
                 if (value != null) {
@@ -302,25 +284,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         onCharacteristicReadPayloadData.remove(deviceRequestId);
                     }
                 }
-                for (String deviceRequestId : new ArrayList<>(onCharacteristicReadPayloadSharingData.keySet())) {
-                    if (deviceRequestId.startsWith(deviceAddress)) {
-                        onCharacteristicReadPayloadSharingData.remove(deviceRequestId);
-                    }
-                }
                 for (String deviceRequestId : new ArrayList<>(onCharacteristicWriteSignalData.keySet())) {
                     if (deviceRequestId.startsWith(deviceAddress)) {
                         onCharacteristicWriteSignalData.remove(deviceRequestId);
                     }
-                }
-            }
-
-            private Short int16(byte[] data, int index) {
-                if (index < data.length - 1) {
-                    final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-                    byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-                    return byteBuffer.getShort(index);
-                } else {
-                    return null;
                 }
             }
 
@@ -411,9 +378,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
                 final BLEDevice targetDevice = database.device(device);
-                final TargetIdentifier targetIdentifier = targetDevice.identifier;
                 if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID) {
-                    final PayloadData payloadData = onCharacteristicReadPayloadData(device, requestId);
+                    final PayloadData payloadData = onCharacteristicReadPayloadData(device);
                     if (offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);

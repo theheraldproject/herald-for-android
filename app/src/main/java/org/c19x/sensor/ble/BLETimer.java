@@ -1,9 +1,6 @@
 package org.c19x.sensor.ble;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.BatteryManager;
 import android.os.PowerManager;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
@@ -60,8 +57,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 5. Expect "powerSource=usb/ac" on log
  */
 public class BLETimer {
-    private SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLETimer");
-    private final Context context;
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLETimer");
     private final Sample sample = new Sample();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final Thread timerThread;
@@ -71,7 +67,6 @@ public class BLETimer {
     private Runnable runnable = null;
 
     public BLETimer(Context context) {
-        this.context = context;
         powerManager = (PowerManager) context.getSystemService(android.content.Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Sensor:BLETimer");
         wakeLock.acquire();
@@ -92,6 +87,7 @@ public class BLETimer {
                     try {
                         Thread.sleep(500);
                     } catch (Throwable e) {
+                        logger.fault("Timer interrupted", e);
                     }
                 }
             }
@@ -128,24 +124,27 @@ public class BLETimer {
         executorService.execute(runnable);
     }
 
-    private static String round(Double value) {
-        if (value == null) {
-            return "-";
-        } else {
-            return Long.toString(Math.round(value));
-        }
-    }
-
-    private String powerSource() {
-        final Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        final int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        switch (plugged) {
-            case BatteryManager.BATTERY_PLUGGED_AC:
-                return "ac";
-            case BatteryManager.BATTERY_PLUGGED_USB:
-                return "usb";
-            default:
-                return "battery";
-        }
-    }
+//    private static String round(Double value) {
+//        if (value == null) {
+//            return "-";
+//        } else {
+//            return Long.toString(Math.round(value));
+//        }
+//    }
+//
+//    private String powerSource() {
+//        final Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+//        if (intent == null) {
+//            return "unknown";
+//        }
+//        final int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+//        switch (plugged) {
+//            case BatteryManager.BATTERY_PLUGGED_AC:
+//                return "ac";
+//            case BatteryManager.BATTERY_PLUGGED_USB:
+//                return "usb";
+//            default:
+//                return "battery";
+//        }
+//    }
 }
