@@ -132,19 +132,5 @@ public class BLETimer {
 //        }
 //    }
 //
-//    private String powerSource() {
-//        final Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-//        if (intent == null) {
-//            return "unknown";
-//        }
-//        final int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-//        switch (plugged) {
-//            case BatteryManager.BATTERY_PLUGGED_AC:
-//                return "ac";
-//            case BatteryManager.BATTERY_PLUGGED_USB:
-//                return "usb";
-//            default:
-//                return "battery";
-//        }
 //    }
 }

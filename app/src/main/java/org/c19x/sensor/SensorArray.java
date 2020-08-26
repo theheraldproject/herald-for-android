@@ -3,6 +3,7 @@ package org.c19x.sensor;
 import android.content.Context;
 
 import org.c19x.sensor.ble.ConcreteBLESensor;
+import org.c19x.sensor.data.BatteryLog;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.ContactLog;
 import org.c19x.sensor.data.DetectionLog;
@@ -11,6 +12,7 @@ import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.data.StatisticsLog;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
+import org.c19x.sensor.datatype.TimeInterval;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +36,7 @@ public class SensorArray implements Sensor {
         add(new StatisticsLog("statistics.csv", payloadData));
         add(new RScriptLog("rScriptLog.csv", payloadData));
         add(new DetectionLog("detection.csv", payloadData));
+        new BatteryLog(context, "battery.csv", TimeInterval.seconds(30).millis());
 
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
     }
