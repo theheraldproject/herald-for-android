@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 
+import org.c19x.sensor.datatype.TimeInterval;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -12,10 +14,11 @@ import java.util.Date;
 public class BatteryLog {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static TimeInterval updateInterval = TimeInterval.seconds(30);
     private final Context context;
     private final TextFile textFile;
 
-    public BatteryLog(Context context, String filename, final long frequency) {
+    public BatteryLog(Context context, String filename) {
         this.context = context;
         textFile = new TextFile(filename);
         if (textFile.empty()) {
@@ -31,7 +34,7 @@ public class BatteryLog {
                         logger.fault("Update failed", e);
                     }
                     try {
-                        Thread.sleep(frequency);
+                        Thread.sleep(updateInterval.millis());
                     } catch (Throwable e) {
                         logger.fault("Timer interrupted", e);
                     }
