@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -59,6 +60,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BLETimer timer;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final Random random = new Random();
 
     private enum NextTask {
         nothing, readPayload, writePayload, writeRSSI, writePayloadSharing
@@ -376,7 +378,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 device.operatingSystem(BLEDeviceOperatingSystem.ios);
             } else if (hasSensorService) { // !isAppleDevice implied
                 // Definitely Android device offering sensor service
-                device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
+                if (device.operatingSystem() != BLEDeviceOperatingSystem.android) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
+                }
             } else if (isAppleDevice) { // !hasSensorService implied
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
@@ -388,7 +392,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // Sensor service not found + Manufacturer not Apple should be impossible
                 // as we are scanning for devices with sensor service or Apple device.
                 logger.fault("didDiscover, invalid non-Apple device without sensor service (device={})", device);
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
             }
         }
         return devices;
@@ -457,9 +463,41 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Clever connection prioritisation is pointless here as devices
         // like the Samsung A10 and A20 changes mac address on every scan
         // call, so optimising new device handling is more effective.
+        final List<BLEDevice> mustConnect = new ArrayList<>();
+        final List<BLEDevice> shouldConnect = new ArrayList<>();
+        for (BLEDevice device : discovered) {
+            final NextTask nextTask = nextTaskForDevice(device);
+            if (nextTask != NextTask.nothing) {
+                // Must connect to iOS/Android devices to write characteristics
+                if (nextTask == NextTask.writePayload || nextTask == NextTask.writePayloadSharing || nextTask == NextTask.writeRSSI) {
+                    mustConnect.add(device);
+                }
+                // Must connect to iOS/Android devices without payload to enable attribution
+                else if (device.payloadData() == null &&
+                        (device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc
+                                || device.operatingSystem() == BLEDeviceOperatingSystem.android
+                                || device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc)) {
+                    mustConnect.add(device);
+                }
+                // Try connecting to remaining devices with time quota
+                else {
+                    shouldConnect.add(device);
+                }
+            }
+        }
+        // Must connect : No time limit
+        for (BLEDevice device : randomise(mustConnect)) {
+            final NextTask nextTask = nextTaskForDevice(device);
+            if (nextTask == NextTask.nothing) {
+                continue;
+            }
+            logger.debug("taskConnect (priority=must,device={},nextTask={})", device, nextTask);
+            taskConnectDevice(device);
+        }
+        // Should connect : Try as many as possible within time limit
         final long timeStart = System.currentTimeMillis();
         int devicesProcessed = 0;
-        for (BLEDevice device : discovered) {
+        for (BLEDevice device : randomise(shouldConnect)) {
             // Stop process if exceeded time limit
             final long elapsedTime = System.currentTimeMillis() - timeStart;
             if (elapsedTime >= scanProcessDurationMillis) {
@@ -473,13 +511,25 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     break;
                 }
             }
-            if (nextTaskForDevice(device) == NextTask.nothing) {
-                logger.debug("taskConnect, no pending action (device={})", device);
+            final NextTask nextTask = nextTaskForDevice(device);
+            if (nextTask == NextTask.nothing) {
                 continue;
             }
+            logger.debug("taskConnect (priority=should,device={},nextTask={})", device, nextTask);
             taskConnectDevice(device);
             devicesProcessed++;
         }
+    }
+
+    /// Randomise order of devices for connection to ensure fairness
+    private List<BLEDevice> randomise(final List<BLEDevice> devices) {
+        final List<BLEDevice> source = new ArrayList<>(devices);
+        final List<BLEDevice> target = new ArrayList<>(devices.size());
+        while (source.size() > 1) {
+            target.add(source.remove(random.nextInt(source.size())));
+        }
+        target.addAll(source);
+        return target;
     }
 
     private void taskConnectDevice(final BLEDevice device) {
@@ -563,7 +613,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             gatt.close();
             device.state(BLEDeviceState.disconnected);
             if (status != 0) {
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
             }
         } else {
             logger.debug("onConnectionStateChange (device={},status={},state={})", device, bleStatus(status), bleState(newState));
