@@ -221,7 +221,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
         final AdvertiseData data = new AdvertiseData.Builder()
                 .setIncludeDeviceName(false)
-                .setIncludeTxPowerLevel(true)
+                .setIncludeTxPowerLevel(false)
                 .addServiceUuid(new ParcelUuid(BLESensorConfiguration.serviceUUID))
                 .build();
 
