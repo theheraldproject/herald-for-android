@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -60,7 +59,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BLETimer timer;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
-    private final Random random = new Random();
 
     private enum NextTask {
         nothing, readPayload, writePayload, writeRSSI, writePayloadSharing
@@ -463,41 +461,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Clever connection prioritisation is pointless here as devices
         // like the Samsung A10 and A20 changes mac address on every scan
         // call, so optimising new device handling is more effective.
-        final List<BLEDevice> mustConnect = new ArrayList<>();
-        final List<BLEDevice> shouldConnect = new ArrayList<>();
-        for (BLEDevice device : discovered) {
-            final NextTask nextTask = nextTaskForDevice(device);
-            if (nextTask != NextTask.nothing) {
-                // Must connect to iOS/Android devices to write characteristics
-                if (nextTask == NextTask.writePayload || nextTask == NextTask.writePayloadSharing || nextTask == NextTask.writeRSSI) {
-                    mustConnect.add(device);
-                }
-                // Must connect to iOS/Android devices without payload to enable attribution
-                else if (device.payloadData() == null &&
-                        (device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc
-                                || device.operatingSystem() == BLEDeviceOperatingSystem.android
-                                || device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc)) {
-                    mustConnect.add(device);
-                }
-                // Try connecting to remaining devices with time quota
-                else {
-                    shouldConnect.add(device);
-                }
-            }
-        }
-        // Must connect : No time limit
-        for (BLEDevice device : randomise(mustConnect)) {
-            final NextTask nextTask = nextTaskForDevice(device);
-            if (nextTask == NextTask.nothing) {
-                continue;
-            }
-            logger.debug("taskConnect (priority=must,device={},nextTask={})", device, nextTask);
-            taskConnectDevice(device);
-        }
-        // Should connect : Try as many as possible within time limit
         final long timeStart = System.currentTimeMillis();
         int devicesProcessed = 0;
-        for (BLEDevice device : randomise(shouldConnect)) {
+        for (BLEDevice device : discovered) {
             // Stop process if exceeded time limit
             final long elapsedTime = System.currentTimeMillis() - timeStart;
             if (elapsedTime >= scanProcessDurationMillis) {
@@ -511,25 +477,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     break;
                 }
             }
-            final NextTask nextTask = nextTaskForDevice(device);
-            if (nextTask == NextTask.nothing) {
+            if (nextTaskForDevice(device) == NextTask.nothing) {
+                logger.debug("taskConnect, no pending action (device={})", device);
                 continue;
             }
-            logger.debug("taskConnect (priority=should,device={},nextTask={})", device, nextTask);
             taskConnectDevice(device);
             devicesProcessed++;
         }
-    }
-
-    /// Randomise order of devices for connection to ensure fairness
-    private List<BLEDevice> randomise(final List<BLEDevice> devices) {
-        final List<BLEDevice> source = new ArrayList<>(devices);
-        final List<BLEDevice> target = new ArrayList<>(devices.size());
-        while (source.size() > 1) {
-            target.add(source.remove(random.nextInt(source.size())));
-        }
-        target.addAll(source);
-        return target;
     }
 
     private void taskConnectDevice(final BLEDevice device) {
@@ -686,13 +640,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("nextTaskForDevice (device={},task=readPayload)", device);
             return NextTask.readPayload;
         }
-        // Write payload data for symmetry
-        if (device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value) {
-            logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
-            return NextTask.writePayload;
-        }
-        // Write rssi and payload sharing data if this device cannot transmit
+        // Write payload, rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
+            // Write payload data as top priority
+            if (device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value) {
+                logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
+                return NextTask.writePayload;
+            }
             // Write payload sharing data to iOS device if there is data to be shared (alternate between payload sharing and write RSSI)
             final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ios

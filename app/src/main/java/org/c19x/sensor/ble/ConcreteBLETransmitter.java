@@ -341,8 +341,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                             break;
                         }
                         logger.debug("didReceiveWrite (dataType=payload,central={},payload={})", targetDevice, payloadData);
-                        // Only Android devices write payload
+                        // Only receive-only Android devices write payload
                         targetDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                        targetDevice.receiveOnly(true);
                         targetDevice.payloadData(payloadData);
                         onCharacteristicWriteSignalData.remove(device.getAddress());
                         break;
