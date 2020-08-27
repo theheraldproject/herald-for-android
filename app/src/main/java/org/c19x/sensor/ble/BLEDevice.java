@@ -92,7 +92,6 @@ public class BLEDevice {
         if (this.peripheral != peripheral) {
             this.peripheral = peripheral;
             lastUpdatedAt = new Date();
-            delegate.device(this, BLEDeviceAttribute.peripheral);
         }
     }
 

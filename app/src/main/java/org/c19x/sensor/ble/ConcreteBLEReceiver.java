@@ -66,9 +66,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            //logger.debug("onScanResult (result={})", result);
-            scanResults.add(result);
+        public void onScanResult(int callbackType, ScanResult scanResult) {
+            //logger.debug("onScanResult (result={})", scanResult);
+            scanResults.add(scanResult);
+            // Create or update device in database
+            final BLEDevice device = database.device(scanResult.getDevice());
+            device.registerDiscovery();
+            // Read RSSI from scan result
+            device.rssi(new RSSI(scanResult.getRssi()));
         }
 
         @Override
@@ -355,13 +360,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final List<BLEDevice> devices = new ArrayList<>();
         for (ScanResult scanResult : scanResultList) {
             final BLEDevice device = database.device(scanResult.getDevice());
-            device.registerDiscovery();
             if (deviceSet.add(device)) {
                 logger.debug("didDiscover (device={})", device);
                 devices.add(device);
             }
-            // Read RSSI from scan result
-            device.rssi(new RSSI(scanResult.getRssi()));
             // Identify operating system from scan record where possible
             // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
             // - Sensor service found + Manufacturer not Apple -> Android

@@ -60,7 +60,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
 
     @Override
     public void bleDatabaseDidCreate(final BLEDevice device) {
-        logger.debug("didDetect (device={})", device.identifier);
+        logger.debug("didDetect (device={},payloadData={})", device.identifier, device.payloadData());
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
@@ -80,7 +80,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
                     return;
                 }
                 final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value);
-                logger.debug("didMeasure (device={},proximity={})", device, proximity.description());
+                logger.debug("didMeasure (device={},payloadData={},proximity={})", device, device.payloadData(), proximity.description());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {
@@ -96,7 +96,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
                 if (payloadData == null) {
                     return;
                 }
-                logger.debug("didRead (device={},payloadData={})", device, payloadData.shortName());
+                logger.debug("didRead (device={},payloadData={},payloadData={})", device, device.payloadData(), payloadData.shortName());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {

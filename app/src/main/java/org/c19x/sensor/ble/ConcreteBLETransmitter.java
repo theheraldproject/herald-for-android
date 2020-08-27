@@ -213,15 +213,15 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     private static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
                 .setConnectable(true)
                 .setTimeout(0)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
                 .build();
 
         final AdvertiseData data = new AdvertiseData.Builder()
                 .setIncludeDeviceName(false)
-                .setIncludeTxPowerLevel(false)
+                .setIncludeTxPowerLevel(true)
                 .addServiceUuid(new ParcelUuid(BLESensorConfiguration.serviceUUID))
                 .build();
 
