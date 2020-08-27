@@ -686,13 +686,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("nextTaskForDevice (device={},task=readPayload)", device);
             return NextTask.readPayload;
         }
-        // Write payload, rssi and payload sharing data if this device cannot transmit
+        // Write payload data for symmetry
+        if (device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value) {
+            logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
+            return NextTask.writePayload;
+        }
+        // Write rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
-            // Write payload data as top priority
-            if (device.timeIntervalSinceLastWritePayload().value > TimeInterval.minutes(5).value) {
-                logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
-                return NextTask.writePayload;
-            }
             // Write payload sharing data to iOS device if there is data to be shared (alternate between payload sharing and write RSSI)
             final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
