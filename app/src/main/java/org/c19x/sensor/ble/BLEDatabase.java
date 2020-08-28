@@ -1,6 +1,7 @@
 package org.c19x.sensor.ble;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.ScanResult;
 
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadSharingData;
@@ -12,6 +13,9 @@ import java.util.List;
 public interface BLEDatabase {
     /// Add delegate for handling database events
     void add(BLEDatabaseDelegate delegate);
+
+    /// Get or create device for collating information from asynchronous BLE operations.
+    BLEDevice device(ScanResult scanResult);
 
     /// Get or create device for collating information from asynchronous BLE operations.
     BLEDevice device(BluetoothDevice bluetoothDevice);

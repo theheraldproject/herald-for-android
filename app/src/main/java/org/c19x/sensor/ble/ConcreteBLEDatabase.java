@@ -1,12 +1,15 @@
 package org.c19x.sensor.ble;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadSharingData;
+import org.c19x.sensor.datatype.PseudoDeviceAddress;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +39,137 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     public void add(BLEDatabaseDelegate delegate) {
         delegates.add(delegate);
     }
+
+    @Override
+    public BLEDevice device(ScanResult scanResult) {
+        final BluetoothDevice bluetoothDevice = scanResult.getDevice();
+        // Get pseudo device address
+        final PseudoDeviceAddress pseudoDeviceAddress = pseudoDeviceAddress(scanResult);
+        if (pseudoDeviceAddress == null) {
+            // Get device based on peripheral only
+            return device(bluetoothDevice);
+        }
+        // Identify all existing devices with the same pseudo device address
+        final List<BLEDevice> candidates = new ArrayList<>();
+        for (final BLEDevice device : database.values()) {
+            if (device.pseudoDeviceAddress() == null) {
+                continue;
+            }
+            if (device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
+                candidates.add(device);
+            }
+        }
+        // No existing device matching pseudo device address, create new device
+        if (candidates.size() == 0) {
+            final BLEDevice device = device(bluetoothDevice);
+            device.pseudoDeviceAddress(pseudoDeviceAddress);
+            return device;
+        }
+        // Find device with the same target identifier
+        final TargetIdentifier targetIdentifier = new TargetIdentifier(bluetoothDevice);
+        final BLEDevice existingDevice = database.get(targetIdentifier);
+        if (existingDevice != null) {
+            existingDevice.pseudoDeviceAddress(pseudoDeviceAddress);
+            shareDataAcrossDevices(pseudoDeviceAddress);
+            return existingDevice;
+        }
+        // Get most recent version of the device and clone to enable attachment to new peripheral
+        Collections.sort(candidates, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
+            }
+        });
+        final BLEDevice cloneSource = candidates.get(0);
+        final BLEDevice newDevice = new BLEDevice(cloneSource, scanResult.getDevice());
+        database.put(newDevice.identifier, newDevice);
+        queue.execute(new Runnable() {
+            @Override
+            public void run() {
+                logger.debug("create (device={},pseudoAddress={})", newDevice.identifier, pseudoDeviceAddress);
+                for (BLEDatabaseDelegate delegate : delegates) {
+                    delegate.bleDatabaseDidCreate(newDevice);
+                }
+            }
+        });
+        newDevice.peripheral(scanResult.getDevice());
+        final PayloadData payloadData = shareDataAcrossDevices(pseudoDeviceAddress);
+        if (payloadData != null) {
+            newDevice.payloadData(payloadData);
+        }
+        return newDevice;
+    }
+
+    /// Get pseudo device address for Android devices
+    private PseudoDeviceAddress pseudoDeviceAddress(final ScanResult scanResult) {
+        final ScanRecord scanRecord = scanResult.getScanRecord();
+        if (scanRecord == null) {
+            return null;
+        }
+        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor);
+        if (data == null || data.length != 6) {
+            return null;
+        }
+        return new PseudoDeviceAddress(data);
+    }
+
+    /// Share information across devices with the same pseudo device address
+    private PayloadData shareDataAcrossDevices(final PseudoDeviceAddress pseudoDeviceAddress) {
+        // Get all devices with the same pseudo device address
+        final List<BLEDevice> devices = new ArrayList<>();
+        for (final BLEDevice device : database.values()) {
+            if (device.pseudoDeviceAddress() == null) {
+                continue;
+            }
+            if (device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
+                devices.add(device);
+            }
+        }
+        // Get most recent version of payload data
+        Collections.sort(devices, new Comparator<BLEDevice>() {
+            @Override
+            public int compare(BLEDevice d0, BLEDevice d1) {
+                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
+            }
+        });
+        PayloadData payloadData = null;
+        for (BLEDevice device : devices) {
+            if (device.payloadData() != null) {
+                payloadData = device.payloadData();
+                break;
+            }
+        }
+        // Distribute payload to all devices with the same pseudo address
+        if (payloadData != null) {
+            // Share it amongst devices within advert refresh time limit
+            final long timeLimit = new Date().getTime() - BLESensorConfiguration.advertRefreshTimeInterval.millis();
+            for (BLEDevice device : devices) {
+                if (device.payloadData() == null && device.createdAt.getTime() >= timeLimit) {
+                    device.payloadData(payloadData);
+                }
+            }
+        }
+        // Get the most complete operating system
+        BLEDeviceOperatingSystem operatingSystem = null;
+        for (BLEDevice device : devices) {
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
+                operatingSystem = device.operatingSystem();
+                break;
+            }
+        }
+        // Distribute operating system to all devices with the same pseudo address
+        if (operatingSystem != null) {
+            for (BLEDevice device : devices) {
+                if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown
+                        || device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc
+                        || device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
+                    device.operatingSystem(operatingSystem);
+                }
+            }
+        }
+        return payloadData;
+    }
+
 
     @Override
     public BLEDevice device(BluetoothDevice bluetoothDevice) {

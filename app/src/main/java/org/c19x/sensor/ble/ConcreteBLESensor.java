@@ -22,14 +22,16 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final BLEDatabase database = new ConcreteBLEDatabase();
     private final BluetoothStateManager bluetoothStateManager;
+    private final BLETimer timer;
     private final BLETransmitter transmitter;
     private final BLEReceiver receiver;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
 
     public ConcreteBLESensor(Context context, PayloadDataSupplier payloadDataSupplier) {
         bluetoothStateManager = new ConcreteBluetoothStateManager(context);
-        transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, payloadDataSupplier, database);
-        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, database, transmitter);
+        timer = new BLETimer(context);
+        transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database);
+        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter);
         database.add(this);
     }
 

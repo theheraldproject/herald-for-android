@@ -5,9 +5,10 @@ import android.os.PowerManager;
 
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
-import org.c19x.sensor.datatype.Callback;
 import org.c19x.sensor.datatype.Sample;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -64,7 +65,19 @@ public class BLETimer {
     private final PowerManager powerManager;
     private final PowerManager.WakeLock wakeLock;
     private final AtomicLong now = new AtomicLong(0);
-    private Runnable runnable = null;
+    private final Queue<BLETimerDelegate> delegates = new ConcurrentLinkedQueue<>();
+    private final Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            for (BLETimerDelegate delegate : delegates) {
+                try {
+                    delegate.bleTimer(now.get());
+                } catch (Throwable e) {
+                    logger.fault("delegate execution failed", e);
+                }
+            }
+        }
+    };
 
     public BLETimer(Context context) {
         powerManager = (PowerManager) context.getSystemService(android.content.Context.POWER_SERVICE);
@@ -80,7 +93,8 @@ public class BLETimer {
                     final long elapsed = now.get() - last;
                     if (elapsed >= 1000) {
                         if (last != 0) {
-                            runTimerTask(elapsed);
+                            sample.add(elapsed);
+                            executorService.execute(runnable);
                         }
                         last = now.get();
                     }
@@ -102,35 +116,8 @@ public class BLETimer {
         wakeLock.release();
     }
 
-    public void timerTask(final Callback<Long> timerTask) {
-        runnable = new Runnable() {
-            @Override
-            public void run() {
-                timerTask.accept(now.get());
-            }
-        };
+    /// Add delegate for time notification
+    public void add(BLETimerDelegate delegate) {
+        delegates.add(delegate);
     }
-
-    private void runTimerTask(final long elapsed) {
-        sample.add(elapsed);
-//        final String idleMode = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? Boolean.toString(powerManager.isDeviceIdleMode()) : "N/A");
-//        logger.debug("timer (elapsed={},count={},mean={},sd={},min={},max={},idle={},powerSaving={},powerSource={})",
-//                elapsed, sample.count(), round(sample.mean()), round(sample.standardDeviation()),
-//                round(sample.min()), round(sample.max()),
-//                idleMode, powerManager.isPowerSaveMode(), powerSource());
-        if (runnable == null) {
-            return;
-        }
-        executorService.execute(runnable);
-    }
-
-//    private static String round(Double value) {
-//        if (value == null) {
-//            return "-";
-//        } else {
-//            return Long.toString(Math.round(value));
-//        }
-//    }
-//
-//    }
 }

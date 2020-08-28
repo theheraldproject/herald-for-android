@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 
 import org.c19x.sensor.datatype.PayloadData;
+import org.c19x.sensor.datatype.PseudoDeviceAddress;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.TimeInterval;
@@ -20,6 +21,8 @@ public class BLEDevice {
     public Date lastUpdatedAt;
     /// Ephemeral device identifier, e.g. peripheral identifier UUID
     public final TargetIdentifier identifier;
+    /// Pseudo device address for tracking Android devices that change address constantly.
+    private PseudoDeviceAddress pseudoDeviceAddress;
     /// Delegate for listening to attribute updates events.
     private final BLEDeviceDelegate delegate;
     /// Android Bluetooth device object for interacting with this device.
@@ -74,7 +77,7 @@ public class BLEDevice {
     }
 
     public String description() {
-        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + ",payload=" + payloadData() + "]";
+        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + ",payload=" + payloadData() + ",address=" + pseudoDeviceAddress() + "]";
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
@@ -82,6 +85,44 @@ public class BLEDevice {
         this.identifier = identifier;
         this.delegate = delegate;
         this.lastUpdatedAt = createdAt;
+    }
+
+    /// Create a clone of an existing device
+    public BLEDevice(BLEDevice device, BluetoothDevice bluetoothDevice) {
+        this.createdAt = device.createdAt;
+        this.lastUpdatedAt = new Date();
+        this.identifier = new TargetIdentifier(bluetoothDevice);
+        this.pseudoDeviceAddress = device.pseudoDeviceAddress;
+        this.delegate = device.delegate;
+        this.state = device.state;
+        this.operatingSystem = device.operatingSystem;
+        this.payloadData = device.payloadData;
+        this.rssi = device.rssi;
+        this.txPower = device.txPower;
+        this.receiveOnly = device.receiveOnly;
+        this.ignoreForDuration = device.ignoreForDuration;
+        this.ignoreUntil = device.ignoreUntil;
+        this.signalCharacteristic = device.signalCharacteristic;
+        this.payloadCharacteristic = device.payloadCharacteristic;
+        this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
+        this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
+        this.lastDiscoveredAt = device.lastDiscoveredAt;
+        this.lastConnectedAt = device.lastConnectedAt;
+        this.payloadSharingData.addAll(device.payloadSharingData);
+        this.lastWritePayloadAt = device.lastWritePayloadAt;
+        this.lastWriteRssiAt = device.lastWriteRssiAt;
+        this.lastWritePayloadSharingAt = device.lastWritePayloadSharingAt;
+    }
+
+    public PseudoDeviceAddress pseudoDeviceAddress() {
+        return pseudoDeviceAddress;
+    }
+
+    public void pseudoDeviceAddress(PseudoDeviceAddress pseudoDeviceAddress) {
+        if (this.pseudoDeviceAddress == null || !this.pseudoDeviceAddress.equals(pseudoDeviceAddress)) {
+            this.pseudoDeviceAddress = pseudoDeviceAddress;
+            lastUpdatedAt = new Date();
+        }
     }
 
     public BluetoothDevice peripheral() {

@@ -22,6 +22,10 @@ public class BLESensorConfiguration {
     public final static UUID payloadCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000003");
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
     public final static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
+    /// Manufacturer data is being used on Android to store pseudo device address
+    public final static int manufacturerIdForSensor = 65535;
+    /// Advert refresh time interval
+    public final static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(60);
 
 
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload data length, then payload data

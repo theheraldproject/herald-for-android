@@ -56,7 +56,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BluetoothStateManager bluetoothStateManager;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final BLETimer timer;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -67,10 +66,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            //logger.debug("onScanResult (result={})", scanResult);
+            logger.debug("onScanResult (result={})", scanResult);
             scanResults.add(scanResult);
             // Create or update device in database
-            final BLEDevice device = database.device(scanResult.getDevice());
+            final BLEDevice device = database.device(scanResult);
             device.registerDiscovery();
             // Read RSSI from scan result
             device.rssi(new RSSI(scanResult.getRssi()));
@@ -98,13 +97,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     /**
      * Receiver starts automatically when Bluetooth is enabled.
      */
-    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLEDatabase database, BLETransmitter transmitter) {
+    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, BLEDatabase database, BLETransmitter transmitter) {
         this.context = context;
         this.bluetoothStateManager = bluetoothStateManager;
         this.database = database;
         this.transmitter = transmitter;
-        this.timer = new BLETimer(context);
-        timer.timerTask(new ScanLoopTask());
+        timer.add(new ScanLoopTask());
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
     }
@@ -141,7 +139,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         scanStarting, scanStarted, scanStopping, scanStopped, processing, processed
     }
 
-    private class ScanLoopTask implements Callback<Long> {
+    private class ScanLoopTask implements BLETimerDelegate {
         private ScanLoopState scanLoopState = ScanLoopState.processed;
         private long lastStateChangeAt = System.currentTimeMillis();
 
@@ -171,7 +169,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
 
         @Override
-        public void accept(final Long now) {
+        public void bleTimer(final long now) {
             switch (scanLoopState) {
                 case processed: {
                     if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
@@ -359,7 +357,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final Set<BLEDevice> deviceSet = new HashSet<>();
         final List<BLEDevice> devices = new ArrayList<>();
         for (ScanResult scanResult : scanResultList) {
-            final BLEDevice device = database.device(scanResult.getDevice());
+            final BLEDevice device = database.device(scanResult);
             if (deviceSet.add(device)) {
                 logger.debug("didDiscover (device={})", device);
                 devices.add(device);

@@ -26,10 +26,12 @@ import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadSharingData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
+import org.c19x.sensor.datatype.PseudoDeviceAddress;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.SignalCharacteristicData;
 import org.c19x.sensor.datatype.TargetIdentifier;
+import org.c19x.sensor.datatype.TimeInterval;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +51,7 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_A
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
+    private final static long advertOffDurationMillis = TimeInterval.seconds(2).millis();
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
@@ -62,7 +65,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
      */
-    public ConcreteBLETransmitter(Context context, BluetoothStateManager bluetoothStateManager, PayloadDataSupplier payloadDataSupplier, BLEDatabase database) {
+    public ConcreteBLETransmitter(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, PayloadDataSupplier payloadDataSupplier, BLEDatabase database) {
         this.context = context;
         this.bluetoothStateManager = bluetoothStateManager;
         this.payloadDataSupplier = payloadDataSupplier;
@@ -213,22 +216,24 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     private static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
                 .setConnectable(true)
                 .setTimeout(0)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW)
                 .build();
 
+        final PseudoDeviceAddress pseudoDeviceAddress = new PseudoDeviceAddress();
         final AdvertiseData data = new AdvertiseData.Builder()
                 .setIncludeDeviceName(false)
                 .setIncludeTxPowerLevel(false)
                 .addServiceUuid(new ParcelUuid(BLESensorConfiguration.serviceUUID))
+                .addManufacturerData(BLESensorConfiguration.manufacturerIdForSensor, pseudoDeviceAddress.data)
                 .build();
 
         final AdvertiseCallback callback = new AdvertiseCallback() {
             @Override
             public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-                logger.debug("advertising (settingsInEffect={})", settingsInEffect);
+                logger.debug("advertising (pseudoAddress={},settingsInEffect={})", pseudoDeviceAddress, settingsInEffect);
             }
 
             @Override
