@@ -117,13 +117,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     @Override
     public void start() {
         logger.debug("start");
-        // startScanLoop is started by Bluetooth state
+        // scanLoop is started by Bluetooth state
     }
 
     @Override
     public void stop() {
         logger.debug("stop");
-        // startScanLoop is stopped by Bluetooth state
+        // scanLoop is stopped by Bluetooth state
     }
 
     // MARK:- BluetoothStateManagerDelegate
@@ -145,7 +145,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         private void state(final long now, ScanLoopState state) {
             final long elapsed = now - lastStateChangeAt;
-            logger.debug("ScanLoop, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
+            logger.debug("scanLoopTask, state change (from={},to={},elapsed={}ms)", scanLoopState, state, elapsed);
             this.scanLoopState = state;
             lastStateChangeAt = now;
         }

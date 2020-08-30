@@ -25,7 +25,7 @@ public class BLESensorConfiguration {
     /// Manufacturer data is being used on Android to store pseudo device address
     public final static int manufacturerIdForSensor = 65535;
     /// Advert refresh time interval
-    public final static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(60);
+    public final static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 
 
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload data length, then payload data

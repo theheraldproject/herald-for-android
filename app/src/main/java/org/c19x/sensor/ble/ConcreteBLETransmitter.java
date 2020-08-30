@@ -32,6 +32,7 @@ import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.SignalCharacteristicData;
 import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.TimeInterval;
+import org.c19x.sensor.datatype.Triple;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,16 +52,12 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_A
 
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
-    private final static long advertOffDurationMillis = TimeInterval.seconds(2).millis();
+    private final static long advertOffDurationMillis = TimeInterval.seconds(4).millis();
     private final Context context;
     private final BluetoothStateManager bluetoothStateManager;
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
-    private BluetoothLeAdvertiser bluetoothLeAdvertiser;
-    private BluetoothGattServer bluetoothGattServer;
-    private AdvertiseCallback advertiseCallback;
-    private boolean enabled = false;
 
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
@@ -72,6 +69,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         this.database = database;
         bluetoothStateManager.delegates.add(this);
         bluetoothStateManager(bluetoothStateManager.state());
+        timer.add(new AdvertLoopTask());
     }
 
     @Override
@@ -81,118 +79,203 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public void start() {
-        if (bluetoothLeAdvertiser == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null && bluetoothAdapter.isMultipleAdvertisementSupported()) {
-                bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-            }
-        }
-        logger.debug("start");
-        enabled = true;
-        advertise("start");
-    }
-
-    private void advertise(String source) {
-        logger.debug("advertise (source={},enabled={})", source, enabled);
-        if (!enabled) {
-            return;
-        }
-        startAdvertising();
+        logger.debug("start (supported={})", isSupported());
+        // advertLoop is started by Bluetooth state
     }
 
     @Override
     public void stop() {
         logger.debug("stop");
-        enabled = false;
-        stopAdvertising(new Callback<Boolean>() {
-            @Override
-            public void accept(Boolean success) {
-                logger.debug("stopAdvertising (success={})", success);
-            }
-        });
+        // advertLoop is stopped by Bluetooth state
     }
 
-    private void stopAdvertising(final Callback<Boolean> callback) {
+    // MARK:- Advert loop
+
+    private enum AdvertLoopState {
+        starting, started, stopping, stopped
+    }
+
+    /// Get Bluetooth LE advertiser
+    private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
+        final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (bluetoothAdapter == null) {
+            //logger.fault("Bluetooth adapter unavailable");
+            return null;
+        }
+        if (!bluetoothAdapter.isMultipleAdvertisementSupported()) {
+            //logger.fault("Bluetooth advertisement unsupported");
+            return null;
+        }
+        final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
         if (bluetoothLeAdvertiser == null) {
-            logger.fault("stopAdvertising denied, Bluetooth LE advertising unsupported");
-            return;
+            //logger.fault("Bluetooth advertisement unavailable");
+            return null;
         }
-        if (advertiseCallback == null) {
-            logger.fault("Already stopped");
-            return;
+        return bluetoothLeAdvertiser;
+    }
+
+    private class AdvertLoopTask implements BLETimerDelegate {
+        private AdvertLoopState advertLoopState = AdvertLoopState.stopped;
+        private long lastStateChangeAt = System.currentTimeMillis();
+        private BluetoothGattServer bluetoothGattServer;
+        private AdvertiseCallback advertiseCallback;
+
+        private void state(final long now, AdvertLoopState state) {
+            final long elapsed = now - lastStateChangeAt;
+            logger.debug("advertLoopTask, state change (from={},to={},elapsed={}ms)", advertLoopState, state, elapsed);
+            this.advertLoopState = state;
+            lastStateChangeAt = now;
         }
-        if (bluetoothStateManager.state() == BluetoothState.poweredOff) {
-            logger.fault("stopAdvertising denied, Bluetooth is powered off");
-            return;
+
+        private long timeSincelastStateChange(final long now) {
+            return now - lastStateChangeAt;
         }
+
+        @Override
+        public void bleTimer(final long now) {
+            if (!isSupported()) {
+                return;
+            }
+            switch (advertLoopState) {
+                case stopped: {
+                    if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
+                        final long period = timeSincelastStateChange(now);
+                        if (period >= advertOffDurationMillis) {
+                            logger.debug("advertLoopTask, start advert (stop={}ms)", period);
+                            final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothLeAdvertiser();
+                            if (bluetoothLeAdvertiser == null) {
+                                logger.fault("advertLoopTask, start advert denied, Bluetooth LE advertiser unavailable");
+                                return;
+                            }
+                            state(now, AdvertLoopState.starting);
+                            startAdvert(bluetoothLeAdvertiser, new Callback<Triple<Boolean, AdvertiseCallback, BluetoothGattServer>>() {
+                                @Override
+                                public void accept(Triple<Boolean, AdvertiseCallback, BluetoothGattServer> value) {
+                                    advertiseCallback = value.b;
+                                    bluetoothGattServer = value.c;
+                                    state(now, value.a ? AdvertLoopState.started : AdvertLoopState.stopped);
+                                }
+                            });
+                        }
+                    }
+                    break;
+                }
+                case started: {
+                    final long period = timeSincelastStateChange(now);
+                    if (period >= BLESensorConfiguration.advertRefreshTimeInterval.millis()) {
+                        logger.debug("advertLoopTask, stop advert (advert={}ms)", period);
+                        final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothLeAdvertiser();
+                        if (bluetoothLeAdvertiser == null) {
+                            logger.fault("advertLoopTask, stop advert denied, Bluetooth LE advertiser unavailable");
+                            return;
+                        }
+                        state(now, AdvertLoopState.stopping);
+                        stopAdvert(bluetoothLeAdvertiser, advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {
+                            @Override
+                            public void accept(Boolean value) {
+                                advertiseCallback = null;
+                                bluetoothGattServer = null;
+                                state(now, AdvertLoopState.stopped);
+                            }
+                        });
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // MARK:- Start and stop advert
+
+    private void startAdvert(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final Callback<Triple<Boolean, AdvertiseCallback, BluetoothGattServer>> callback) {
+        logger.debug("startAdvert");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
+                boolean result = true;
+                BluetoothGattServer bluetoothGattServer = null;
                 try {
-                    bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
-                    advertiseCallback = null;
-                    if (bluetoothGattServer != null) {
+                    bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
+                } catch (Throwable e) {
+                    logger.fault("startAdvert failed to start GATT server", e);
+                    result = false;
+                }
+                try {
+                    setGattService(logger, context, bluetoothGattServer);
+                } catch (Throwable e) {
+                    logger.fault("startAdvert failed to set GATT service", e);
+                    try {
                         bluetoothGattServer.clearServices();
                         bluetoothGattServer.close();
                         bluetoothGattServer = null;
+                    } catch (Throwable e2) {
+                        logger.fault("startAdvert failed to stop GATT server", e2);
+                        bluetoothGattServer = null;
                     }
-                    logger.debug("stopAdvertising");
-                    callback.accept(true);
+                    result = false;
+                }
+                if (!result || bluetoothGattServer == null) {
+                    logger.fault("startAdvert failed");
+                    callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(false, null, null));
+                    return;
+                }
+                try {
+                    final BluetoothGattServer bluetoothGattServerConfirmed = bluetoothGattServer;
+                    final AdvertiseCallback advertiseCallback = new AdvertiseCallback() {
+                        @Override
+                        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+                            logger.debug("startAdvert successful");
+                            callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(true, this, bluetoothGattServerConfirmed));
+                        }
+
+                        @Override
+                        public void onStartFailure(int errorCode) {
+                            logger.fault("startAdvert failed (errorCode={})", onStartFailureErrorCodeToString(errorCode));
+                            callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(false, this, bluetoothGattServerConfirmed));
+                        }
+                    };
+                    startAdvertising(bluetoothLeAdvertiser, advertiseCallback);
                 } catch (Throwable e) {
-                    logger.fault("stopAdvertising failed", e);
-                    callback.accept(false);
+                    logger.fault("startAdvert failed");
+                    callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(false, null, null));
                 }
             }
         });
     }
 
-    private void startAdvertising() {
-        logger.debug("startAdvertising");
-        if (bluetoothLeAdvertiser == null) {
-            final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter != null && bluetoothAdapter.isMultipleAdvertisementSupported()) {
-                bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-            }
-        }
-        if (bluetoothLeAdvertiser == null) {
-            logger.fault("Bluetooth LE advertiser unsupported");
-            return;
-        }
-        if (bluetoothStateManager.state() != BluetoothState.poweredOn) {
-            logger.fault("Bluetooth is not powered on");
-            return;
-        }
-        if (advertiseCallback != null) {
-            operationQueue.execute(new Runnable() {
-                @Override
-                public void run() {
-                    bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
-                    advertiseCallback = null;
-                }
-            });
-        }
-        if (bluetoothGattServer != null) {
-            operationQueue.execute(new Runnable() {
-                @Override
-                public void run() {
-                    bluetoothGattServer.clearServices();
-                    bluetoothGattServer.close();
-                    bluetoothGattServer = null;
-                }
-            });
-        }
-        if (!enabled) {
-            return;
-        }
+    private void stopAdvert(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final AdvertiseCallback advertiseCallback, final BluetoothGattServer bluetoothGattServer, final Callback<Boolean> callback) {
+        logger.debug("stopAdvert");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
-                bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
-                setGattService(logger, context, bluetoothGattServer);
-                advertiseCallback = startAdvertising(logger, bluetoothLeAdvertiser);
+                boolean result = true;
+                try {
+                    if (advertiseCallback != null) {
+                        bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
+                    }
+                } catch (Throwable e) {
+                    logger.fault("stopAdvert failed to stop advertising", e);
+                    result = false;
+                }
+                try {
+                    if (bluetoothGattServer != null) {
+                        bluetoothGattServer.clearServices();
+                        bluetoothGattServer.close();
+                    }
+                } catch (Throwable e) {
+                    logger.fault("stopAdvert failed to stop GATT server", e);
+                    result = false;
+                }
+                if (result) {
+                    logger.debug("stopAdvert successful");
+                } else {
+                    logger.fault("stopAdvert failed");
+                }
+                callback.accept(result);
             }
         });
     }
+
 
     @Override
     public PayloadData payloadData() {
@@ -201,7 +284,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public boolean isSupported() {
-        return bluetoothLeAdvertiser != null;
+        return bluetoothLeAdvertiser() != null;
     }
 
     @Override
@@ -214,7 +297,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
     }
 
-    private static AdvertiseCallback startAdvertising(final SensorLogger logger, final BluetoothLeAdvertiser bluetoothLeAdvertiser) {
+    private void startAdvertising(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final AdvertiseCallback advertiseCallback) {
+        logger.debug("startAdvertising");
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
                 .setConnectable(true)
@@ -229,23 +313,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 .addServiceUuid(new ParcelUuid(BLESensorConfiguration.serviceUUID))
                 .addManufacturerData(BLESensorConfiguration.manufacturerIdForSensor, pseudoDeviceAddress.data)
                 .build();
-
-        final AdvertiseCallback callback = new AdvertiseCallback() {
-            @Override
-            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-                logger.debug("advertising (pseudoAddress={},settingsInEffect={})", pseudoDeviceAddress, settingsInEffect);
-            }
-
-            @Override
-            public void onStartFailure(int errorCode) {
-                logger.fault("advertising failed to start (error={})", onStartFailureErrorCodeToString(errorCode));
-            }
-        };
-        bluetoothLeAdvertiser.startAdvertising(settings, data, callback);
-        return callback;
+        bluetoothLeAdvertiser.startAdvertising(settings, data, advertiseCallback);
+        logger.debug("startAdvertising successful (pseudoDeviceAddress={},settings={})", pseudoDeviceAddress, settings);
     }
 
     private static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final BLEDatabase database) {
+        logger.debug("startGattServer");
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             logger.fault("Bluetooth unsupported");
@@ -400,11 +473,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
         };
         server.set(bluetoothManager.openGattServer(context, callback));
-        logger.debug("GATT server started");
+        logger.debug("startGattServer successful");
         return server.get();
     }
 
     private static void setGattService(final SensorLogger logger, final Context context, final BluetoothGattServer bluetoothGattServer) {
+        logger.debug("setGattService");
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             logger.fault("Bluetooth unsupported");
@@ -434,7 +508,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         service.addCharacteristic(signalCharacteristic);
         service.addCharacteristic(payloadCharacteristic);
         bluetoothGattServer.addService(service);
-        logger.debug("setGattService (service={},signalCharacteristic={},payloadCharacteristic={})",
+        logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",
                 service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid());
     }
 
