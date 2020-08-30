@@ -23,7 +23,7 @@ public class BLESensorConfiguration {
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
     public final static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
     /// Manufacturer data is being used on Android to store pseudo device address
-    public final static int manufacturerIdForSensor = 65535;
+    public final static int manufacturerIdForSensor = 65530;
     /// Advert refresh time interval
     public final static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 

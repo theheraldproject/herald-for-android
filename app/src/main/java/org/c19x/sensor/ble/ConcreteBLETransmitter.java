@@ -133,7 +133,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
         @Override
         public void bleTimer(final long now) {
-            if (!isSupported()) {
+            if (!isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
+                if (advertLoopState != AdvertLoopState.stopped) {
+                    advertiseCallback = null;
+                    bluetoothGattServer = null;
+                    state(now, AdvertLoopState.stopped);
+                    logger.debug("advertLoopTask, stop advert (advert={}ms)", timeSincelastStateChange(now));
+                }
                 return;
             }
             switch (advertLoopState) {
