@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 public class TextFile {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
     private final File file;
-    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
 
     public TextFile(String filename) {
         final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
@@ -25,12 +24,13 @@ public class TextFile {
             }
         }
         file = new File(folder, filename);
+        final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
                 MediaScannerConnection.scanFile(AppDelegate.getContext(), new String[]{file.getAbsolutePath()}, null, null);
             }
-        }, 10, 10, TimeUnit.SECONDS);
+        }, 30, 30, TimeUnit.SECONDS);
     }
 
     /**

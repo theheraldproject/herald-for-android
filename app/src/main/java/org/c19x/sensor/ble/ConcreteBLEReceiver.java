@@ -25,7 +25,7 @@ import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadSharingData;
 import org.c19x.sensor.datatype.RSSI;
 import org.c19x.sensor.datatype.Sample;
-import org.c19x.sensor.datatype.SensorError;
+import org.c19x.sensor.datatype.SensorState;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.SignalCharacteristicData;
 import org.c19x.sensor.datatype.SignalCharacteristicDataType;
@@ -41,7 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver, BluetoothStateManagerDelegate {
+public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
     // Scan ON/OFF/PROCESS durations
     private final static long scanOnDurationMillis = TimeInterval.seconds(4).millis();
@@ -77,7 +77,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
-            //logger.debug("onBatchScanResults (results=)", results.size());
             for (ScanResult scanResult : results) {
                 onScanResult(0, scanResult);
             }
@@ -87,10 +86,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         public void onScanFailed(int errorCode) {
             logger.fault("onScanFailed (error={})", onScanFailedErrorCodeToString(errorCode));
             super.onScanFailed(errorCode);
-            final SensorError sensorError = new SensorError("BLEReceiver.onScanFailed(" + onScanFailedErrorCodeToString(errorCode) + ")");
-            for (SensorDelegate delegate : delegates) {
-                delegate.sensor(SensorType.BLE, sensorError);
-            }
         }
     };
 
@@ -103,8 +98,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.database = database;
         this.transmitter = transmitter;
         timer.add(new ScanLoopTask());
-        bluetoothStateManager.delegates.add(this);
-        bluetoothStateManager(bluetoothStateManager.state());
     }
 
     // MARK:- BLEReceiver
@@ -124,13 +117,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void stop() {
         logger.debug("stop");
         // scanLoop is stopped by Bluetooth state
-    }
-
-    // MARK:- BluetoothStateManagerDelegate
-
-    @Override
-    public void bluetoothStateManager(BluetoothState didUpdateState) {
-        logger.debug("didUpdateState (state={})", didUpdateState);
     }
 
     // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat

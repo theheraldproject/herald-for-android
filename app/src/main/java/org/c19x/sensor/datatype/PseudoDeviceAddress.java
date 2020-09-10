@@ -16,7 +16,7 @@ public class PseudoDeviceAddress {
         // Bluetooth device address is 48-bit (6 bytes), using
         // the same length to offer the same collision avoidance
         address = Math.round(Math.random() * Math.pow(2, 48));
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES);
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.putLong(0, address);
         // Only taking last 6 bytes as that is the maximum value
@@ -26,7 +26,7 @@ public class PseudoDeviceAddress {
 
     public PseudoDeviceAddress(final byte[] data) {
         this.data = data;
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES);
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.position(2);
         byteBuffer.put(data);

@@ -3,7 +3,7 @@ package org.c19x.sensor;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
-import org.c19x.sensor.datatype.SensorError;
+import org.c19x.sensor.datatype.SensorState;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -26,6 +26,9 @@ public interface SensorDelegate {
     /// Detection of time spent at location, e.g. at specific restaurant between 02/06/2020 19:00 and 02/06/2020 21:00
     void sensor(SensorType sensor, Location didVisit);
 
-    /// Error reporting for each sensor
-    void sensor(SensorType sensor, SensorError didFail);
+    /// Measure proximity to target with payload data. Combines didMeasure and didRead into a single convenient delegate method
+    void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload);
+
+    /// Sensor state update
+    void sensor(SensorType sensor, SensorState didUpdateState);
 }

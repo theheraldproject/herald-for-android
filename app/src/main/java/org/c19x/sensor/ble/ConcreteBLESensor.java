@@ -6,10 +6,12 @@ import org.c19x.sensor.PayloadDataSupplier;
 import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;
+import org.c19x.sensor.datatype.BluetoothState;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.ProximityMeasurementUnit;
 import org.c19x.sensor.datatype.RSSI;
+import org.c19x.sensor.datatype.SensorState;
 import org.c19x.sensor.datatype.SensorType;
 
 import java.util.Queue;
@@ -17,19 +19,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
+public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, BluetoothStateManagerDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLESensor");
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
-    private final BLEDatabase database = new ConcreteBLEDatabase();
-    private final BluetoothStateManager bluetoothStateManager;
-    private final BLETimer timer;
     private final BLETransmitter transmitter;
     private final BLEReceiver receiver;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
 
     public ConcreteBLESensor(Context context, PayloadDataSupplier payloadDataSupplier) {
-        bluetoothStateManager = new ConcreteBluetoothStateManager(context);
-        timer = new BLETimer(context);
+        final BluetoothStateManager bluetoothStateManager = new ConcreteBluetoothStateManager(context);
+        final BLEDatabase database = new ConcreteBLEDatabase();
+        final BLETimer timer = new BLETimer(context);
+        bluetoothStateManager.delegates.add(this);
         transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database);
         receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter);
         database.add(this);
@@ -91,6 +92,18 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
                         }
                     }
                 });
+                final PayloadData payloadData = device.payloadData();
+                if (payloadData == null) {
+                    return;
+                }
+                operationQueue.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, proximity, device.identifier, payloadData);
+                        }
+                    }
+                });
                 break;
             }
             case payloadData: {
@@ -117,5 +130,21 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate {
     @Override
     public void bleDatabaseDidDelete(BLEDevice device) {
         logger.debug("didDelete (device={})", device.identifier);
+    }
+
+    // MARK:- BluetoothStateManagerDelegate
+
+    @Override
+    public void bluetoothStateManager(BluetoothState didUpdateState) {
+        logger.debug("didUpdateState (state={})", didUpdateState);
+        SensorState sensorState = SensorState.off;
+        if (didUpdateState == BluetoothState.poweredOn) {
+            sensorState = SensorState.on;
+        } else if (didUpdateState == BluetoothState.unsupported) {
+            sensorState = SensorState.unavailable;
+        }
+        for (SensorDelegate delegate : delegates) {
+            delegate.sensor(SensorType.BLE, sensorState);
+        }
     }
 }

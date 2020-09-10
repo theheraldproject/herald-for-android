@@ -4,7 +4,6 @@ import android.Manifest;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
-import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -19,7 +18,7 @@ import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
-import org.c19x.sensor.datatype.SensorError;
+import org.c19x.sensor.datatype.SensorState;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -68,8 +67,12 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-        requiredPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-        requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requiredPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
+        }
         requiredPermissions.add(Manifest.permission.WAKE_LOCK);
         final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -229,16 +232,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, SensorError didFail) {
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "ERROR: " + didFail.description + " (" + timestamp + ")";
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.error);
-                textView.setText(text);
-                textView.setVisibility(View.VISIBLE);
-            }
-        });
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    }
+
+    @Override
+    public void sensor(SensorType sensor, SensorState didUpdateState) {
     }
 }

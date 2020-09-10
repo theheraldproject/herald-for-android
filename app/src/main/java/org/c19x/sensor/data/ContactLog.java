@@ -1,10 +1,9 @@
 package org.c19x.sensor.data;
 
-import org.c19x.sensor.SensorDelegate;
+import org.c19x.sensor.DefaultSensorDelegate;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
-import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -13,7 +12,7 @@ import java.util.Date;
 import java.util.List;
 
 /// CSV contact log for post event analysis and visualisation
-public class ContactLog implements SensorDelegate {
+public class ContactLog extends DefaultSensorDelegate {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
 
@@ -60,9 +59,5 @@ public class ContactLog implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
         textFile.write(timestamp() + "," + sensor.name() + ",,,,,,5," + csv(didVisit.description()));
-    }
-
-    @Override
-    public void sensor(SensorType sensor, SensorError didFail) {
     }
 }

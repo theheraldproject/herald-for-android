@@ -46,6 +46,9 @@ public class BatteryLog {
     private void update() {
         final IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         final Intent batteryStatus = context.registerReceiver(null, intentFilter);
+        if (batteryStatus == null) {
+            return;
+        }
         final int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
         final boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL;
         final int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -54,7 +57,7 @@ public class BatteryLog {
 
         final String powerSource = (isCharging ? "external" : "battery");
         final String timestamp = dateFormatter.format(new Date());
-        textFile.write(timestamp + "," + powerSource + "," + Float.toString(batteryLevel));
+        textFile.write(timestamp + "," + powerSource + "," + batteryLevel);
         logger.debug("update (powerSource={},batteryLevel={})", powerSource, batteryLevel);
     }
 }

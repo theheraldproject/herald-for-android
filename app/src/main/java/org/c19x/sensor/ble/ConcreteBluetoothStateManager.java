@@ -70,10 +70,10 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
                     state = BluetoothState.poweredOn;
                     break;
                 case BluetoothAdapter.STATE_OFF:
-                    state = BluetoothState.poweredOff;
-                    break;
+                case BluetoothAdapter.STATE_TURNING_OFF:
+                case BluetoothAdapter.STATE_TURNING_ON:
                 default:
-                    state = BluetoothState.resetting;
+                    state = BluetoothState.poweredOff;
                     break;
             }
         }

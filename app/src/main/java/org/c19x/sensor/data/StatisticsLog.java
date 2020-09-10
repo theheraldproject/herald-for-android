@@ -1,11 +1,9 @@
 package org.c19x.sensor.data;
 
-import org.c19x.sensor.SensorDelegate;
-import org.c19x.sensor.datatype.Location;
+import org.c19x.sensor.DefaultSensorDelegate;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.Sample;
-import org.c19x.sensor.datatype.SensorError;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 
@@ -17,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /// CSV contact log for post event analysis and visualisation
-public class StatisticsLog implements SensorDelegate {
+public class StatisticsLog extends DefaultSensorDelegate {
     private final TextFile textFile;
     private final PayloadData payloadData;
     private final Map<TargetIdentifier, String> identifierToPayload = new ConcurrentHashMap<>();
@@ -93,10 +91,6 @@ public class StatisticsLog implements SensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
-    }
-
-    @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         identifierToPayload.put(fromTarget, didRead.shortName());
         add(fromTarget);
@@ -112,13 +106,5 @@ public class StatisticsLog implements SensorDelegate {
         for (PayloadData payload : didShare) {
             add(payload.shortName());
         }
-    }
-
-    @Override
-    public void sensor(SensorType sensor, Location didVisit) {
-    }
-
-    @Override
-    public void sensor(SensorType sensor, SensorError didFail) {
     }
 }

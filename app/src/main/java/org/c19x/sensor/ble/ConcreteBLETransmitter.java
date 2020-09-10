@@ -206,21 +206,25 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     logger.fault("startAdvert failed to start GATT server", e);
                     result = false;
                 }
-                try {
-                    setGattService(logger, context, bluetoothGattServer);
-                } catch (Throwable e) {
-                    logger.fault("startAdvert failed to set GATT service", e);
-                    try {
-                        bluetoothGattServer.clearServices();
-                        bluetoothGattServer.close();
-                        bluetoothGattServer = null;
-                    } catch (Throwable e2) {
-                        logger.fault("startAdvert failed to stop GATT server", e2);
-                        bluetoothGattServer = null;
-                    }
+                if (bluetoothGattServer == null) {
                     result = false;
+                } else {
+                    try {
+                        setGattService(logger, context, bluetoothGattServer);
+                    } catch (Throwable e) {
+                        logger.fault("startAdvert failed to set GATT service", e);
+                        try {
+                            bluetoothGattServer.clearServices();
+                            bluetoothGattServer.close();
+                            bluetoothGattServer = null;
+                        } catch (Throwable e2) {
+                            logger.fault("startAdvert failed to stop GATT server", e2);
+                            bluetoothGattServer = null;
+                        }
+                        result = false;
+                    }
                 }
-                if (!result || bluetoothGattServer == null) {
+                if (!result) {
                     logger.fault("startAdvert failed");
                     callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(false, null, null));
                     return;

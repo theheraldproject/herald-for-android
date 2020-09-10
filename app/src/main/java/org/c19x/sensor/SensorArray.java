@@ -7,7 +7,6 @@ import org.c19x.sensor.data.BatteryLog;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.ContactLog;
 import org.c19x.sensor.data.DetectionLog;
-import org.c19x.sensor.data.RScriptLog;
 import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.data.StatisticsLog;
 import org.c19x.sensor.datatype.PayloadData;
@@ -33,7 +32,6 @@ public class SensorArray implements Sensor {
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
         add(new ContactLog("contacts.csv"));
         add(new StatisticsLog("statistics.csv", payloadData));
-        add(new RScriptLog("rScriptLog.csv", payloadData));
         add(new DetectionLog("detection.csv", payloadData));
         new BatteryLog(context, "battery.csv");
 

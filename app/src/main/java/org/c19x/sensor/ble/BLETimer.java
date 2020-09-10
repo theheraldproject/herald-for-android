@@ -61,8 +61,6 @@ public class BLETimer {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLETimer");
     private final Sample sample = new Sample();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    private final Thread timerThread;
-    private final PowerManager powerManager;
     private final PowerManager.WakeLock wakeLock;
     private final AtomicLong now = new AtomicLong(0);
     private final Queue<BLETimerDelegate> delegates = new ConcurrentLinkedQueue<>();
@@ -80,10 +78,10 @@ public class BLETimer {
     };
 
     public BLETimer(Context context) {
-        powerManager = (PowerManager) context.getSystemService(android.content.Context.POWER_SERVICE);
+        final PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Sensor:BLETimer");
         wakeLock.acquire();
-        timerThread = new Thread(new Runnable() {
+        final Thread timerThread = new Thread(new Runnable() {
             private long last = 0;
 
             @Override

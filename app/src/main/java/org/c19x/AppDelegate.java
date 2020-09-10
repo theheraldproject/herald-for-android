@@ -16,14 +16,28 @@ import org.c19x.sensor.PayloadDataSupplier;
 import org.c19x.sensor.R;
 import org.c19x.sensor.Sensor;
 import org.c19x.sensor.SensorArray;
+import org.c19x.sensor.SensorDelegate;
+import org.c19x.sensor.data.ConcreteSensorLogger;
+import org.c19x.sensor.data.SensorLogger;
+import org.c19x.sensor.datatype.Location;
+import org.c19x.sensor.datatype.PayloadData;
+import org.c19x.sensor.datatype.Proximity;
+import org.c19x.sensor.datatype.SensorState;
+import org.c19x.sensor.datatype.SensorType;
+import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.Triple;
 import org.c19x.sensor.datatype.Tuple;
 import org.c19x.sensor.payload.sonar.MockSonarPayloadDataSupplier;
 
-public class AppDelegate extends Application {
+import java.util.ArrayList;
+import java.util.List;
+
+public class AppDelegate extends Application implements SensorDelegate {
     private static AppDelegate appDelegate;
     private static Context context;
 
+    // Logger must be initialised after context has been established
+    private SensorLogger logger;
     protected Sensor sensor;
 
     // Notifications
@@ -52,8 +66,10 @@ public class AppDelegate extends Application {
             startService(intent);
         }
 
+        logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
         final PayloadDataSupplier payloadDataSupplier = new MockSonarPayloadDataSupplier(identifier());
         sensor = new SensorArray(context, payloadDataSupplier);
+        sensor.add(this);
         sensor.start();
     }
 
@@ -116,4 +132,44 @@ public class AppDelegate extends Application {
         return new Tuple<>(notificationChannelId, null);
     }
 
+    // MARK:- SensorDelegate
+
+    @Override
+    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+        logger.info(sensor.name() + ",didDetect=" + didDetect);
+    }
+
+    @Override
+    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+        logger.info(sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
+    }
+
+    @Override
+    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+        final List<String> payloads = new ArrayList<>(didShare.size());
+        for (PayloadData payloadData : didShare) {
+            payloads.add(payloadData.shortName());
+        }
+        logger.info(sensor.name() + ",didShare=" + payloads.toString() + ",fromTarget=" + fromTarget);
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+        logger.info(sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget);
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Location didVisit) {
+        logger.info(sensor.name() + ",didVisit=" + didVisit.description());
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+        logger.info(sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget + ",withPayload=" + withPayload.shortName());
+    }
+
+    @Override
+    public void sensor(SensorType sensor, SensorState didUpdateState) {
+        logger.info(sensor.name() + ",didUpdateState=" + didUpdateState.name());
+    }
 }
