@@ -12,7 +12,7 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import org.c19x.sensor.PayloadDataSupplier;
+import org.c19x.sensor.payload.PayloadDataSupplier;
 import org.c19x.sensor.R;
 import org.c19x.sensor.Sensor;
 import org.c19x.sensor.SensorArray;
@@ -27,7 +27,7 @@ import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
 import org.c19x.sensor.datatype.Triple;
 import org.c19x.sensor.datatype.Tuple;
-import org.c19x.sensor.payload.sonar.MockSonarPayloadDataSupplier;
+import org.c19x.sensor.payload.sonar.SonarPayloadDataSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +67,7 @@ public class AppDelegate extends Application implements SensorDelegate {
         }
 
         logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
-        final PayloadDataSupplier payloadDataSupplier = new MockSonarPayloadDataSupplier(identifier());
+        final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
         sensor = new SensorArray(context, payloadDataSupplier);
         sensor.add(this);
         sensor.start();

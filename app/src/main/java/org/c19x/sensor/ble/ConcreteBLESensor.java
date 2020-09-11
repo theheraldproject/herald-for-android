@@ -2,7 +2,7 @@ package org.c19x.sensor.ble;
 
 import android.content.Context;
 
-import org.c19x.sensor.PayloadDataSupplier;
+import org.c19x.sensor.payload.PayloadDataSupplier;
 import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;

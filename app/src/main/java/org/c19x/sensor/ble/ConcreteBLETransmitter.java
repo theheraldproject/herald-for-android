@@ -16,7 +16,7 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 
-import org.c19x.sensor.PayloadDataSupplier;
+import org.c19x.sensor.payload.PayloadDataSupplier;
 import org.c19x.sensor.SensorDelegate;
 import org.c19x.sensor.data.ConcreteSensorLogger;
 import org.c19x.sensor.data.SensorLogger;

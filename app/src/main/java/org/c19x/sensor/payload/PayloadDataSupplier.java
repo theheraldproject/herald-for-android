@@ -1,4 +1,4 @@
-package org.c19x.sensor;
+package org.c19x.sensor.payload;
 
 import org.c19x.sensor.datatype.Data;
 import org.c19x.sensor.datatype.PayloadData;

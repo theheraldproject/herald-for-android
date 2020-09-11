@@ -11,6 +11,7 @@ import org.c19x.sensor.data.SensorLogger;
 import org.c19x.sensor.data.StatisticsLog;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.PayloadTimestamp;
+import org.c19x.sensor.payload.PayloadDataSupplier;
 
 import java.util.ArrayList;
 import java.util.List;
