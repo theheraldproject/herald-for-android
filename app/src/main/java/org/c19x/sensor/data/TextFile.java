@@ -4,8 +4,6 @@ import android.content.Context;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
 
-import org.c19x.AppDelegate;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.concurrent.Executors;
@@ -16,8 +14,8 @@ public class TextFile {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
     private final File file;
 
-    public TextFile(String filename) {
-        final File folder = new File(getRootFolder(AppDelegate.getContext()), "C19X");
+    public TextFile(final Context context, final String filename) {
+        final File folder = new File(getRootFolder(context), "Sensor");
         if (!folder.exists()) {
             if (!folder.mkdirs()) {
                 logger.fault("Make folder failed (folder={})", folder);
@@ -28,7 +26,7 @@ public class TextFile {
         executorService.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                MediaScannerConnection.scanFile(AppDelegate.getContext(), new String[]{file.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
         }, 30, 30, TimeUnit.SECONDS);
     }

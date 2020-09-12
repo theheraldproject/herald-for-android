@@ -1,5 +1,7 @@
 package org.c19x.sensor.data;
 
+import android.content.Context;
+
 import org.c19x.sensor.DefaultSensorDelegate;
 import org.c19x.sensor.datatype.Location;
 import org.c19x.sensor.datatype.PayloadData;
@@ -16,8 +18,8 @@ public class ContactLog extends DefaultSensorDelegate {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
 
-    public ContactLog(String filename) {
-        textFile = new TextFile(filename);
+    public ContactLog(final Context context, final String filename) {
+        textFile = new TextFile(context, filename);
         if (textFile.empty()) {
             textFile.write("time,sensor,id,detect,read,measure,share,visit,data");
         }

@@ -1,5 +1,7 @@
 package org.c19x.sensor.data;
 
+import android.content.Context;
+
 import org.c19x.sensor.DefaultSensorDelegate;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.Proximity;
@@ -22,8 +24,8 @@ public class StatisticsLog extends DefaultSensorDelegate {
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
     private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
 
-    public StatisticsLog(String filename, PayloadData payloadData) {
-        textFile = new TextFile(filename);
+    public StatisticsLog(final Context context, final String filename, final PayloadData payloadData) {
+        textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
     }
 

@@ -54,9 +54,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         requestPermissions();
 
         // Test UI specific process to gather data from sensor for presentation
-        AppDelegate.getAppDelegate().sensor.add(this);
+        AppDelegate.getAppDelegate().sensor().add(this);
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
-        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor).payloadData().shortName());
+        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData().shortName());
     }
 
     /// REQUIRED : Request application permissions for sensor operation.

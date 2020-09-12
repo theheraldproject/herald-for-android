@@ -31,9 +31,9 @@ public class SensorArray implements Sensor {
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-        add(new ContactLog("contacts.csv"));
-        add(new StatisticsLog("statistics.csv", payloadData));
-        add(new DetectionLog("detection.csv", payloadData));
+        add(new ContactLog(context, "contacts.csv"));
+        add(new StatisticsLog(context, "statistics.csv", payloadData));
+        add(new DetectionLog(context,"detection.csv", payloadData));
         new BatteryLog(context, "battery.csv");
 
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);

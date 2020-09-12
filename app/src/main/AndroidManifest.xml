@@ -24,7 +24,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service
-            android:name="org.c19x.ForegroundService"
+            android:name=".service.ForegroundService"
             android:foregroundServiceType="location" />
         <activity
             android:name="org.c19x.MainActivity"

@@ -1,5 +1,6 @@
 package org.c19x.sensor.data;
 
+import android.content.Context;
 import android.util.Log;
 
 import org.c19x.sensor.ble.BLESensorConfiguration;
@@ -10,11 +11,19 @@ import java.util.Date;
 public class ConcreteSensorLogger implements SensorLogger {
     private final String subsystem, category;
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private static final TextFile logFile = new TextFile("log.txt");
+    private static Context context;
+    private static TextFile logFile;
 
     public ConcreteSensorLogger(String subsystem, String category) {
         this.subsystem = subsystem;
         this.category = category;
+    }
+
+    public static void context(final Context context) {
+        if (context != null && context != ConcreteSensorLogger.context) {
+            ConcreteSensorLogger.context = context;
+            logFile = new TextFile(context, "log.txt");
+        }
     }
 
     private boolean suppress(SensorLoggerLevel level) {
@@ -82,6 +91,9 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
     private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
+        if (logFile == null) {
+            return;
+        }
         final String timestamp = dateFormatter.format(new Date());
         final String csvMessage = render(message, values).replace('\"', '\'');
         final String quotedMessage = (message.contains(",") ? "\"" + csvMessage + "\"" : csvMessage);

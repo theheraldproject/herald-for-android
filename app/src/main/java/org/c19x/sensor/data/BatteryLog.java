@@ -18,9 +18,9 @@ public class BatteryLog {
     private final Context context;
     private final TextFile textFile;
 
-    public BatteryLog(Context context, String filename) {
+    public BatteryLog(final Context context, final String filename) {
         this.context = context;
-        textFile = new TextFile(filename);
+        textFile = new TextFile(context, filename);
         if (textFile.empty()) {
             textFile.write("time,source,level");
         }

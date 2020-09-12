@@ -1,19 +1,12 @@
 package org.c19x;
 
 import android.app.Application;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-
-import org.c19x.sensor.payload.PayloadDataSupplier;
 import org.c19x.sensor.R;
+import org.c19x.sensor.service.ForegroundService;
+import org.c19x.sensor.payload.PayloadDataSupplier;
 import org.c19x.sensor.Sensor;
 import org.c19x.sensor.SensorArray;
 import org.c19x.sensor.SensorDelegate;
@@ -25,25 +18,19 @@ import org.c19x.sensor.datatype.Proximity;
 import org.c19x.sensor.datatype.SensorState;
 import org.c19x.sensor.datatype.SensorType;
 import org.c19x.sensor.datatype.TargetIdentifier;
-import org.c19x.sensor.datatype.Triple;
-import org.c19x.sensor.datatype.Tuple;
 import org.c19x.sensor.payload.sonar.SonarPayloadDataSupplier;
+import org.c19x.sensor.service.NotificationService;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private static AppDelegate appDelegate;
-    private static Context context;
 
     // Logger must be initialised after context has been established
+    private NotificationService notificationService;
     private SensorLogger logger;
-    protected Sensor sensor;
-
-    // Notifications
-    private final String notificationChannelName = "NotificationChannel";
-    private final int notificationChannelId = notificationChannelName.hashCode();
-    private Triple<String, String, Notification> notificationContent = new Triple<>(null, null, null);
+    private Sensor sensor;
 
     /// Generate unique and consistent device identifier for testing detection and tracking
     private int identifier() {
@@ -51,25 +38,28 @@ public class AppDelegate extends Application implements SensorDelegate {
         return text.hashCode();
     }
 
-
     @Override
     public void onCreate() {
         super.onCreate();
         appDelegate = this;
-        context = getApplicationContext();
-        createNotificationChannel();
-
+        // Set logger context to enable logging to plain text file
+        ConcreteSensorLogger.context(getApplicationContext());
+        logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
+        // Notification service enables foreground service for running background scan
+        notificationService = new NotificationService(this, R.drawable.virus);
+        // Start foreground service to enable background scan
         final Intent intent = new Intent(this, ForegroundService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
             startService(intent);
         }
-
-        logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
+        // Initialise sensor array for given payload data supplier
         final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
-        sensor = new SensorArray(context, payloadDataSupplier);
+        sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
+        // Add appDelegate as listener for detection events for logging and start sensor
         sensor.add(this);
+        // Sensor will start and stop with Bluetooth power on / off events
         sensor.start();
     }
 
@@ -80,56 +70,19 @@ public class AppDelegate extends Application implements SensorDelegate {
         super.onTerminate();
     }
 
+    /// Get app delegate
     public static AppDelegate getAppDelegate() {
         return appDelegate;
     }
 
-    public static Context getContext() {
-        return context;
+    /// Get notification service for foreground service (and other app components).
+    public NotificationService notificationService() {
+        return notificationService;
     }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            final int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            final NotificationChannel channel = new NotificationChannel(notificationChannelName, notificationChannelName, importance);
-            channel.setDescription(notificationChannelName);
-            final NotificationManager notificationManager = getApplicationContext().getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-    }
-
-    public Tuple<Integer, Notification> notification() {
-        return new Tuple<>(notificationChannelId, notificationContent.c);
-    }
-
-    public Tuple<Integer, Notification> notification(final String title, final String body) {
-        if (title != null && body != null) {
-            final String existingTitle = notificationContent.a;
-            final String existingBody = notificationContent.b;
-            if (!title.equals(existingTitle) || !body.equals(existingBody)) {
-                createNotificationChannel();
-                final Intent intent = new Intent(getApplicationContext(), AppDelegate.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                final PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, 0);
-                final NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), notificationChannelName)
-                        .setSmallIcon(R.drawable.virus)
-                        .setContentTitle(title)
-                        .setContentText(body)
-                        .setContentIntent(pendingIntent)
-                        .setAutoCancel(true)
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-                final Notification notification = builder.build();
-                final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
-                notificationManager.notify(notificationChannelId, notification);
-                notificationContent = new Triple<>(title, body, notification);
-                return new Tuple<>(notificationChannelId, notification);
-            }
-        } else {
-            final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
-            notificationManager.deleteNotificationChannel(notificationChannelName);
-            notificationContent = new Triple<>(null, null, null);
-        }
-        return new Tuple<>(notificationChannelId, null);
+    /// Get sensor
+    public Sensor sensor() {
+        return sensor;
     }
 
     // MARK:- SensorDelegate

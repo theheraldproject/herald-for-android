@@ -1,5 +1,7 @@
 package org.c19x.sensor.data;
 
+import android.content.Context;
+
 import org.c19x.sensor.DefaultSensorDelegate;
 import org.c19x.sensor.datatype.PayloadData;
 import org.c19x.sensor.datatype.SensorType;
@@ -20,8 +22,8 @@ public class DetectionLog extends DefaultSensorDelegate {
     private final String deviceOS = Integer.toString(android.os.Build.VERSION.SDK_INT);
     private final Map<String, String> payloads = new ConcurrentHashMap<>();
 
-    public DetectionLog(String filename, PayloadData payloadData) {
-        textFile = new TextFile(filename);
+    public DetectionLog(final Context context, final String filename, final PayloadData payloadData) {
+        textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
         write();
     }
