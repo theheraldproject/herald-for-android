@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.payload.c19x;
 
 /// Day is the number of whole days since epoch (2020-01-01 00:00:00)

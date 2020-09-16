@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.payload.c19x;
 
 /// Day codes are published by the server to enable on-device matching in a de-centralised solution.

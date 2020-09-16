@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     repositories {

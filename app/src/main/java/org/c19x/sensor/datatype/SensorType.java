@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.datatype;
 
 /// Sensor type as qualifier for target identifier.

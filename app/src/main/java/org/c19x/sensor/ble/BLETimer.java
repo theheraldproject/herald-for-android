@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.ble;
 
 import android.content.Context;
@@ -12,8 +16,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
-
-///
 
 /**
  * Steady one second timer for controlling BLE operations. Having a reliable timer for starting

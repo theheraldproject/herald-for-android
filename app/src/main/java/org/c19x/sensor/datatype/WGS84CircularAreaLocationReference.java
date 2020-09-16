@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.datatype;
 
 /// GPS coordinates and region radius, e.g. latitude and longitude in decimal format and radius in meters.

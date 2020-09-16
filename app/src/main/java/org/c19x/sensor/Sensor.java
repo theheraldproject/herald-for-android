@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor;
 
 /// Sensor for detecting and tracking various kinds of disease transmission vectors, e.g. contact with people, time at location.

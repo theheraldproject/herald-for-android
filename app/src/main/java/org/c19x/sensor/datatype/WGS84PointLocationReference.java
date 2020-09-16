@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package org.c19x.sensor.datatype;
 
 /// GPS coordinates (latitude,longitude,altitude) in WGS84 decimal format and meters from sea level.
