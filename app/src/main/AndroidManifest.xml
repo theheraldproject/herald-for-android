@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright 2020 VMware, Inc. -->
+<!-- SPDX-License-Identifier: MIT -->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.c19x.sensor">
 
