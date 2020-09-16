@@ -5,10 +5,8 @@
 package com.vmware.squire;
 
 import android.app.Application;
-import android.content.Intent;
 import android.os.Build;
 
-import com.vmware.squire.sensor.service.ForegroundService;
 import com.vmware.squire.sensor.payload.PayloadDataSupplier;
 import com.vmware.squire.sensor.Sensor;
 import com.vmware.squire.sensor.SensorArray;
@@ -22,16 +20,15 @@ import com.vmware.squire.sensor.datatype.SensorState;
 import com.vmware.squire.sensor.datatype.SensorType;
 import com.vmware.squire.sensor.datatype.TargetIdentifier;
 import com.vmware.squire.sensor.payload.sonar.SonarPayloadDataSupplier;
-import com.vmware.squire.sensor.service.NotificationService;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
+    public final static int appIcon = R.drawable.virus;
     private static AppDelegate appDelegate;
 
     // Logger must be initialised after context has been established
-    private NotificationService notificationService;
     private SensorLogger logger;
     private Sensor sensor;
 
@@ -48,15 +45,6 @@ public class AppDelegate extends Application implements SensorDelegate {
         // Set logger context to enable logging to plain text file
         ConcreteSensorLogger.context(getApplicationContext());
         logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
-        // Notification service enables foreground service for running background scan
-        notificationService = new NotificationService(this, R.drawable.virus);
-        // Start foreground service to enable background scan
-        final Intent intent = new Intent(this, ForegroundService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
-        }
         // Initialise sensor array for given payload data supplier
         final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
@@ -68,19 +56,13 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     @Override
     public void onTerminate() {
-        final Intent intent = new Intent(this, ForegroundService.class);
-        stopService(intent);
+        sensor.stop();
         super.onTerminate();
     }
 
     /// Get app delegate
     public static AppDelegate getAppDelegate() {
         return appDelegate;
-    }
-
-    /// Get notification service for foreground service (and other app components).
-    public NotificationService notificationService() {
-        return notificationService;
     }
 
     /// Get sensor

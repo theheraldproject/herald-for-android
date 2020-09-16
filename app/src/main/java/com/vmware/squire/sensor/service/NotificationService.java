@@ -1,7 +1,3 @@
-//  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
-//
-
 package com.vmware.squire.sensor.service;
 
 import android.app.Application;
@@ -16,22 +12,31 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.vmware.squire.sensor.SensorConfiguration;
 import com.vmware.squire.sensor.datatype.Triple;
 import com.vmware.squire.sensor.datatype.Tuple;
 
 /// Notification service for enabling foreground service (notification must be displayed to show app is running in the background).
 public class NotificationService {
-    private final Application application;
+    private static NotificationService shared;
+    private static Application application;
     private final Context context;
-    private final int drawableIcon;
-    private final String notificationChannelName = "NotificationChannel";
+    private final static String notificationChannelName = "NotificationChannel";
     private final int notificationChannelId = notificationChannelName.hashCode();
     private Triple<String, String, Notification> notificationContent = new Triple<>(null, null, null);
 
-    public NotificationService(final Application application, final int drawableIcon) {
+    private NotificationService(final Application application) {
         this.application = application;
         this.context = application.getApplicationContext();
-        this.drawableIcon = drawableIcon;
+        createNotificationChannel();
+    }
+
+    /// Get shared global instance of notification service
+    public final static NotificationService shared(final Application application) {
+        if (shared == null) {
+            shared = new NotificationService(application);
+        }
+        return shared;
     }
 
     private void createNotificationChannel() {
@@ -44,10 +49,6 @@ public class NotificationService {
         }
     }
 
-    public Tuple<Integer, Notification> notification() {
-        return new Tuple<>(notificationChannelId, notificationContent.c);
-    }
-
     public Tuple<Integer, Notification> notification(final String title, final String body) {
         if (title != null && body != null) {
             final String existingTitle = notificationContent.a;
@@ -58,7 +59,7 @@ public class NotificationService {
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 final PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
                 final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationChannelName)
-                        .setSmallIcon(drawableIcon)
+                        .setSmallIcon(SensorConfiguration.notificationIconResource)
                         .setContentTitle(title)
                         .setContentText(body)
                         .setContentIntent(pendingIntent)
