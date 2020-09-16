@@ -8,7 +8,6 @@ import android.app.Application;
 import android.content.Intent;
 import android.os.Build;
 
-import org.c19x.sensor.R;
 import com.vmware.squire.sensor.service.ForegroundService;
 import com.vmware.squire.sensor.payload.PayloadDataSupplier;
 import com.vmware.squire.sensor.Sensor;

@@ -1,2 +1,2 @@
 include ':app'
-rootProject.name = "C19X-SENSOR-Android"
+rootProject.name = "Squire-Android"

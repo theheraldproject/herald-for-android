@@ -25,8 +25,6 @@ import com.vmware.squire.sensor.datatype.SensorState;
 import com.vmware.squire.sensor.datatype.SensorType;
 import com.vmware.squire.sensor.datatype.TargetIdentifier;
 
-import org.c19x.sensor.R;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;

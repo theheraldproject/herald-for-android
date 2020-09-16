@@ -50,11 +50,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * Test APP STANDBY mode
  * 1. ./adb shell dumpsys battery unplug
  * 2. Expect "powerSource=battery"
- * 3. ./adb shell am set-inactive org.c19x.sensor true
+ * 3. ./adb shell am set-inactive com.vmware.squire true
  * <p>
  * Exit APP STANDBY mode
- * 1. ./adb shell am set-inactive org.c19x.sensor false
- * 2. ./adb shell am get-inactive org.c19x.sensor
+ * 1. ./adb shell am set-inactive com.vmware.squire false
+ * 2. ./adb shell am get-inactive com.vmware.squire
  * 3. Expect "idle=false" on terminal
  * 4. ./adb shell dumpsys battery reset
  * 5. Expect "powerSource=usb/ac" on log
