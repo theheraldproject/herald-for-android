@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
-    public final static int appIcon = R.drawable.virus;
     private static AppDelegate appDelegate;
 
     // Logger must be initialised after context has been established

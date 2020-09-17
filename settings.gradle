@@ -1,2 +1,3 @@
+include ':squire'
 include ':app'
 rootProject.name = "Squire-Android"
