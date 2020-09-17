@@ -165,7 +165,7 @@ The proximity detection solution has been integrated into a standalone test app 
 1. Install and open Android File Transfer utility (https://www.android.com/filetransfer/)
 2. Connect Android phone to computer with USB cable, unlock device, ensuring USB Preferences is set to "File transfer".
 3. Open Android File Transfer utility.
-4. Select path *Android / media / app name*.
+4. Select path *Android / media / com.vmware.squire.app / Sensor*.
 5. Expect a list of log files (e.g. *contacts.csv*).
 6. Drag and drop to copy log files to computer for analysis.
 
