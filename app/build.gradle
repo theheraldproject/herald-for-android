@@ -9,7 +9,7 @@ android {
     buildToolsVersion "30.0.1"
 
     defaultConfig {
-        applicationId "com.vmware.squire"
+        applicationId "com.vmware.squire.app"
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 1

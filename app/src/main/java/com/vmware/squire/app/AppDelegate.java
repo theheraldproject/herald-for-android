@@ -2,13 +2,12 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.squire;
+package com.vmware.squire.app;
 
 import android.app.Application;
 import android.os.Build;
 import android.util.Log;
 
-import com.vmware.squire.sensor.payload.PayloadDataSupplier;
 import com.vmware.squire.sensor.Sensor;
 import com.vmware.squire.sensor.SensorArray;
 import com.vmware.squire.sensor.SensorDelegate;
@@ -18,6 +17,7 @@ import com.vmware.squire.sensor.datatype.Proximity;
 import com.vmware.squire.sensor.datatype.SensorState;
 import com.vmware.squire.sensor.datatype.SensorType;
 import com.vmware.squire.sensor.datatype.TargetIdentifier;
+import com.vmware.squire.sensor.payload.PayloadDataSupplier;
 import com.vmware.squire.sensor.payload.sonar.SonarPayloadDataSupplier;
 
 import java.util.ArrayList;
