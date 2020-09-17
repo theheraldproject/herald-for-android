@@ -6,13 +6,12 @@ package com.vmware.squire;
 
 import android.app.Application;
 import android.os.Build;
+import android.util.Log;
 
 import com.vmware.squire.sensor.payload.PayloadDataSupplier;
 import com.vmware.squire.sensor.Sensor;
 import com.vmware.squire.sensor.SensorArray;
 import com.vmware.squire.sensor.SensorDelegate;
-import com.vmware.squire.sensor.data.ConcreteSensorLogger;
-import com.vmware.squire.sensor.data.SensorLogger;
 import com.vmware.squire.sensor.datatype.Location;
 import com.vmware.squire.sensor.datatype.PayloadData;
 import com.vmware.squire.sensor.datatype.Proximity;
@@ -25,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
+    private final static String tag = AppDelegate.class.getName();
     private static AppDelegate appDelegate;
 
-    // Logger must be initialised after context has been established
-    private SensorLogger logger;
+    // Squire sensor for proximity detection
     private Sensor sensor;
 
     /// Generate unique and consistent device identifier for testing detection and tracking
@@ -41,9 +40,6 @@ public class AppDelegate extends Application implements SensorDelegate {
     public void onCreate() {
         super.onCreate();
         appDelegate = this;
-        // Set logger context to enable logging to plain text file
-        ConcreteSensorLogger.context(getApplicationContext());
-        logger = new ConcreteSensorLogger("Sensor", "AppDelegate");
         // Initialise sensor array for given payload data supplier
         final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
@@ -69,16 +65,16 @@ public class AppDelegate extends Application implements SensorDelegate {
         return sensor;
     }
 
-    // MARK:- SensorDelegate
+    // MARK:- SensorDelegate for logging proximity detection events
 
     @Override
     public void sensor(SensorType sensor, TargetIdentifier didDetect) {
-        logger.info(sensor.name() + ",didDetect=" + didDetect);
+        Log.i(tag, sensor.name() + ",didDetect=" + didDetect);
     }
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        logger.info(sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
+        Log.i(tag, sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
     }
 
     @Override
@@ -87,26 +83,26 @@ public class AppDelegate extends Application implements SensorDelegate {
         for (PayloadData payloadData : didShare) {
             payloads.add(payloadData.shortName());
         }
-        logger.info(sensor.name() + ",didShare=" + payloads.toString() + ",fromTarget=" + fromTarget);
+        Log.i(tag, sensor.name() + ",didShare=" + payloads.toString() + ",fromTarget=" + fromTarget);
     }
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
-        logger.info(sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget);
+        Log.i(tag, sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget);
     }
 
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
-        logger.info(sensor.name() + ",didVisit=" + didVisit.description());
+        Log.i(tag, sensor.name() + ",didVisit=" + didVisit.description());
     }
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
-        logger.info(sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget + ",withPayload=" + withPayload.shortName());
+        Log.i(tag, sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget + ",withPayload=" + withPayload.shortName());
     }
 
     @Override
     public void sensor(SensorType sensor, SensorState didUpdateState) {
-        logger.info(sensor.name() + ",didUpdateState=" + didUpdateState.name());
+        Log.i(tag, sensor.name() + ",didUpdateState=" + didUpdateState.name());
     }
 }
