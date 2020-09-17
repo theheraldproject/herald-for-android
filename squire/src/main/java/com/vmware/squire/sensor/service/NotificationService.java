@@ -12,7 +12,7 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import com.vmware.squire.sensor.SensorConfiguration;
+import com.vmware.squire.R;
 import com.vmware.squire.sensor.datatype.Triple;
 import com.vmware.squire.sensor.datatype.Tuple;
 
@@ -59,7 +59,7 @@ public class NotificationService {
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 final PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
                 final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationChannelName)
-                        .setSmallIcon(SensorConfiguration.notificationIconResource)
+                        .setSmallIcon(R.drawable.ic_notification)
                         .setContentTitle(title)
                         .setContentText(body)
                         .setContentIntent(pendingIntent)

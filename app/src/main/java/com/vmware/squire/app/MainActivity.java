@@ -2,12 +2,13 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.squire;
+package com.vmware.squire.app;
 
 import android.Manifest;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -16,8 +17,6 @@ import androidx.core.app.ActivityCompat;
 
 import com.vmware.squire.sensor.SensorArray;
 import com.vmware.squire.sensor.SensorDelegate;
-import com.vmware.squire.sensor.data.ConcreteSensorLogger;
-import com.vmware.squire.sensor.data.SensorLogger;
 import com.vmware.squire.sensor.datatype.Location;
 import com.vmware.squire.sensor.datatype.PayloadData;
 import com.vmware.squire.sensor.datatype.Proximity;
@@ -38,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class MainActivity extends AppCompatActivity implements SensorDelegate {
-    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "MainActivity");
+    private final static String tag = MainActivity.class.getName();
     /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
     /// Test UI specific data, not required for production solution.
@@ -94,21 +93,22 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
             for (int i = 0; i < permissions.length; i++) {
                 final String permission = permissions[i];
                 if (grantResults[i] != PERMISSION_GRANTED) {
-                    logger.fault("Permission denied (permission={})", permission);
+                    Log.e(tag, "Permission denied (permission=" + permission + ")");
                     permissionsGranted = false;
                 } else {
-                    logger.debug("Permission granted (permission={})", permission);
+                    Log.d(tag, "Permission granted (permission=" + permission + ")");
                 }
             }
 
             if (!permissionsGranted) {
-                logger.fault("Application does not have all required permissions to start (permissions={})", Arrays.asList(permissions));
+                Log.e(tag, "Application does not have all required permissions to start (permissions=" + Arrays.asList(permissions) + ")");
             }
         }
     }
 
     // MARK:- Test UI specific functions, not required in production solution.
 
+    /// Update list of detected devices, including detection method(s) and last seen timestamp.
     private void updateDetection() {
         runOnUiThread(new Runnable() {
             @Override
@@ -236,9 +236,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+        // High level integration API is not used as the test app is using the low level API to present all the detection events.
     }
 
     @Override
     public void sensor(SensorType sensor, SensorState didUpdateState) {
+        // Sensor state is already presented by the operating system, so not duplicating in the test app.
     }
 }
