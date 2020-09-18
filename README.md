@@ -1,18 +1,33 @@
 # Squire-Android
 
+![Epidemiology](images/epidemiology.png)
+
 Continuous proximity detection across iOS and Android devices in background mode for contact tracing and infection control according to epidemiology requirements. 
 
 Copyright 2020 VMware, Inc.
 
 Licensed under the MIT license
 
+### Contents
+
+- [Introduction](#introduction)
+- [Key features](#key-features)
+- [Hardware requirements](#hardware-requirements)
+- [Quick start](#quick-start)
+- [Test procedure](#test-procedure)
+- [Test results](#test-results)
+- [Installation](#installation)
+- [References](#references)
+
 ## Introduction
+
+![Efficacy](images/efficacy.png)
 
 This solution will:
 
+- Operate on 98.0% of UK phones and 97.5% of phones worldwide without requiring a software update.
 - Detect 100% of iOS and Android devices within 8 metres for contact tracing.
 - Measure distance between devices at least once every 30 seconds for infection risk estimation.
-- Operates on 98.0% of UK phones and 97.5% of phones worldwide without requiring a software update.
 
 This is a new, original, free and open source cross-platform proximity detection solution that has been developed according to epidemiology requirements (Ferretti, et al., 2020) for controlling COVID-19. This Bluetooth Low Energy (BLE) based solution offers accurate and frequent distance measurements between phones running iOS 9.3+ and Android 5.0+, including devices that do not support BLE advertising (circa 35% in the UK).
 
@@ -63,9 +78,9 @@ A procedure for installing and testing the solution in background mode is as fol
 7. Open app on each device to quickly check other devices were detected and most recent detection time.
 8. Download plain text CSV log data files from each device for detailed analysis.
 
-Detailed step-by-step instructions can be found in the **Getting started** section.
+Detailed step-by-step instructions can be found in the [Installation](#installation) section.
 
-## Testing
+## Test procedure
 
 Iterative development was driven by practical experiments and automated testing with a range of common and challenging devices to evaluate the solution according to epidemiology requirements:
 
@@ -129,7 +144,7 @@ Test devices were selected to ensure the solution were being tested under the mo
 - Test 4 included all the Android devices in Test 1.
 - Test 5 included Android devices that changed BLE device address constantly, and all the iPhones had Location OFF to assess situations where this permission is unacceptable (please note Location permission is mandatory on Android devices and generally acceptable).
 
-## Getting started
+## Installation
 
 The proximity detection solution has been integrated into a standalone test app on iOS and Android for ease of evaluation, and to demonstrate how it can be applied in your own apps. The test app will detect, identify and measure distance for all iOS and Android devices within detection range, present the results on a simple user interface, and also write the results to local device storage for download and analysis.
 
