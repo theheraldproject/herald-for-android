@@ -4,10 +4,10 @@
 <!-- SPDX-License-Identifier: MIT -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.vmware.squire.app">
+    package="com.vmware.herald.app">
 
     <application
-        android:name="com.vmware.squire.app.AppDelegate"
+        android:name="com.vmware.herald.app.AppDelegate"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -15,7 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.vmware.squire.app.MainActivity"
+            android:name="com.vmware.herald.app.MainActivity"
             android:configChanges="orientation"
             android:screenOrientation="portrait">
             <intent-filter>

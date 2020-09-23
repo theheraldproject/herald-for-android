@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.vmware.squire">
+    package="com.vmware.herald">
 
     <!-- Must support Bluetooth LE -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
@@ -16,7 +16,7 @@
     <!-- Foreground service for Bluetooth LE as background process -->
     <application>
         <service
-            android:name="com.vmware.squire.sensor.service.ForegroundService"
+            android:name="com.vmware.herald.sensor.service.ForegroundService"
             android:foregroundServiceType="location" />
    </application>
 </manifest>
