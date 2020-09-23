@@ -1,3 +1,3 @@
-include ':squire'
+include ':herald'
 include ':app'
-rootProject.name = "Squire-Android"
+rootProject.name = "Herald-for-Android"
