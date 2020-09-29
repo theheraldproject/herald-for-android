@@ -14,13 +14,13 @@ public class Data {
         this.value = value;
     }
 
-//    public String base64EncodedString() {
-//        return Base64.encodeToString(value, Base64.DEFAULT | Base64.NO_WRAP);
-//    }
-//
-//    public String description() {
-//        return base64EncodedString();
-//    }
+    public String base64EncodedString() {
+        return Base64.encode(value);
+    }
+
+    public String description() {
+        return base64EncodedString();
+    }
 
     public Data subdata(int offset) {
         if (offset < value.length) {
