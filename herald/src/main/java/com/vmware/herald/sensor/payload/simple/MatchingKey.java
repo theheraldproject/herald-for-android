@@ -8,4 +8,8 @@ public class MatchingKey extends Data {
     public MatchingKey(Data value) {
         super(value);
     }
+
+    public MatchingKey(byte repeating, int count) {
+        super(repeating, count);
+    }
 }

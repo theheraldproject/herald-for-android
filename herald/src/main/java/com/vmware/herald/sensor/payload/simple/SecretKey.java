@@ -8,4 +8,8 @@ public class SecretKey extends Data {
     public SecretKey(byte[] value) {
         super(value);
     }
+
+    public SecretKey(byte repeating, int count) {
+        super(repeating, count);
+    }
 }

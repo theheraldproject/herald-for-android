@@ -24,6 +24,13 @@ public class Data {
         this.value = value;
     }
 
+    public Data(byte repeating, int count) {
+        this.value = new byte[count];
+        for (int i=count; i-->0;) {
+            this.value[i] = repeating;
+        }
+    }
+
     public String base64EncodedString() {
         return Base64.encode(value);
     }

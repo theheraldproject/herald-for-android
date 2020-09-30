@@ -70,7 +70,7 @@ public class K {
          Matching key for day i is the hash of the matching key seed for day i xor i - 1. A separation of matching key from its seed is necessary because the matching key is distributed by the server to all phones for on-device matching in a decentralised contact tracing solution. Given a seed is used to derive the seeds for other days, publishing the hash prevents an attacker from establishing the other seeds.
          */
         final MatchingKey[] matchingKey = new MatchingKey[n + 1];
-        for (int i=1; i<(n+1); i++) {
+        for (int i=1; i<=n; i++) {
             matchingKey[i] = new MatchingKey(F.h(F.xor(matchingKeySeed[i], matchingKeySeed[i - 1])));
         }
         /**
@@ -93,14 +93,14 @@ public class K {
          The last contact key seed on day i at period 240 (last 6 minutes of the day) is the hash of the matching key for day i.
          */
         contactKeySeed[n] = new ContactKeySeed(F.h(matchingKey));
-        for (int j=(n-1); j-->0;) {
+        for (int j=n; j-->0;) {
             contactKeySeed[j] = new ContactKeySeed(F.h(F.t(contactKeySeed[j + 1])));
         }
         /**
          Contact key for day i at period j is the hash of the contact key seed for day i at period j xor j - 1. A separation of contact key from its seed is necessary because the contact key is distributed to other phones as evidence for encounters on day i within period j. Given a seed is used to derive the seeds for other periods on the same day, transmitting the hash prevents an attacker from establishing the other seeds on day i.
          */
         final ContactKey[] contactKey = new ContactKey[n + 1];
-        for (int j=1; j<n; j++) {
+        for (int j=1; j<=n; j++) {
             contactKey[j] = new ContactKey(F.h(F.xor(contactKeySeed[j], contactKeySeed[j - 1])));
         }
         /**

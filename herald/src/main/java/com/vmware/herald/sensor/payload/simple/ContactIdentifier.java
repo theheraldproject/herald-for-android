@@ -8,4 +8,8 @@ public class ContactIdentifier extends Data {
     public ContactIdentifier(Data value) {
         super(value);
     }
+
+    public ContactIdentifier(byte repeating, int count) {
+        super(repeating, count);
+    }
 }
