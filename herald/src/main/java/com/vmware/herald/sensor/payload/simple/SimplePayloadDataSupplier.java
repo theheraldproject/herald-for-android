@@ -18,6 +18,11 @@ public class SimplePayloadDataSupplier implements PayloadDataSupplier {
     private final static int payloadLength = 23;
     private final Data commonHeader = new Data();
 
+    /// Simple payload data supplier where transmit power is unknown.
+    public SimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, SecretKey secretKey) {
+        this(protocolAndVersion, countryCode, stateCode, new Float16(0), secretKey);
+    }
+
     public SimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, Float16 transmitPower, SecretKey secretKey) {
         // Generate common header
         // All data is big endian
