@@ -17,7 +17,6 @@ import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
 import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;

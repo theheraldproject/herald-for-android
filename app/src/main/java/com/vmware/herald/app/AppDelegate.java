@@ -17,7 +17,7 @@ import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.payload.sonar.SonarPayloadDataSupplier;
 
 import java.util.ArrayList;

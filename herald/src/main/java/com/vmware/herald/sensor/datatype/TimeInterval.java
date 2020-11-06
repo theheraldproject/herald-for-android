@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.datatype;
 
+import java.util.Date;
+
 /// Time interval in seconds.
 public class TimeInterval {
     public final long value;
@@ -13,6 +15,10 @@ public class TimeInterval {
 
     public TimeInterval(long seconds) {
         this.value = seconds;
+    }
+
+    public TimeInterval(Date date) {
+        this.value = date.getTime() / 1000;
     }
 
     public static TimeInterval minutes(long minutes) {

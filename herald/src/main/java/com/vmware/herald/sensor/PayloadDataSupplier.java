@@ -2,7 +2,7 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.payload;
+package com.vmware.herald.sensor;
 
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
