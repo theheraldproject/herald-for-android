@@ -15,7 +15,7 @@ import com.vmware.herald.sensor.datatype.ProximityMeasurementUnit;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
 
 import java.util.Queue;

@@ -35,7 +35,7 @@ import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.datatype.Triple;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
 
 import java.util.ArrayList;
