@@ -5,5 +5,5 @@
 package com.vmware.herald.sensor.datatype;
 
 public enum SignalCharacteristicDataType {
-    rssi, payload, payloadSharing, unknown
+    rssi, payload, payloadSharing, immediateSend, unknown
 }

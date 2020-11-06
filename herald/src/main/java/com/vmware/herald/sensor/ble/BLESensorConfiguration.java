@@ -38,6 +38,8 @@ public class BLESensorConfiguration {
     public final static byte signalCharacteristicActionWriteRSSI = (byte) 2;
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload sharing data length, then payload sharing data
     public final static byte signalCharacteristicActionWritePayloadSharing = (byte) 3;
+    /// Arbitrary immediate write
+    public final static byte signalCharacteristicActionWriteImmediate = (byte) 4;
 
     // BLE advert manufacturer ID for Apple, for scanning of background iOS devices
     public final static int manufacturerIdForApple = 76;

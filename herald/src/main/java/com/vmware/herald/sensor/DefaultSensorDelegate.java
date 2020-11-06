@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor;
 
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -22,6 +23,10 @@ public abstract class DefaultSensorDelegate implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    }
+
+    @Override
+    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
     }
 
     @Override

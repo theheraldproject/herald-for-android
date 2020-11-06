@@ -174,6 +174,10 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return payloadData;
     }
 
+    @Override
+    public BLEDevice device(TargetIdentifier targetIdentifier) {
+        return database.get(targetIdentifier);
+    }
 
     @Override
     public BLEDevice device(BluetoothDevice bluetoothDevice) {

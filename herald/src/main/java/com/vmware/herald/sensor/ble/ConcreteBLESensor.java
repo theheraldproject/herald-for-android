@@ -9,6 +9,7 @@ import android.content.Context;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.ProximityMeasurementUnit;
@@ -17,6 +18,7 @@ import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
