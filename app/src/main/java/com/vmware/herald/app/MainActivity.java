@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -42,7 +43,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     private final static int permissionRequestCode = 1249951875;
     /// Test UI specific data, not required for production solution.
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("MMdd HH:mm:ss");
-    private long didDetect = 0, didRead = 0, didMeasure = 0, didShare = 0, didVisit = 0;
+    private long didDetect = 0, didRead = 0, didReceive = 0, didMeasure = 0, didShare = 0, didVisit = 0;
     private final Map<TargetIdentifier, String> payloads = new ConcurrentHashMap<>();
     private final Map<String, Date> didReadPayloads = new ConcurrentHashMap<>();
     private final Map<String, Date> didSharePayloads = new ConcurrentHashMap<>();
@@ -180,6 +181,22 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
                 updateDetection();
             }
         });
+    }
+
+    @Override
+    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+        this.didReceive++;
+        // TODO expose received immediate send data on the demo UI
+//        final String timestamp = dateFormatter.format(new Date());
+//        final String text = "didReceive: " + this.didReceive + " (" + timestamp + ")";
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                final TextView textView = findViewById(R.id.didReceive);
+//                textView.setText(text);
+//                updateDetection();
+//            }
+//        });
     }
 
     @Override

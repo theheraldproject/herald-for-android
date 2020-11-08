@@ -25,6 +25,7 @@ import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
@@ -459,6 +460,18 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                             sharedDevice.operatingSystem(BLEDeviceOperatingSystem.shared);
                             sharedDevice.rssi(payloadSharingData.rssi);
                         }
+                        break;
+                    }
+                    case immediateSend: {
+                        final ImmediateSendData immediateSendData = SignalCharacteristicData.decodeImmediateSend(data);
+                        if (immediateSendData == null) {
+                            // Fragmented immediate send data may be incomplete
+                            break;
+                        }
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, immediateSendData, targetIdentifier);
+                        }
+                        logger.debug("didReceiveWrite (dataType=immediateSend,central={},immediateSendData={})", targetDevice, immediateSendData.data);
                         break;
                     }
                 }

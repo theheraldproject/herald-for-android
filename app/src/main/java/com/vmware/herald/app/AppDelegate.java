@@ -11,6 +11,7 @@ import android.util.Log;
 import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -75,6 +76,11 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         Log.i(tag, sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
+    }
+
+    @Override
+    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+        Log.i(tag, sensor.name() + ",didReceive=" + didReceive.data.base64EncodedString() + ",fromTarget=" + fromTarget);
     }
 
     @Override

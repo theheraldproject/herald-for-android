@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor;
 
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -20,6 +21,9 @@ public interface SensorDelegate {
 
     /// Read payload data from target, e.g. encrypted device identifier from BLE peripheral after successful connection.
     void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget);
+
+    /// Receive written immediate send data from target, e.g. important timing signal.
+    void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget);
 
     /// Read payload data of other targets recently acquired by a target, e.g. Android peripheral sharing payload data acquired from nearby iOS peripherals.
     void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget);
