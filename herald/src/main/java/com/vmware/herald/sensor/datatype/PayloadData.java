@@ -13,6 +13,10 @@ public class PayloadData extends Data {
         super(value);
     }
 
+    public PayloadData(String base64EncodedString) {
+        super(base64EncodedString);
+    }
+
     public PayloadData() {
         this(new byte[0]);
     }

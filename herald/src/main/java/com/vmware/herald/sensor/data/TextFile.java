@@ -8,8 +8,11 @@ import android.content.Context;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +36,26 @@ public class TextFile {
                 MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
         }, 30, 30, TimeUnit.SECONDS);
+    }
+
+    /// Get contents of file
+    public synchronized String contentsOf() {
+        try {
+            final FileInputStream fileInputStream = new FileInputStream(file);
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
+            final StringBuilder stringBuilder = new StringBuilder();
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                stringBuilder.append(line);
+                stringBuilder.append("\n");
+            }
+            bufferedReader.close();
+            fileInputStream.close();
+            return stringBuilder.toString();
+        } catch (Throwable e) {
+            logger.fault("read failed (file={})", file, e);
+            return "";
+        }
     }
 
     /**

@@ -762,6 +762,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("nextTaskForDevice (device={},task=readPayload)", device);
             return NextTask.readPayload;
         }
+        // Get payload update if required
+        if (device.timeIntervalSinceLastPayloadDataUpdate().value > BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
+            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate)", device);
+            return NextTask.readPayload;
+        }
         // Write payload, rssi and payload sharing data if this device cannot transmit
         if (!transmitter.isSupported()) {
             // Write payload data as top priority
@@ -778,10 +783,18 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("nextTaskForDevice (device={},task=writePayloadSharing,dataLength={},elapsed={})", device, payloadSharingData.data.value.length, device.timeIntervalSinceLastWritePayloadSharing());
                 return NextTask.writePayloadSharing;
             }
-            // Write RSSI as frequently as reasonable
-            if (device.rssi() != null && device.timeIntervalSinceLastWriteRssi().value >= TimeInterval.seconds(15).value) {
+            // Write RSSI as frequently as reasonable (alternate between write RSSI and write payload)
+            if (device.rssi() != null
+                    && device.timeIntervalSinceLastWriteRssi().value >= TimeInterval.seconds(15).value
+                    && (device.timeIntervalSinceLastWritePayload().value < BLESensorConfiguration.payloadDataUpdateTimeInterval.value
+                        || device.timeIntervalSinceLastWriteRssi().value >= device.timeIntervalSinceLastWritePayload().value)) {
                 logger.debug("nextTaskForDevice (device={},task=writeRSSI,elapsed={})", device, device.timeIntervalSinceLastWriteRssi());
                 return NextTask.writeRSSI;
+            }
+            // Write payload update if required
+            if (device.timeIntervalSinceLastWritePayload().value > BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
+                logger.debug("nextTaskForDevice (device={},task=writePayloadUpdate,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
+                return NextTask.writePayload;
             }
         }
         // Write payload sharing data to iOS
