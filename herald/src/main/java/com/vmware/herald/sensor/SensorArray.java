@@ -14,6 +14,7 @@ import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.data.StatisticsDidReadLog;
 import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
@@ -53,6 +54,7 @@ public class SensorArray implements Sensor {
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
         add(new ContactLog(context, "contacts.csv"));
         add(new StatisticsLog(context, "statistics.csv", payloadData));
+        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
         add(new DetectionLog(context,"detection.csv", payloadData));
         new BatteryLog(context, "battery.csv");
 

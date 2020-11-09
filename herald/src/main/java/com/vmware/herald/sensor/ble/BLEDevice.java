@@ -37,6 +37,7 @@ public class BLEDevice {
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     private PayloadData payloadData;
+    private Date lastPayloadDataUpdate = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
     private RSSI rssi;
     /// Transmit power data where available (only provided by Android devices)
@@ -101,6 +102,7 @@ public class BLEDevice {
         this.state = device.state;
         this.operatingSystem = device.operatingSystem;
         this.payloadData = device.payloadData;
+        this.lastPayloadDataUpdate = device.lastPayloadDataUpdate;
         this.rssi = device.rssi;
         this.txPower = device.txPower;
         this.receiveOnly = device.receiveOnly;
@@ -194,8 +196,16 @@ public class BLEDevice {
 
     public void payloadData(PayloadData payloadData) {
         this.payloadData = payloadData;
-        lastUpdatedAt = new Date();
+        lastPayloadDataUpdate = new Date();
+        lastUpdatedAt = lastPayloadDataUpdate;
         delegate.device(this, BLEDeviceAttribute.payloadData);
+    }
+
+    public TimeInterval timeIntervalSinceLastPayloadDataUpdate() {
+        if (lastPayloadDataUpdate == null) {
+            return TimeInterval.never;
+        }
+        return new TimeInterval((new Date().getTime() - lastPayloadDataUpdate.getTime()) / 1000);
     }
 
     public RSSI rssi() {

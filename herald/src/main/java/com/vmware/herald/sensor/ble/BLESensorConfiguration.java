@@ -30,6 +30,8 @@ public class BLESensorConfiguration {
     public final static int manufacturerIdForSensor = 65530;
     /// Advert refresh time interval
     public final static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+    /// Payload update at regular intervals
+    public final static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.never;
 
 
     /// Signal characteristic action code for write payload, expect 1 byte action code followed by 2 byte little-endian Int16 integer value for payload data length, then payload data

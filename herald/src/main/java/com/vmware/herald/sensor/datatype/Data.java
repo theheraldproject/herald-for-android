@@ -31,6 +31,10 @@ public class Data {
         }
     }
 
+    public Data(String base64EncodedString) {
+        this.value = Base64.decode(base64EncodedString);
+    }
+
     public String base64EncodedString() {
         return Base64.encode(value);
     }
