@@ -9,7 +9,7 @@ import android.os.PowerManager;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.datatype.Sample;
+import com.vmware.herald.sensor.analysis.Sample;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;

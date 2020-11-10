@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: MIT
+//
+
 package com.vmware.herald.sensor.payload.simple;
 
 import com.vmware.herald.sensor.datatype.Float16;

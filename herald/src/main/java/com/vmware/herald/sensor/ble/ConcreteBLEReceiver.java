@@ -28,7 +28,7 @@ import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.RSSI;
-import com.vmware.herald.sensor.datatype.Sample;
+import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicDataType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;

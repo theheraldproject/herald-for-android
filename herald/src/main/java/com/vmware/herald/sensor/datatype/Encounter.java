@@ -20,6 +20,10 @@ public class Encounter {
         this.payload = withPayload;
     }
 
+    public Encounter(Proximity didMeasure, PayloadData withPayload) {
+        this(didMeasure, withPayload, new Date());
+    }
+
     public Encounter(String row) {
         final String[] fields = row.split(",");
         if (!(fields.length >= 4)) {

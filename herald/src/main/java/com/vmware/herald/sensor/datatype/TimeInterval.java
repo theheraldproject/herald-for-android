@@ -21,6 +21,10 @@ public class TimeInterval {
         this.value = date.getTime() / 1000;
     }
 
+    public TimeInterval(Date from, Date to) {
+        this.value = (to.getTime() - from.getTime()) / 1000;
+    }
+
     public static TimeInterval minutes(long minutes) {
         return new TimeInterval(minute.value * minutes);
     }
