@@ -5,8 +5,11 @@
 package com.vmware.herald.sensor.analysis;
 
 import com.vmware.herald.sensor.datatype.Encounter;
+import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.ProximityMeasurementUnit;
+import com.vmware.herald.sensor.datatype.SensorType;
+import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.util.Date;
@@ -16,6 +19,23 @@ import java.util.List;
 /// people. This is intended to be used to generate a daily score as indicator of behavioural change
 /// to improve awareness of social mixing behaviour.
 public class SocialDistance extends Interactions {
+
+    // MARK:- SensorDelegate
+
+    @Override
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+        final Encounter encounter = new Encounter(didMeasure, new PayloadData(fromTarget.value.getBytes()));
+        if (encounter.isValid()) {
+            append(encounter);
+        }
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+        // Interactions require a valid payload, but that is unnecessary for social distance
+        // Overriding parent function with no-op, replaced with sensor(sensor:didMeasure:fromTarget)
+    }
+
     /// Calculate social distance score based on maximum RSSI per 1 minute time window over duration
     /// A score of 1.0 means RSSI >= measuredPower in every minute, score of 0.0 means no encounter
     /// or RSSI less than excludeRssiBelow in every minute.
