@@ -56,7 +56,7 @@ public class Data {
 
     /// Get subdata from offset to offset + length
     public Data subdata(int offset, int length) {
-        if (offset + length < value.length) {
+        if (offset + length <= value.length) {
             final byte[] offsetValue = new byte[length];
             System.arraycopy(value, offset, offsetValue, 0, length);
             return new Data(offsetValue);

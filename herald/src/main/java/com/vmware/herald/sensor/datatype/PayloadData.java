@@ -4,8 +4,6 @@
 
 package com.vmware.herald.sensor.datatype;
 
-import android.util.Base64;
-
 /// Encrypted payload data received from target. This is likely to be an encrypted datagram of the target's actual permanent identifier.
 public class PayloadData extends Data {
 
@@ -26,11 +24,16 @@ public class PayloadData extends Data {
     }
 
     public String shortName() {
-        try {
-            return Base64.encodeToString(value, 3, value.length - 3, Base64.DEFAULT | Base64.NO_WRAP).substring(0, 6);
-        } catch (Throwable e) {
-            return Base64.encodeToString(value, 0, value.length, Base64.DEFAULT | Base64.NO_WRAP);
+        if (value.length == 0) {
+            return "";
         }
+        if (!(value.length > 3)) {
+            return Base64.encode(value);
+        }
+        final Data subdata = subdata(3, value.length - 3);
+        final byte[] suffix = (subdata == null || subdata.value == null ? new byte[0] : subdata.value);
+        final String base64EncodedString = Base64.encode(suffix);
+        return base64EncodedString.substring(0, Math.min(6, base64EncodedString.length()));
     }
 
     public String toString() {
