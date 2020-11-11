@@ -12,18 +12,18 @@ import java.util.UUID;
 /// Defines BLE sensor configuration data, e.g. service and characteristic UUIDs
 public class BLESensorConfiguration {
     public final static SensorLoggerLevel logLevel = SensorLoggerLevel.debug;
-    /**
-     * Service UUID for beacon service. This is a fixed UUID to enable iOS devices to find each other even
-     * in background mode. Android devices will need to find Apple devices first using the manufacturer code
-     * then discover services to identify actual beacons.
-     */
-    public final static UUID serviceUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000000");
+    /// Service UUID for beacon service. This is a fixed UUID to enable iOS devices to find each other even
+    /// in background mode. Android devices will need to find Apple devices first using the manufacturer code
+    /// then discover services to identify actual beacons.
+    /// - Service and characteristic UUIDs are V4 UUIDs that have been randomly generated and tested
+    /// for uniqueness by conducting web searches to ensure it returns no results.
+    public final static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
     /// Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
-    public final static UUID androidSignalCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000001");
+    public final static UUID androidSignalCharacteristicUUID = UUID.fromString("f617b813-092e-437a-8324-e09a80821a11");
     /// Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
-    public final static UUID iosSignalCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000002");
+    public final static UUID iosSignalCharacteristicUUID = UUID.fromString("0eb0d5f2-eae4-4a9a-8af3-a4adb02d4363");
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
-    public final static UUID payloadCharacteristicUUID = UUID.fromString("FFFFFFFF-EEEE-DDDD-0000-000000000003");
+    public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
     public final static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
     /// Manufacturer data is being used on Android to store pseudo device address
