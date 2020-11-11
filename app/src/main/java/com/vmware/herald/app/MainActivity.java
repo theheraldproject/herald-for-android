@@ -5,18 +5,23 @@
 package com.vmware.herald.app;
 
 import android.Manifest;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
+import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.analysis.SocialDistance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
@@ -24,6 +29,7 @@ import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -48,6 +54,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     private final Map<String, Date> didReadPayloads = new ConcurrentHashMap<>();
     private final Map<String, Date> didSharePayloads = new ConcurrentHashMap<>();
 
+    // MARK:- Social mixing
+    private final SocialDistance socialMixingScore = new SocialDistance();
+    private TimeInterval socialMixingScoreUnit = new TimeInterval(60);
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,7 +68,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         requestPermissions();
 
         // Test UI specific process to gather data from sensor for presentation
-        AppDelegate.getAppDelegate().sensor().add(this);
+        final Sensor sensor = AppDelegate.getAppDelegate().sensor();
+        sensor.add(this);
+        sensor.add(socialMixingScore);
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
         ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData().shortName());
     }
@@ -152,15 +165,76 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         });
     }
 
+    // Update social distance score
+    private void updateSocialDistance(TimeInterval unit) {
+        final long millisecondsPerUnit = unit.value * 1000;
+        final List<TextView> labels = new ArrayList<>();
+        labels.add((TextView) findViewById(R.id.socialMixingScore00));
+        labels.add((TextView) findViewById(R.id.socialMixingScore01));
+        labels.add((TextView) findViewById(R.id.socialMixingScore02));
+        labels.add((TextView) findViewById(R.id.socialMixingScore03));
+        labels.add((TextView) findViewById(R.id.socialMixingScore04));
+        labels.add((TextView) findViewById(R.id.socialMixingScore05));
+        labels.add((TextView) findViewById(R.id.socialMixingScore06));
+        labels.add((TextView) findViewById(R.id.socialMixingScore07));
+        labels.add((TextView) findViewById(R.id.socialMixingScore08));
+        labels.add((TextView) findViewById(R.id.socialMixingScore09));
+        labels.add((TextView) findViewById(R.id.socialMixingScore10));
+        labels.add((TextView) findViewById(R.id.socialMixingScore11));
+        final long epoch = (new Date().getTime() / millisecondsPerUnit) - 11;
+        for (int i=0; i<=11; i++) {
+            // Compute score for time slot
+            final Date start = new Date((epoch + i) * millisecondsPerUnit);
+            final Date end = new Date((epoch + i + 1) * millisecondsPerUnit);
+            final double score = socialMixingScore.scoreByProximity(start, end, -25, -70);
+            // Present textual score
+            final String scoreForPresentation = Integer.toString((int) Math.round(score * 100));
+            labels.get(i).setText(scoreForPresentation);
+            // Change color according to score
+            if (score < 0.1) {
+                labels.get(i).setBackgroundColor(ContextCompat.getColor(this, R.color.systemGreen));
+            } else if (score < 0.5) {
+                labels.get(i).setBackgroundColor(ContextCompat.getColor(this, R.color.systemOrange));
+            } else {
+                labels.get(i).setBackgroundColor(ContextCompat.getColor(this, R.color.systemRed));
+            }
+        }
+    }
+
+    public void onClickSocialMixingScoreUnit(View v) {
+        final Map<TextView, TimeInterval> mapping = new HashMap<>(12);
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitH24), new TimeInterval(24 * 60 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitH12), new TimeInterval(12 * 60 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitH4), new TimeInterval(4 * 60 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitH1), new TimeInterval(1 * 60 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitM30), new TimeInterval(30 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitM15), new TimeInterval(15 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitM5), new TimeInterval(5 * 60));
+        mapping.put((TextView) findViewById(R.id.socialMixingScoreUnitM1), new TimeInterval(1 * 60));
+        final int active = ContextCompat.getColor(this, R.color.systemBlue);
+        final int inactive = ContextCompat.getColor(this, R.color.systemGray);
+        final TextView setTo = (TextView) v;
+        for (TextView key : mapping.keySet()) {
+            if (setTo.getId() == key.getId()) {
+                key.setTextColor(active);
+                socialMixingScoreUnit = mapping.get(key);
+            } else {
+                key.setTextColor(inactive);
+            }
+        }
+        updateSocialDistance(socialMixingScoreUnit);
+    }
+
+    // MARK:- SensorDelegate
+
     @Override
     public void sensor(SensorType sensor, TargetIdentifier didDetect) {
         this.didDetect++;
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "didDetect: " + this.didDetect + " (" + timestamp + ")";
+        final String text = Long.toString(this.didDetect);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didDetect);
+                final TextView textView = findViewById(R.id.didDetectCount);
                 textView.setText(text);
             }
         });
@@ -171,12 +245,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         this.didRead++;
         this.didReadPayloads.put(didRead.shortName(), new Date());
         this.payloads.put(fromTarget, didRead.shortName());
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "didRead: " + this.didRead + " (" + timestamp + ")";
+        final String text = Long.toString(this.didRead);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didRead);
+                final TextView textView = findViewById(R.id.didReadCount);
                 textView.setText(text);
                 updateDetection();
             }
@@ -206,12 +279,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         for (PayloadData payloadData : didShare) {
             this.didSharePayloads.put(payloadData.shortName(), now);
         }
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "didShare: " + this.didShare + " (" + timestamp + ")";
+        final String text = Long.toString(this.didShare);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didShare);
+                final TextView textView = findViewById(R.id.didShareCount);
                 textView.setText(text);
             }
         });
@@ -221,18 +293,20 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
         this.didMeasure++;
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "didMeasure: " + this.didMeasure + " (" + timestamp + ")";
+        final String text = Long.toString(this.didMeasure);
         final String payloadShortName = payloads.get(fromTarget);
         if (payloadShortName != null) {
             didReadPayloads.put(payloadShortName, new Date());
-            updateDetection();
         }
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didMeasure);
+                final TextView textView = findViewById(R.id.didMeasureCount);
                 textView.setText(text);
+                if (payloadShortName != null) {
+                    updateDetection();
+                }
+                updateSocialDistance(socialMixingScoreUnit);
             }
         });
     }
@@ -240,12 +314,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
         this.didVisit++;
-        final String timestamp = dateFormatter.format(new Date());
-        final String text = "didVisit: " + this.didVisit + " (" + timestamp + ")";
+        final String text = Long.toString(this.didVisit);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didVisit);
+                final TextView textView = findViewById(R.id.didVisitCount);
                 textView.setText(text);
             }
         });

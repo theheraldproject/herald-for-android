@@ -28,7 +28,7 @@ import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.RSSI;
-import com.vmware.herald.sensor.datatype.Sample;
+import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicDataType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
@@ -624,6 +624,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return;
         }
         // Wait for connection
+        // A connect request should normally result in .connected or .disconnected state which is
+        // set asynchronously by the callback function onConnectionStateChange(). However, some
+        // connections may get stuck in a .connecting state indefinitely due to BLE issues, and
+        // therefore the callback function is never called, leaving the device in a limbo state.
+        // As such, the follow loop runs for a fixed duration (established through experimentation)
+        // to check if connection was successful, else abort the connection to put the device in
+        // a consistent default .disconnected state.
         while (device.state() != BLEDeviceState.connected && device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < timeToConnectDeviceLimitMillis) {
             try {
                 Thread.sleep(200);
@@ -632,6 +639,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
         }
         if (device.state() != BLEDeviceState.connected) {
+            // Failed to establish connection within time limit, assume connection failure
+            // and disconnect device to put it in a consistent default .disconnected state
             logger.fault("taskConnectDevice, connect timeout (device={})", device);
             try {
                 gatt.close();
@@ -640,12 +649,29 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
             return;
         } else {
+            // Connection was successful, make note of time to establish connection to
+            // inform setting of timeToConnectDeviceLimitMillis. A previous implementation
+            // used an adaptive algorithm to adjust this parameter according to device
+            // capability, but that was deemed too unreliable for minimal gain in
+            // performance, as the target device plays a big part in determining the
+            // connection time, and that can be unpredictable due to environment factors.
             final long connectElapsed = System.currentTimeMillis() - timeConnect;
             // Add sample to adaptive connection timeout
             timeToConnectDevice.add(connectElapsed);
             logger.debug("taskConnectDevice, connected (device={},elapsed={}ms,statistics={})", device, connectElapsed, timeToConnectDevice);
         }
         // Wait for disconnection
+        // Device is connected at this point, and all the actual work is being
+        // performed asynchronously by callback methods outside of this function.
+        // As such, the only work required here at this point is to keep track
+        // of connection time, to ensure a connection is not held for too long
+        // e.g. due to BLE issues. The following code waits for device state change
+        // from .connected to .disconnected, which is normally set asynchronously
+        // by the callback function onConnectionStateChange(), once all the tasks
+        // for the device have been completed. If the connection has been held
+        // too long, then this function will force a disconnection by calling
+        // gatt.close() to disconnect device to put it in a consistent default
+        // .disconnected state.
         while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < scanProcessDurationMillis) {
             try {
                 Thread.sleep(500);
@@ -656,6 +682,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         boolean success = true;
         // Timeout connection if required, and always set state to disconnected
         if (device.state() != BLEDeviceState.disconnected) {
+            // Failed to complete tasks and disconnect within time limit, assume failure
+            // and disconnect device to put it in a consistent default .disconnected state
             logger.fault("taskConnectDevice, disconnect timeout (device={})", device);
             try {
                 gatt.close();
@@ -664,6 +692,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
             success = false;
         }
+        // Always set state to .disconnected at the end
         device.state(BLEDeviceState.disconnected);
         final long timeDisconnect = System.currentTimeMillis();
         final long timeElapsed = (timeDisconnect - timeConnect);
@@ -735,7 +764,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         nextTask(gatt);
     }
 
-
+    /// Establish the next task for a device, given its current state.
+    /// This is necessary because all BLE activities are asynchronous,
+    /// thus the BLEDevice object acts as a repository for collating all
+    /// device state and information updates from the asynchronous calls.
+    /// This function inspects the device state and information to
+    /// determine the next task to perform, if any, for the device
+    /// while it is connected. Please note, service and characteristic
+    /// discovery must be performed (cannot be cached) on the device
+    /// on each connection, thus it makes sense to do as much as possible
+    /// once a connection has been established with the target device.
     private NextTask nextTaskForDevice(final BLEDevice device) {
         // No task for devices marked as .ignore
         if (device.ignore()) {
@@ -811,6 +849,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return NextTask.nothing;
     }
 
+    /// Given an open connection, perform the next task for the device.
+    /// Use this function to define the actual code for implementing
+    /// a task on the device (e.g. readPayload). The actual priority
+    /// of tasks is defined in the function nextTaskForDevice().
+    /// See function nextTaskForDevice() for additional design details.
     private void nextTask(BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
