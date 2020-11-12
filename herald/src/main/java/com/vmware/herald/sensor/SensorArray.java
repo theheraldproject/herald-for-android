@@ -16,8 +16,10 @@ import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.data.StatisticsDidReadLog;
 import com.vmware.herald.sensor.data.StatisticsLog;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
+import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;
@@ -32,6 +34,7 @@ public class SensorArray implements Sensor {
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
+    private final ConcreteBLESensor concreteBleSensor;
 
     public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
@@ -48,7 +51,8 @@ public class SensorArray implements Sensor {
         }
 
         // Define sensor array
-        sensorArray.add(new ConcreteBLESensor(context, payloadDataSupplier));
+        concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
+        sensorArray.add(concreteBleSensor);
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
@@ -59,6 +63,11 @@ public class SensorArray implements Sensor {
         new BatteryLog(context, "battery.csv");
 
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
+    }
+
+    /// Immediate send data.
+    public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
+        return concreteBleSensor.immediateSend(data,targetIdentifier);
     }
 
     public final PayloadData payloadData() {
