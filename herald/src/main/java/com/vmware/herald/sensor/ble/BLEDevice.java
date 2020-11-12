@@ -7,6 +7,7 @@ package com.vmware.herald.sensor.ble;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PseudoDeviceAddress;
 import com.vmware.herald.sensor.datatype.RSSI;
@@ -38,6 +39,8 @@ public class BLEDevice {
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     private PayloadData payloadData;
     private Date lastPayloadDataUpdate = null;
+    /// Immediate Send data to send next
+    private Data immediateSendData = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
     private RSSI rssi;
     /// Transmit power data where available (only provided by Android devices)
@@ -206,6 +209,14 @@ public class BLEDevice {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastPayloadDataUpdate.getTime()) / 1000);
+    }
+
+    public void immediateSendData(Data immediateSendData) {
+        this.immediateSendData = immediateSendData;
+    }
+
+    public Data immediateSendData() {
+        return immediateSendData;
     }
 
     public RSSI rssi() {

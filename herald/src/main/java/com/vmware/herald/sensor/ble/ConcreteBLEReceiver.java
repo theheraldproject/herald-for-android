@@ -64,7 +64,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
     private enum NextTask {
-        nothing, readPayload, writePayload, writeRSSI, writePayloadSharing
+        nothing, readPayload, writePayload, writeRSSI, writePayloadSharing, immediateSend
     }
 
     private final ScanCallback scanCallback = new ScanCallback() {
@@ -132,129 +132,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     targetIdentifier);
             return false;
         }
-        if (device.state() != BLEDeviceState.connected) {
-            logger.fault("immediateSend denied, peripheral not connected (peripheral: {})",
-                    device.peripheral().getAddress());
-            return false;
-        }
+
         final Data dataToSend = SignalCharacteristicData.encodeImmediateSend(new ImmediateSendData(data));
         logger.debug("immediateSend (device={},dataLength={})", device, dataToSend.value.length);
 
-        BluetoothGatt gatt = null;
-        final long timeConnect = System.currentTimeMillis();
-
-        if (device.state() == BLEDeviceState.connected) {
-            logger.debug("immediateSend, already connected to transmitter (device={})", device);
-        } else {
-            // Connect (timeout at 95% = 2 SD)
-            logger.debug("immediateSend, connect (device={})", device);
-            device.state(BLEDeviceState.connecting);
-            gatt = device.peripheral().connectGatt(context, false, this);
-            if (gatt == null) {
-                logger.fault("immediateSend, connect failed (device={})", device);
-                device.state(BLEDeviceState.disconnected);
-                return false;
-            }
-            // Wait for connection
-            while (device.state() != BLEDeviceState.connected && device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < timeToConnectDeviceLimitMillis) {
-                try {
-                    Thread.sleep(200);
-                } catch (Throwable e) {
-                    logger.fault("immediateSend, Timer interrupted", e);
-                }
-            }
-            if (device.state() != BLEDeviceState.connected) {
-                logger.fault("immediateSend, connect timeout (device={})", device);
-                try {
-                    gatt.close();
-                } catch (Throwable e) {
-                    logger.fault("immediateSend, close failed (device={})", device, e);
-                }
-                return false;
-            }
-            final long connectElapsed = System.currentTimeMillis() - timeConnect;
-            logger.debug("immediateSend, connected (device={},elapsed={}ms,statistics={})", device, connectElapsed, timeToConnectDevice);
-            // Add sample to adaptive connection timeout
-            timeToConnectDevice.add(connectElapsed);
-        }
-
-
-
-
-
-
-
-        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
-        if (signalCharacteristic == null) {
-            logger.fault("immediateSend failed (device={},reason=missingSignalCharacteristic)", device);
-            gatt.disconnect();
-            return false;
-        }
-        if (data == null || data.value.length == 0) {
-            logger.fault("immediateSend failed (device={},reason=missingData)", device);
-            gatt.disconnect();
-            return false;
-        }
-        if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
-            device.signalCharacteristicWriteValue = data.value;
-            device.signalCharacteristicWriteQueue = null;
-            signalCharacteristic.setValue(data.value);
-            signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                logger.fault("immediateSend to iOS failed (device={},reason=writeCharacteristicFailed)", device);
-                gatt.disconnect();
-            } else {
-                logger.debug("immediateSend to iOS (dataLength={},device={})", data.value.length, device);
-            }
-            return false;
-        }
-        if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
-            device.signalCharacteristicWriteValue = data.value;
-            device.signalCharacteristicWriteQueue = fragmentDataByMtu(data.value);
-            if (writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.failed) {
-                logger.fault("immediateSend to Android failed (device={},reason=writeCharacteristicFailed)", device);
-                gatt.disconnect();
-            } else {
-                logger.debug("immediateSend to Android (dataLength={},device={})", data.value.length, device);
-            }
-        }
-
-
-        if (null != gatt) { // i.e. we had to connect in this function itself, as we weren't already connected
-            // disconnect now we're done
-            gatt.disconnect();
-
-            // Wait for disconnection
-            while (device.state() != BLEDeviceState.disconnected && (System.currentTimeMillis() - timeConnect) < scanProcessDurationMillis) {
-                try {
-                    Thread.sleep(500);
-                } catch (Throwable e) {
-                    logger.fault("immediateSend, Timer interrupted", e);
-                }
-            }
-            boolean success = true;
-            // Timeout connection if required, and always set state to disconnected
-            if (device.state() != BLEDeviceState.disconnected) {
-                logger.fault("immediateSend, disconnect timeout (device={})", device);
-                try {
-                    gatt.close();
-                } catch (Throwable e) {
-                    logger.fault("immediateSend, close failed (device={})", device, e);
-                }
-                success = false;
-            }
-            device.state(BLEDeviceState.disconnected);
-            final long timeDisconnect = System.currentTimeMillis();
-            final long timeElapsed = (timeDisconnect - timeConnect);
-            if (success) {
-                timeToProcessDevice.add(timeElapsed);
-                logger.debug("immediateSend, complete (success=true,device={},elapsed={}ms,statistics={})", device, timeElapsed, timeToProcessDevice);
-            } else {
-                logger.fault("immediateSend, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
-            }
-        }
-
-        return true;
+        // BLOCKS current thread - force a connection, and async handler callback sends immediate and closes connection
+        device.immediateSendData(dataToSend);
+        return taskConnectDevice(device);
     }
 
     // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat
@@ -608,10 +492,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    private void taskConnectDevice(final BLEDevice device) {
+    private boolean taskConnectDevice(final BLEDevice device) {
         if (device.state() == BLEDeviceState.connected) {
             logger.debug("taskConnectDevice, already connected to transmitter (device={})", device);
-            return;
+            return true;
         }
         // Connect (timeout at 95% = 2 SD)
         final long timeConnect = System.currentTimeMillis();
@@ -621,7 +505,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         if (gatt == null) {
             logger.fault("taskConnectDevice, connect failed (device={})", device);
             device.state(BLEDeviceState.disconnected);
-            return;
+            return false;
         }
         // Wait for connection
         // A connect request should normally result in .connected or .disconnected state which is
@@ -647,7 +531,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } catch (Throwable e) {
                 logger.fault("taskConnectDevice, close failed (device={})", device, e);
             }
-            return;
+            return false;
         } else {
             // Connection was successful, make note of time to establish connection to
             // inform setting of timeToConnectDeviceLimitMillis. A previous implementation
@@ -702,7 +586,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         } else {
             logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
         }
-
+        return success;
     }
 
     // MARK:- BluetoothStateManagerDelegate
@@ -778,6 +662,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // No task for devices marked as .ignore
         if (device.ignore()) {
             return NextTask.nothing;
+        }
+        if (null != device.immediateSendData()) {
+            return NextTask.immediateSend;
         }
         // If marked as ignore but ignore has expired, change to unknown
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
@@ -915,6 +802,23 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 writeSignalCharacteristic(gatt, NextTask.writeRSSI, data.value);
                 return;
             }
+            case immediateSend: {
+                final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+                if (signalCharacteristic == null) {
+                    logger.fault("nextTask failed (task=immediateSend,device={},reason=missingSignalCharacteristic)", device);
+                    gatt.disconnect();
+                    return;
+                }
+                final Data data = device.immediateSendData(); // already encoded (arbitrary data with header)
+                if (data == null) {
+                    logger.fault("nextTask failed (task=immediateSend,device={},reason=missingImmediateSendData)", device);
+                    gatt.disconnect();
+                    return;
+                }
+                logger.debug("nextTask (task=immediateSend,device={},dataLength={})", device, data.value.length);
+                writeSignalCharacteristic(gatt, NextTask.immediateSend, data.value);
+                return;
+            }
         }
         logger.debug("nextTask (task=nothing,device={})", device);
         gatt.disconnect();
@@ -957,6 +861,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
             }
+        }
+        // If we have just sent an immediateSend data set, then disconnect before anything else occurs
+        if (NextTask.immediateSend == task) {
+            logger.debug("writeSignalCharacteristic to Android, now disconnecting (task={}},device={})");
+            gatt.disconnect();
         }
     }
 
