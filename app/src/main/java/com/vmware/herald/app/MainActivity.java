@@ -33,6 +33,8 @@ import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
+import org.w3c.dom.Text;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -143,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 return t0.payloadData().shortName().compareTo(t1.payloadData().shortName());
             }
         });
+        ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetListAdapter.getCount() + ")");
         targetListAdapter.clear();
         targetListAdapter.addAll(targetList);
     }
