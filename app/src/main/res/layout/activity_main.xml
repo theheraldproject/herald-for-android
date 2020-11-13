@@ -17,6 +17,7 @@
         android:text="DEVICE"
         android:padding="10dp"
         android:textSize="20sp"
+        android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -25,9 +26,11 @@
         android:id="@+id/payload"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingBottom="10dp"
+        android:paddingHorizontal="10dp"
         android:text="PAYLOAD : "
-        android:padding="10dp"
         android:textSize="20sp"
+        android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/device" />
@@ -131,9 +134,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="14sp"
-                android:text="Visit"/>
+                android:text="Receive"/>
             <TextView
-                android:id="@+id/didVisitCount"
+                android:id="@+id/didReceiveCount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="17sp"
@@ -385,19 +388,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="DETECTION (0)"
-        android:textSize="20sp"
-        android:padding="10dp"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        android:paddingVertical="5dp"
+        android:paddingHorizontal="10dp"
+        android:background="@color/systemGray6"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/socialMixingScoreUnit" />
 
-    <TextView
-        android:id="@+id/payloads"
+    <ListView
+        android:id="@+id/targets"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:padding="10dp"
-        android:scrollbars="vertical"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/detection" />

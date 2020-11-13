@@ -11,6 +11,8 @@ import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -35,6 +37,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -43,16 +46,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
-public class MainActivity extends AppCompatActivity implements SensorDelegate {
+public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener {
     private final static String tag = MainActivity.class.getName();
     /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
     /// Test UI specific data, not required for production solution.
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("MMdd HH:mm:ss");
-    private long didDetect = 0, didRead = 0, didReceive = 0, didMeasure = 0, didShare = 0, didVisit = 0;
-    private final Map<TargetIdentifier, String> payloads = new ConcurrentHashMap<>();
-    private final Map<String, Date> didReadPayloads = new ConcurrentHashMap<>();
-    private final Map<String, Date> didSharePayloads = new ConcurrentHashMap<>();
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+
+    // MARK:- Events
+    private long didDetect = 0, didRead = 0, didMeasure = 0, didShare = 0, didReceive = 0;
+
+    // MARK:- Detected payloads
+    private final Map<TargetIdentifier,PayloadData> targetIdentifiers = new ConcurrentHashMap<>();
+    private final Map<PayloadData,Target> payloads = new ConcurrentHashMap<>();
+    private final List<Target> targets = new ArrayList<>();
+    private TargetListAdapter targetListAdapter;
 
     // MARK:- Social mixing
     private final SocialDistance socialMixingScore = new SocialDistance();
@@ -73,6 +81,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
         sensor.add(socialMixingScore);
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
         ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData().shortName());
+        targetListAdapter = new TargetListAdapter(this, targets);
+        final ListView targetsListView = ((ListView) findViewById(R.id.targets));
+        targetsListView.setAdapter(targetListAdapter);
+        targetsListView.setOnItemClickListener(this);
     }
 
     /// REQUIRED : Request application permissions for sensor operation.
@@ -122,47 +134,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
 
     // MARK:- Test UI specific functions, not required in production solution.
 
-    /// Update list of detected devices, including detection method(s) and last seen timestamp.
-    private void updateDetection() {
-        runOnUiThread(new Runnable() {
+    // Update targets table
+    private void updateTargets() {
+        final List<Target> targetList = new ArrayList<>(payloads.values());
+        Collections.sort(targetList, new Comparator<Target>() {
             @Override
-            public void run() {
-                final Map<String, String> payloadShortNames = new HashMap<>();
-                final Map<String, Date> payloadLastSeenDates = new HashMap<>();
-                for (String payloadShortName : didReadPayloads.keySet()) {
-                    payloadShortNames.put(payloadShortName, "read");
-                    payloadLastSeenDates.put(payloadShortName, didReadPayloads.get(payloadShortName));
-                }
-                for (String payloadShortName : didSharePayloads.keySet()) {
-                    payloadShortNames.put(payloadShortName, (payloadShortNames.containsKey(payloadShortName) ? "read,shared" : "shared"));
-                    final Date didReadPayloadTime = didReadPayloads.get(payloadShortName);
-                    final Date didSharePayloadTime = didSharePayloads.get(payloadShortName);
-                    payloadLastSeenDates.put(payloadShortName, new Date(
-                            Math.max((didReadPayloadTime == null ? 0 : didReadPayloadTime.getTime()),
-                                    (didSharePayloadTime == null ? 0 : didSharePayloadTime.getTime()))));
-                }
-                final List<String> payloadShortNameList = new ArrayList<>(payloadShortNames.keySet());
-                Collections.sort(payloadShortNameList);
-                final StringBuilder stringBuilder = new StringBuilder();
-                for (String payloadShortName : payloadShortNameList) {
-                    stringBuilder.append(payloadShortName);
-                    stringBuilder.append(" [");
-                    stringBuilder.append(payloadShortNames.get(payloadShortName));
-                    stringBuilder.append("]");
-                    final Date lastSeen = payloadLastSeenDates.get(payloadShortName);
-                    if (lastSeen != null) {
-                        stringBuilder.append(" (");
-                        stringBuilder.append(dateFormatter.format(lastSeen));
-                        stringBuilder.append(")");
-                    }
-                    stringBuilder.append("\n");
-                }
-                ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + payloadShortNames.size() + ")");
-                final TextView textView = findViewById(R.id.payloads);
-                textView.setText(stringBuilder.toString());
-                textView.setMovementMethod(new ScrollingMovementMethod());
+            public int compare(Target t0, Target t1) {
+                return t0.payloadData().shortName().compareTo(t1.payloadData().shortName());
             }
         });
+        targetListAdapter.clear();
+        targetListAdapter.addAll(targetList);
     }
 
     // Update social distance score
@@ -243,41 +225,36 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         this.didRead++;
-        this.didReadPayloads.put(didRead.shortName(), new Date());
-        this.payloads.put(fromTarget, didRead.shortName());
+        targetIdentifiers.put(fromTarget, didRead);
+        Target target = payloads.get(didRead);
+        if (target != null) {
+            target.didRead(new Date());
+        } else {
+            payloads.put(didRead, new Target(fromTarget, didRead));
+        }
         final String text = Long.toString(this.didRead);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 final TextView textView = findViewById(R.id.didReadCount);
                 textView.setText(text);
-                updateDetection();
+                updateTargets();
             }
         });
-    }
-
-    @Override
-    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
-        this.didReceive++;
-        // TODO expose received immediate send data on the demo UI
-//        final String timestamp = dateFormatter.format(new Date());
-//        final String text = "didReceive: " + this.didReceive + " (" + timestamp + ")";
-//        runOnUiThread(new Runnable() {
-//            @Override
-//            public void run() {
-//                final TextView textView = findViewById(R.id.didReceive);
-//                textView.setText(text);
-//                updateDetection();
-//            }
-//        });
     }
 
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         this.didShare++;
         final Date now = new Date();
-        for (PayloadData payloadData : didShare) {
-            this.didSharePayloads.put(payloadData.shortName(), now);
+        for (PayloadData didRead : didShare) {
+            targetIdentifiers.put(fromTarget, didRead);
+            Target target = payloads.get(didRead);
+            if (target != null) {
+                target.didRead(new Date());
+            } else {
+                payloads.put(didRead, new Target(fromTarget, didRead));
+            }
         }
         final String text = Long.toString(this.didShare);
         runOnUiThread(new Runnable() {
@@ -285,43 +262,59 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
             public void run() {
                 final TextView textView = findViewById(R.id.didShareCount);
                 textView.setText(text);
+                updateTargets();
             }
         });
-        updateDetection();
     }
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
         this.didMeasure++;
-        final String text = Long.toString(this.didMeasure);
-        final String payloadShortName = payloads.get(fromTarget);
-        if (payloadShortName != null) {
-            didReadPayloads.put(payloadShortName, new Date());
+        final PayloadData didRead = targetIdentifiers.get(fromTarget);
+        if (didRead != null) {
+            final Target target = payloads.get(didRead);
+            if (target != null) {
+                target.targetIdentifier(fromTarget);
+                target.proximity(didMeasure);
+            }
         }
+        final String text = Long.toString(this.didMeasure);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 final TextView textView = findViewById(R.id.didMeasureCount);
                 textView.setText(text);
-                if (payloadShortName != null) {
-                    updateDetection();
-                }
+                updateTargets();
                 updateSocialDistance(socialMixingScoreUnit);
             }
         });
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
-        this.didVisit++;
-        final String text = Long.toString(this.didVisit);
+    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+        this.didReceive++;
+        final PayloadData didRead = targetIdentifiers.get(fromTarget);
+        if (didRead != null) {
+            final Target target = payloads.get(didRead);
+            if (target != null) {
+                target.targetIdentifier(fromTarget);
+                target.received(didReceive);
+            }
+        }
+        final String text = Long.toString(this.didReceive);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final TextView textView = findViewById(R.id.didVisitCount);
+                final TextView textView = findViewById(R.id.didReceiveCount);
                 textView.setText(text);
+                updateTargets();
             }
         });
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Location didVisit) {
+        // Not used
     }
 
     @Override
@@ -332,5 +325,16 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, SensorState didUpdateState) {
         // Sensor state is already presented by the operating system, so not duplicating in the test app.
+    }
+
+    // MARK:- OnItemClickListener
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+        final Target target = targetListAdapter.getItem(i);
+        final SensorArray sensor = (SensorArray) AppDelegate.getAppDelegate().sensor();
+        final PayloadData payloadData = sensor.payloadData();
+        final boolean result = sensor.immediateSend(payloadData, target.targetIdentifier());
+        Log.d(tag, "immediateSend (to=" + target.payloadData().shortName() + ",result=" + result + ")");
     }
 }
