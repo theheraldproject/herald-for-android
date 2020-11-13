@@ -136,7 +136,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final Data dataToSend = SignalCharacteristicData.encodeImmediateSend(new ImmediateSendData(data));
         logger.debug("immediateSend (device={},dataLength={})", device, dataToSend.value.length);
 
-        // BLOCKS current thread - force a connection, and async handler callback sends immediate and closes connection
+        // Immediate send process
+        // 1. Set immediate send data for device
+        // 2. Initiate connection to device
+        // 3. onConnectionStateChange() will trigger service and characteristic discovery
+        // 4. signalCharacteristic discovery will trigger nextTask()
+        // 5. nextTask() will be .immediateSend if immediate send data has been set for device
+        // 6. writeSignalCharacteristic() will be called to perform immediate send to signalCharacteristic
+        // 7. onCharacteristicWrite() will be triggered when signal data has been written
+        // 8. Immediate send data for device will be set to null upon completion of write
+        // 9. Connection is closed immediately
         device.immediateSendData(dataToSend);
         return taskConnectDevice(device);
     }
@@ -663,9 +672,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         if (device.ignore()) {
             return NextTask.nothing;
         }
-        if (null != device.immediateSendData()) {
-            return NextTask.immediateSend;
-        }
         // If marked as ignore but ignore has expired, change to unknown
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ignore) {
             logger.debug("nextTaskForDevice, switching ignore to unknown (device={},reason=ignoreExpired)", device);
@@ -681,6 +687,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
             logger.debug("nextTaskForDevice (device={},task=readPayload|OS)", device);
             return NextTask.readPayload;
+        }
+        // Immediate send is supported only if service and characteristics
+        // have been discovered, and operating system has been confirmed
+        if (device.immediateSendData() != null) {
+            return NextTask.immediateSend;
         }
         // Get payload as top priority
         if (device.payloadData() == null) {
@@ -843,7 +854,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             signalCharacteristic.setValue(data);
             signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
             if (!gatt.writeCharacteristic(signalCharacteristic)) {
-                logger.fault("writeSignalCharacteristic to iOS failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
+                logger.fault("writeSignalCharacteristic to iOS failed (task={},device={},reason=writeCharacteristicFailed)", task, device);
                 gatt.disconnect();
             } else {
                 logger.debug("writeSignalCharacteristic to iOS (task={},dataLength={},device={})", task, data.length, device);
@@ -855,17 +866,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             device.signalCharacteristicWriteValue = data;
             device.signalCharacteristicWriteQueue = fragmentDataByMtu(data);
             if (writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.failed) {
-                logger.fault("writeSignalCharacteristic to Android failed (task={}},device={},reason=writeCharacteristicFailed)", task, device);
+                logger.fault("writeSignalCharacteristic to Android failed (task={},device={},reason=writeCharacteristicFailed)", task, device);
                 gatt.disconnect();
             } else {
                 logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
             }
-        }
-        // If we have just sent an immediateSend data set, then disconnect before anything else occurs
-        if (NextTask.immediateSend == task) {
-            logger.debug("writeSignalCharacteristic to Android, now disconnecting (task={}},device={})");
-            gatt.disconnect();
         }
     }
 
@@ -969,6 +975,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.fault("onCharacteristicWrite, write payload sharing failed (device={})", device);
                 }
                 break;
+            case immediateSend:
+                if (success) {
+                    logger.debug("onCharacteristicWrite, write immediate send data success (device={})", device);
+                    device.immediateSendData(null);
+                } else {
+                    logger.fault("onCharacteristicWrite, write immediate send data failed (device={})", device);
+                    // No retry for immediate send
+                    device.immediateSendData(null);
+                }
+                // Close connection immediately upon completion of immediate send
+                gatt.disconnect();
+                // Do not perform any other tasks
+                return;
             default:
                 logger.fault("onCharacteristicWrite, write unknown data (device={},success={})", device, success);
                 break;

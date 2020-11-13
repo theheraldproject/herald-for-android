@@ -296,10 +296,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     @Override
     public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
         this.didReceive++;
-        final PayloadData didRead = targetIdentifiers.get(fromTarget);
+        final PayloadData didRead = new PayloadData(didReceive.data.value);
         if (didRead != null) {
             final Target target = payloads.get(didRead);
             if (target != null) {
+                targetIdentifiers.put(fromTarget, didRead);
                 target.targetIdentifier(fromTarget);
                 target.received(didReceive);
             }
@@ -337,7 +338,12 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         final Target target = targetListAdapter.getItem(i);
         final SensorArray sensor = (SensorArray) AppDelegate.getAppDelegate().sensor();
         final PayloadData payloadData = sensor.payloadData();
-        final boolean result = sensor.immediateSend(payloadData, target.targetIdentifier());
-        Log.d(tag, "immediateSend (to=" + target.payloadData().shortName() + ",result=" + result + ")");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean result = sensor.immediateSend(payloadData, target.targetIdentifier());
+                Log.d(tag, "immediateSend (to=" + target.payloadData().shortName() + ",result=" + result + ")");
+            }
+        }).start();
     }
 }
