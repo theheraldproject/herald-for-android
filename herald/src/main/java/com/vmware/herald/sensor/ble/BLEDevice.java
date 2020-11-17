@@ -173,9 +173,13 @@ public class BLEDevice {
             }
             ignoreUntil = new Date(lastUpdatedAt.getTime() + ignoreForDuration.millis());
         } else {
-            ignoreForDuration = null;
             ignoreUntil = null;
         }
+        // Reset ignore for duration if operating system has been confirmed
+        if (operatingSystem == BLEDeviceOperatingSystem.ios || operatingSystem == BLEDeviceOperatingSystem.android) {
+            ignoreForDuration = null;
+        }
+        // Set operating system
         if (this.operatingSystem != operatingSystem) {
             this.operatingSystem = operatingSystem;
             delegate.device(this, BLEDeviceAttribute.operatingSystem);
@@ -310,6 +314,13 @@ public class BLEDevice {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastWritePayloadSharingAt.getTime()) / 1000);
+    }
+
+    public TimeInterval timeIntervalUntilIgnoreExpires() {
+        if (ignoreUntil == null) {
+            return TimeInterval.zero;
+        }
+        return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
     }
 
     @Override
