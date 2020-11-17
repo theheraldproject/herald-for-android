@@ -670,6 +670,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private NextTask nextTaskForDevice(final BLEDevice device) {
         // No task for devices marked as .ignore
         if (device.ignore()) {
+            logger.debug("nextTaskForDevice, ignore (device={},ignoreExpiresIn={},ignoreRequestCount={})", device, device.timeIntervalUntilIgnoreExpires(), device.ignoreRequestCount());
             return NextTask.nothing;
         }
         // If marked as ignore but ignore has expired, change to unknown
