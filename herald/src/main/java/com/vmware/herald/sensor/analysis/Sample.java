@@ -5,8 +5,8 @@
 package com.vmware.herald.sensor.analysis;
 
 public class Sample {
-    protected long n;
-    protected double m1, m2, m3, m4;
+    protected long n = 0;
+    protected double m1 = 0, m2 = 0, m3 = 0, m4 = 0;
     private double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
 
     public Sample() {

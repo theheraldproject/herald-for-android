@@ -9,13 +9,13 @@ import java.util.Date;
 /// Key generation functions
 public class K {
     /// Secret key length
-    private static int secretKeyLength = 2048;
+    private final static int secretKeyLength = 2048;
     /// Days supported by key derivation function
-    private static int days = 2000;
+    private final static int days = 2000;
     /// Periods per day
-    private static int periods = 240;
+    private final static int periods = 240;
     /// Epoch as time interval since 1970
-    private static TimeInterval epoch = K.getEpoch();
+    private final static TimeInterval epoch = K.getEpoch();
 
     /// Date from string date "yyyy-MM-dd'T'HH:mm:ssXXXX"
     protected static Date date(String fromString) {

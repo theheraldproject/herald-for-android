@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 /// Raw byte array data
 public class Data {
-    public byte[] value;
+    public byte[] value = null;
 
     public Data() {
         this(new byte[0]);

@@ -13,12 +13,12 @@ import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import java.util.Date;
 
 public class Target {
-    private TargetIdentifier targetIdentifier;
-    private PayloadData payloadData;
-    private Date lastUpdatedAt;
-    private Proximity proximity;
-    private ImmediateSendData received;
-    private Date didRead, didMeasure, didShare, didReceive;
+    private TargetIdentifier targetIdentifier = null;
+    private PayloadData payloadData = null;
+    private Date lastUpdatedAt = null;
+    private Proximity proximity = null;
+    private ImmediateSendData received = null;
+    private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
 
     public Target(TargetIdentifier targetIdentifier, PayloadData payloadData) {
         this.targetIdentifier = targetIdentifier;

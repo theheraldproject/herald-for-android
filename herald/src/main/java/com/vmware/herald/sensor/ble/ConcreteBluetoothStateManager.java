@@ -19,7 +19,7 @@ import com.vmware.herald.sensor.datatype.BluetoothState;
  */
 public class ConcreteBluetoothStateManager implements BluetoothStateManager {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBluetoothStateManager");
-    private BluetoothState state;
+    private BluetoothState state = null;
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {

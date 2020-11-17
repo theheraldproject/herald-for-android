@@ -23,28 +23,28 @@ public class BLEDevice {
     /// Device registration timestamp
     public final Date createdAt;
     /// Last time anything changed, e.g. attribute update
-    public Date lastUpdatedAt;
+    public Date lastUpdatedAt = null;
     /// Ephemeral device identifier, e.g. peripheral identifier UUID
     public final TargetIdentifier identifier;
     /// Pseudo device address for tracking Android devices that change address constantly.
-    private PseudoDeviceAddress pseudoDeviceAddress;
+    private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
     private final BLEDeviceDelegate delegate;
     /// Android Bluetooth device object for interacting with this device.
-    private BluetoothDevice peripheral;
+    private BluetoothDevice peripheral = null;
     /// Bluetooth device connection state.
     private BLEDeviceState state = BLEDeviceState.disconnected;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
-    private PayloadData payloadData;
+    private PayloadData payloadData = null;
     private Date lastPayloadDataUpdate = null;
     /// Immediate Send data to send next
     private Data immediateSendData = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
-    private RSSI rssi;
+    private RSSI rssi = null;
     /// Transmit power data where available (only provided by Android devices)
-    private BLE_TxPower txPower;
+    private BLE_TxPower txPower = null;
     /// Is device receive only?
     private boolean receiveOnly = false;
     /// Ignore logic
