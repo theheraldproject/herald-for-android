@@ -19,8 +19,12 @@ import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 
+import java.util.Date;
+import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,6 +35,8 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     private final BLETransmitter transmitter;
     private final BLEReceiver receiver;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
+    // Record payload data to enable de-duplication
+    private final Map<PayloadData, Date> didReadPayloadData = new ConcurrentHashMap<>();
 
     public ConcreteBLESensor(Context context, PayloadDataSupplier payloadDataSupplier) {
         final BluetoothStateManager bluetoothStateManager = new ConcreteBluetoothStateManager(context);
@@ -121,7 +127,23 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                 if (payloadData == null) {
                     return;
                 }
-                logger.debug("didRead (device={},payloadData={},payloadData={})", device, device.payloadData(), payloadData.shortName());
+                // De-duplicate payload in recent time
+                if (BLESensorConfiguration.filterDuplicatePayloadData != TimeInterval.never) {
+                    final long removePayloadDataBefore = new Date().getTime() - BLESensorConfiguration.filterDuplicatePayloadData.millis();
+                    for (Map.Entry<PayloadData, Date> entry : didReadPayloadData.entrySet()) {
+                        if (entry.getValue().getTime() < removePayloadDataBefore) {
+                            didReadPayloadData.remove(entry.getKey());
+                        }
+                    }
+                    final Date lastReportedAt = didReadPayloadData.get(payloadData);
+                    if (lastReportedAt != null) {
+                        logger.debug("didRead, filtered duplicate (device={},payloadData={},lastReportedAt={})", device, device.payloadData().shortName(), lastReportedAt);
+                        return;
+                    }
+                    didReadPayloadData.put(payloadData, new Date());
+                }
+                // Notify delegates
+                logger.debug("didRead (device={},payloadData={})", device, device.payloadData().shortName());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {

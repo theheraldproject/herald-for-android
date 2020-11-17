@@ -57,11 +57,12 @@ public class BLESensorConfiguration {
     /// - Setting take immediate effect, no need to restart BLESensor, can also be applied while BLESensor is active.
     public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.never;
 
-    /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
-    public static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
-
-    /// Advert refresh time interval
-    public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+    /// Filter duplicate payload data and suppress sensor(didRead:fromTarget) delegate calls
+    /// - Set to .never to disable this feature
+    /// - Set time interval N to filter duplicate payload data seen in last N seconds
+    /// - Example : 60 means filter duplicates in last minute
+    /// - Filters all occurrences of payload data from all targets
+    public static TimeInterval filterDuplicatePayloadData = TimeInterval.never;
 
     /// Ignore device permanently after a number of failed connection and service discovery attempts. This
     /// is particularly useful for ignoring Apple devices not advertising HERALD services, i.e. Apple TV,
@@ -70,4 +71,10 @@ public class BLESensorConfiguration {
     /// - Set to N to ignore device permanently after N failed attempts to connect or find HERALD service
     /// - Note the ignore logic increases time between retries on each failed attempt to up to 3 mins per retry
     public static Integer ignoreDevicePermanentlyAfterRetries = null;
+
+    /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
+    public static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
+
+    /// Advert refresh time interval
+    public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 }
