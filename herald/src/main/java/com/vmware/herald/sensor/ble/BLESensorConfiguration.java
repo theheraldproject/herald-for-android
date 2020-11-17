@@ -62,4 +62,12 @@ public class BLESensorConfiguration {
 
     /// Advert refresh time interval
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+
+    /// Ignore device permanently after a number of failed connection and service discovery attempts. This
+    /// is particularly useful for ignoring Apple devices not advertising HERALD services, i.e. Apple TV,
+    /// and Mac computers.
+    /// - Set to null to disable this feature, to ensure all devices are found
+    /// - Set to N to ignore device permanently after N failed attempts to connect or find HERALD service
+    /// - Note the ignore logic increases time between retries on each failed attempt to up to 3 mins per retry
+    public static Integer ignoreDevicePermanentlyAfterRetries = null;
 }

@@ -50,6 +50,7 @@ public class BLEDevice {
     /// Ignore logic
     private TimeInterval ignoreForDuration = null;
     private Date ignoreUntil = null;
+    private int ignoreRequestCount = 0;
 
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
@@ -111,6 +112,7 @@ public class BLEDevice {
         this.receiveOnly = device.receiveOnly;
         this.ignoreForDuration = device.ignoreForDuration;
         this.ignoreUntil = device.ignoreUntil;
+        this.ignoreRequestCount = device.ignoreRequestCount;
         this.signalCharacteristic = device.signalCharacteristic;
         this.payloadCharacteristic = device.payloadCharacteristic;
         this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
@@ -166,18 +168,25 @@ public class BLEDevice {
         lastUpdatedAt = new Date();
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
+            ignoreRequestCount++;
             if (ignoreForDuration == null) {
                 ignoreForDuration = TimeInterval.minute;
             } else if (ignoreForDuration.value < TimeInterval.minutes(3).value) {
                 ignoreForDuration = new TimeInterval(Math.round(ignoreForDuration.value * 1.2));
             }
             ignoreUntil = new Date(lastUpdatedAt.getTime() + ignoreForDuration.millis());
+            // Ignore permanently if ignoreRequestCount >= ignoreDevicePermanentlyAfterRetries
+            if (BLESensorConfiguration.ignoreDevicePermanentlyAfterRetries != null
+                && ignoreRequestCount >= BLESensorConfiguration.ignoreDevicePermanentlyAfterRetries) {
+                ignoreUntil = new Date(Long.MAX_VALUE);
+            }
         } else {
             ignoreUntil = null;
         }
-        // Reset ignore for duration if operating system has been confirmed
+        // Reset ignore for duration and request count if operating system has been confirmed
         if (operatingSystem == BLEDeviceOperatingSystem.ios || operatingSystem == BLEDeviceOperatingSystem.android) {
             ignoreForDuration = null;
+            ignoreRequestCount = 0;
         }
         // Set operating system
         if (this.operatingSystem != operatingSystem) {
@@ -320,7 +329,14 @@ public class BLEDevice {
         if (ignoreUntil == null) {
             return TimeInterval.zero;
         }
+        if (ignoreUntil.getTime() == Long.MAX_VALUE) {
+            return TimeInterval.never;
+        }
         return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
+    }
+
+    public int ignoreRequestCount() {
+        return ignoreRequestCount;
     }
 
     @Override
