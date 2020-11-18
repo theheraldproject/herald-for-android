@@ -15,8 +15,8 @@ import java.util.Date;
 public class ConcreteSensorLogger implements SensorLogger {
     private final String subsystem, category;
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private static Context context;
-    private static TextFile logFile;
+    private static Context context = null;
+    private static TextFile logFile = null;
 
     public ConcreteSensorLogger(String subsystem, String category) {
         this.subsystem = subsystem;

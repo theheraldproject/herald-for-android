@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final Map<TargetIdentifier,PayloadData> targetIdentifiers = new ConcurrentHashMap<>();
     private final Map<PayloadData,Target> payloads = new ConcurrentHashMap<>();
     private final List<Target> targets = new ArrayList<>();
-    private TargetListAdapter targetListAdapter;
+    private TargetListAdapter targetListAdapter = null;
 
     // MARK:- Social mixing
     private final SocialDistance socialMixingScore = new SocialDistance();

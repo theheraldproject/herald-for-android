@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 /// Shared secret between device and server for deriving day codes and beacon codes.
 public class SharedSecret {
-    public byte[] value;
+    public final byte[] value;
 
     public SharedSecret(byte[] value) {
         this.value = value;

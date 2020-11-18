@@ -26,10 +26,10 @@ import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private final static String tag = AppDelegate.class.getName();
-    private static AppDelegate appDelegate;
+    private static AppDelegate appDelegate = null;
 
     // Sensor for proximity detection
-    private Sensor sensor;
+    private Sensor sensor = null;
 
     /// Generate unique and consistent device identifier for testing detection and tracking
     private int identifier() {
