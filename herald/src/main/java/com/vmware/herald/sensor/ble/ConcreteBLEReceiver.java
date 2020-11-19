@@ -21,6 +21,7 @@ import android.os.ParcelUuid;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.datatype.Base64;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
@@ -70,7 +71,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            logger.debug("onScanResult (result={})", scanResult);
+            final byte[] data = scanResult.getScanRecord().getBytes();
+            logger.debug("onScanResult (result={},data={})", scanResult, Base64.encode(data));
+
             scanResults.add(scanResult);
             // Create or update device in database
             final BLEDevice device = database.device(scanResult);
