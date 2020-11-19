@@ -398,6 +398,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
+                // Check if its an Apple TV
+                byte[] data = scanResult.getScanRecord().getBytes();
+                BLEScanResponseData advert = BLEAdvertParser.parseScanResponse(data,0);
+                if (BLEAdvertParser.isAppleTV(advert.segments)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore); // ignore Apple TV
+                }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
