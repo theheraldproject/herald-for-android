@@ -6,6 +6,8 @@ package com.vmware.herald.sensor.ble;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
 
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
@@ -51,6 +53,7 @@ public class BLEDevice {
     private TimeInterval ignoreForDuration = null;
     private Date ignoreUntil = null;
     private int ignoreRequestCount = 0;
+    private Data manufacturerData = null;
 
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
@@ -113,6 +116,7 @@ public class BLEDevice {
         this.ignoreForDuration = device.ignoreForDuration;
         this.ignoreUntil = device.ignoreUntil;
         this.ignoreRequestCount = device.ignoreRequestCount;
+        this.manufacturerData = device.manufacturerData;
         this.signalCharacteristic = device.signalCharacteristic;
         this.payloadCharacteristic = device.payloadCharacteristic;
         this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
@@ -337,6 +341,14 @@ public class BLEDevice {
 
     public int ignoreRequestCount() {
         return ignoreRequestCount;
+    }
+
+    public void manufacturerData(Data data) {
+        this.manufacturerData = data;
+    }
+
+    public Data manufacturerData() {
+        return manufacturerData;
     }
 
     @Override

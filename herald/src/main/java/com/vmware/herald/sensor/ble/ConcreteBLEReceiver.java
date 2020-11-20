@@ -60,6 +60,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BluetoothStateManager bluetoothStateManager;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
+    private final BLEDeviceFilter deviceFilter;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -101,6 +102,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.bluetoothStateManager = bluetoothStateManager;
         this.database = database;
         this.transmitter = transmitter;
+        this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
         timer.add(new ScanLoopTask());
     }
 
@@ -401,6 +403,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ios_tbc);
                 }
+                // Use Apple device manufacturer data as hint to determine
+                // whether a connection is necessary at all, e.g. AppleTV
+                final Data manufacturerData = getAppleManufacturerData(scanResult);
+                device.manufacturerData(manufacturerData);
+                if (deviceFilter.ignore(manufacturerData)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                    logger.debug("didDiscover, ignoring Apple device (device={},manufacturerData={})", device, manufacturerData.hexEncodedString());
+                }
             } else {
                 // Sensor service not found + Manufacturer not Apple should be impossible
                 // as we are scanning for devices with sensor service or Apple device.
@@ -439,6 +449,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
         return data != null;
+    }
+
+    /// Get Apple manufacturer data
+    private static Data getAppleManufacturerData(final ScanResult scanResult) {
+        final ScanRecord scanRecord = scanResult.getScanRecord();
+        if (scanRecord == null) {
+            return null;
+        }
+        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
+        if (data == null) {
+            return null;
+        }
+        return new Data(data);
     }
 
     // MARK:- House keeping tasks
@@ -613,6 +636,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (status != 0) {
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                    // Add training example to device filter for device to be ignored
+                    deviceFilter.train(device.manufacturerData(), true);
                 }
             }
         } else {
@@ -631,12 +656,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // Ignore device for a while unless it is a confirmed iOS or Android device
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                 device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                // Add training example to device filter for device to be ignored
+                deviceFilter.train(device.manufacturerData(), true);
             }
             gatt.disconnect();
             return;
         }
 
         logger.debug("onServicesDiscovered, found sensor service (device={})", device);
+        // Add training example to device filter for device not to be ignored
+        deviceFilter.train(device.manufacturerData(), false);
 
         device.invalidateCharacteristics();
         for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
