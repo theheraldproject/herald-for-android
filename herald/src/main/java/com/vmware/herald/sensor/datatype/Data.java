@@ -8,6 +8,7 @@ import java.util.Arrays;
 
 /// Raw byte array data
 public class Data {
+    private final static char[] hexChars = "0123456789ABCDEF".toCharArray();
     public byte[] value = null;
 
     public Data() {
@@ -37,6 +38,19 @@ public class Data {
 
     public String base64EncodedString() {
         return Base64.encode(value);
+    }
+
+    public String hexEncodedString() {
+        if (value == null) {
+            return "";
+        }
+        final StringBuilder stringBuilder = new StringBuilder(value.length * 2);
+        for (int i = 0; i < value.length; i++) {
+            final int v = value[i] & 0xFF;
+            stringBuilder.append(hexChars[v >>> 4]);
+            stringBuilder.append(hexChars[v & 0x0F]);
+        }
+        return stringBuilder.toString();
     }
 
     public String description() {
@@ -84,5 +98,10 @@ public class Data {
     @Override
     public int hashCode() {
         return Arrays.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+        return hexEncodedString();
     }
 }
