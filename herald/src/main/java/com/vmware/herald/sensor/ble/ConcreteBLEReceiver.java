@@ -21,6 +21,7 @@ import android.os.ParcelUuid;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.datatype.Base64;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
@@ -71,7 +72,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            logger.debug("onScanResult (result={})", scanResult);
+            final byte[] data = scanResult.getScanRecord().getBytes();
+            logger.debug("onScanResult (result={},data={})", scanResult, Base64.encode(data));
+
             scanResults.add(scanResult);
             // Create or update device in database
             final BLEDevice device = database.device(scanResult);
@@ -397,6 +400,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
+                // Check if its an Apple TV
+                byte[] data = scanResult.getScanRecord().getBytes();
+                BLEScanResponseData advert = BLEAdvertParser.parseScanResponse(data,0);
+                if (BLEAdvertParser.isAppleTV(advert.segments)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore); // ignore Apple TV
+                }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
