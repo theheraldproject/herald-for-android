@@ -100,8 +100,6 @@ public class Data {
         return Arrays.hashCode(value);
     }
 
-
-
     @Override
     public String toString() {
         return hexEncodedString();

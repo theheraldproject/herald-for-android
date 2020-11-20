@@ -401,10 +401,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
                 // Check if its an Apple TV
-                byte[] data = scanResult.getScanRecord().getBytes();
-                BLEScanResponseData advert = BLEAdvertParser.parseScanResponse(data,0);
-                if (BLEAdvertParser.isAppleTV(advert.segments)) {
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore); // ignore Apple TV
+                if (scanResult.getScanRecord() != null) {
+                    final byte[] data = scanResult.getScanRecord().getBytes();
+                    final BLEScanResponseData advert = BLEAdvertParser.parseScanResponse(data, 0);
+                    if (BLEAdvertParser.isAppleTV(advert.segments)) {
+                        logger.debug("didDiscover, ignoring Apple TV (device={})", device);
+                        device.operatingSystem(BLEDeviceOperatingSystem.ignore); // ignore Apple TV
+                    }
                 }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
@@ -413,7 +416,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.ios_tbc);
                 }
                 // Use Apple device manufacturer data as hint to determine
-                // whether a connection is necessary at all, e.g. AppleTV
+                // whether a connection is necessary at all, e.g. MacBook
                 final Data manufacturerData = getAppleManufacturerData(scanResult);
                 device.manufacturerData(manufacturerData);
                 if (deviceFilter.ignore(manufacturerData)) {
