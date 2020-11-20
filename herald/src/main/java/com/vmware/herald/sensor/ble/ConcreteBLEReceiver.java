@@ -72,8 +72,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            final byte[] data = scanResult.getScanRecord().getBytes();
-            logger.debug("onScanResult (result={},data={})", scanResult, BLEAdvertParser.hex(data));
+            logger.debug("onScanResult (result={})", scanResult);
 
             scanResults.add(scanResult);
             // Create or update device in database
@@ -380,6 +379,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final List<BLEDevice> devices = new ArrayList<>();
         for (ScanResult scanResult : scanResultList) {
             final BLEDevice device = database.device(scanResult);
+            device.scanRecord(scanResult.getScanRecord());
             if (deviceSet.add(device)) {
                 logger.debug("didDiscover (device={})", device);
                 devices.add(device);
@@ -400,28 +400,18 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
-                // Check if its an Apple TV
-                if (scanResult.getScanRecord() != null) {
-                    final byte[] data = scanResult.getScanRecord().getBytes();
-                    final BLEScanResponseData advert = BLEAdvertParser.parseScanResponse(data, 0);
-                    if (BLEAdvertParser.isAppleTV(advert.segments)) {
-                        logger.debug("didDiscover, ignoring Apple TV (device={})", device);
-                        device.operatingSystem(BLEDeviceOperatingSystem.ignore); // ignore Apple TV
-                    }
-                }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
                 if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ios_tbc);
                 }
-                // Use Apple device manufacturer data as hint to determine
-                // whether a connection is necessary at all, e.g. MacBook
-                final Data manufacturerData = getAppleManufacturerData(scanResult);
-                device.manufacturerData(manufacturerData);
-                if (deviceFilter.ignore(manufacturerData)) {
+                // Use scan record data as hint to determine whether the device
+                // should be ignored, to avoid reconnecting to devices that have
+                // previously failed or doesn't advertise sensor service
+                if (deviceFilter.ignore(device)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-                    logger.debug("didDiscover, ignoring Apple device (device={},manufacturerData={})", device, manufacturerData.hexEncodedString());
+                    logger.debug("didDiscover, ignoring device (device={},scanRecord={})", device, device.scanRecord());
                 }
             } else {
                 // Sensor service not found + Manufacturer not Apple should be impossible
@@ -461,19 +451,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
         return data != null;
-    }
-
-    /// Get Apple manufacturer data
-    private static Data getAppleManufacturerData(final ScanResult scanResult) {
-        final ScanRecord scanRecord = scanResult.getScanRecord();
-        if (scanRecord == null) {
-            return null;
-        }
-        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
-        if (data == null) {
-            return null;
-        }
-        return new Data(data);
     }
 
     // MARK:- House keeping tasks
@@ -649,7 +626,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     // Add training example to device filter for device to be ignored
-                    deviceFilter.train(device.manufacturerData(), true);
+                    deviceFilter.train(device, true);
                 }
             }
         } else {
@@ -669,7 +646,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                 device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 // Add training example to device filter for device to be ignored
-                deviceFilter.train(device.manufacturerData(), true);
+                deviceFilter.train(device, true);
             }
             gatt.disconnect();
             return;
@@ -677,7 +654,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         logger.debug("onServicesDiscovered, found sensor service (device={})", device);
         // Add training example to device filter for device not to be ignored
-        deviceFilter.train(device.manufacturerData(), false);
+        deviceFilter.train(device, false);
 
         device.invalidateCharacteristics();
         for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
