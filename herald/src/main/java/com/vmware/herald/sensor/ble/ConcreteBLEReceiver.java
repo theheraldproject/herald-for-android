@@ -73,7 +73,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
             final byte[] data = scanResult.getScanRecord().getBytes();
-            logger.debug("onScanResult (result={},data={})", scanResult, Base64.encode(data));
+            logger.debug("onScanResult (result={},data={})", scanResult, BLEAdvertParser.hex(data));
 
             scanResults.add(scanResult);
             // Create or update device in database

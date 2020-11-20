@@ -142,14 +142,6 @@ public class AdvertParserTests {
 
     // MARK: HIGH LEVEL FULL PACKET METHODS
 
-    public static String hex(byte[] bytes) {
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
-            result.append(String.format("%02x", b));
-        }
-        return result.toString();
-    }
-
     @Test
     public void testAppleTVFG() throws Exception {
         byte[] data = new byte[]{2, 1, 26, 2, 10, 8,
@@ -158,7 +150,7 @@ public class AdvertParserTests {
                 (byte)0x1f, (byte)0x2c, (byte)0x30, (byte)0x2f, (byte)0x92,
                 (byte)0x58
  };
-        assertEquals("02011a020a080cff4c001007331f2c302f9258", hex(data));
+        assertEquals("02011a020a080cff4c001007331f2c302f9258", BLEAdvertParser.hex(data));
         BLEScanResponseData result = BLEAdvertParser.parseScanResponse(data,0);
         assertNotNull(result);
 
@@ -170,8 +162,8 @@ public class AdvertParserTests {
         byte[] manuData = manu.get(0).data;
         assertNotNull(manuData);
         assertEquals(9, manuData.length);
-        assertEquals(16, manuData[0]);
-        assertEquals(7, manuData[1]);
+        assertEquals(16, manuData[0]); // int 16 = byte 10
+        assertEquals(7, manuData[1]); // int 7 = byte 07
 
         // full apple tv check
         assertEquals(true, BLEAdvertParser.isAppleTV(result.segments));

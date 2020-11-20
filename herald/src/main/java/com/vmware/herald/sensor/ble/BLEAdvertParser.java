@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class BLEAdvertParser {
-    static BLEScanResponseData parseScanResponse(byte[] raw, int offset) {
+    public static BLEScanResponseData parseScanResponse(byte[] raw, int offset) {
         // Multiple segments until end of binary data
         return new BLEScanResponseData(raw.length - offset, extractSegments(raw, offset));
     }
 
-    static List<BLEAdvertSegment> extractSegments(byte[] raw, int offset) {
+    public static List<BLEAdvertSegment> extractSegments(byte[] raw, int offset) {
         int position = offset;
         ArrayList<BLEAdvertSegment> segments = new ArrayList<BLEAdvertSegment>();
         int segmentLength;
@@ -48,7 +48,15 @@ public class BLEAdvertParser {
         return segments;
     }
 
-    static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
+    public static String hex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+        return result.toString();
+    }
+
+    public static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
         if (offset <= 0 || length <= 0) {
             return new byte[]{};
         }
@@ -63,7 +71,7 @@ public class BLEAdvertParser {
         return data;
     }
 
-    static byte[] subDataLittleEndian(byte[] raw, int offset, int length) {
+    public static byte[] subDataLittleEndian(byte[] raw, int offset, int length) {
         if (offset <= 0 || length <= 0) {
             return new byte[]{};
         }
@@ -78,7 +86,7 @@ public class BLEAdvertParser {
         return data;
     }
 
-    static Integer extractTxPower(List<BLEAdvertSegment> segments) {
+    public static Integer extractTxPower(List<BLEAdvertSegment> segments) {
         // find the txPower code segment in the list
         for (BLEAdvertSegment segment : segments) {
             if (segment.type == BLEAdvertSegmentType.txPowerLevel) {
@@ -88,7 +96,7 @@ public class BLEAdvertParser {
         return null;
     }
 
-    static List<BLEAdvertManufacturerData> extractManufacturerData(List<BLEAdvertSegment> segments) {
+    public static List<BLEAdvertManufacturerData> extractManufacturerData(List<BLEAdvertSegment> segments) {
         // find the manufacturerData code segment in the list
         List<BLEAdvertManufacturerData> manufacturerData = new ArrayList<>();
         for (BLEAdvertSegment segment : segments) {
@@ -110,7 +118,7 @@ public class BLEAdvertParser {
         return manufacturerData;
     }
 
-    static boolean isAppleTV(List<BLEAdvertSegment> segments) {
+    public static boolean isAppleTV(List<BLEAdvertSegment> segments) {
         List<BLEAdvertManufacturerData> manufacturerData = extractManufacturerData(segments);
         if (manufacturerData.size() == 0) {
             return false;
