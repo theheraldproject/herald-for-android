@@ -5,7 +5,6 @@
 package com.vmware.herald.sensor.ble;
 
 import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
 import android.content.Context;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
