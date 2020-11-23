@@ -98,7 +98,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                 if (rssi == null) {
                     return;
                 }
-                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value);
+                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value, device.calibration());
                 logger.debug("didMeasure (device={},payloadData={},proximity={})", device, device.payloadData(), proximity.description());
                 operationQueue.execute(new Runnable() {
                     @Override
