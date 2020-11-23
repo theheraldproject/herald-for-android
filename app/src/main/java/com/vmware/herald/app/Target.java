@@ -4,11 +4,13 @@
 
 package com.vmware.herald.app;
 
+import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.util.Date;
 
@@ -19,6 +21,8 @@ public class Target {
     private Proximity proximity = null;
     private ImmediateSendData received = null;
     private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
+    private Sample didReadTimeInterval = new Sample();
+    private Sample didMeasureTimeInterval = new Sample();
 
     public Target(TargetIdentifier targetIdentifier, PayloadData payloadData) {
         this.targetIdentifier = targetIdentifier;
@@ -49,7 +53,12 @@ public class Target {
     }
 
     public void proximity(Proximity proximity) {
-        lastUpdatedAt = new Date();
+        final Date date = new Date();
+        if (didMeasure != null) {
+            final TimeInterval timeInterval = new TimeInterval(didMeasure, date);
+            didMeasureTimeInterval.add(timeInterval.value);
+        }
+        lastUpdatedAt = date;
         didMeasure = lastUpdatedAt;
         this.proximity = proximity;
     }
@@ -72,13 +81,23 @@ public class Target {
         return didRead;
     }
 
+    public Sample didReadTimeInterval() { return didReadTimeInterval; }
+
     public void didRead(Date date) {
+        if (didRead != null && date != null) {
+            final TimeInterval timeInterval = new TimeInterval(didRead, date);
+            didReadTimeInterval.add(timeInterval.value);
+        }
         didRead = date;
         lastUpdatedAt = didRead;
     }
 
     public Date didMeasure() {
         return didMeasure;
+    }
+
+    public Sample didMeasureTimeInterval() {
+        return didMeasureTimeInterval;
     }
 
     public Date didShare() {
