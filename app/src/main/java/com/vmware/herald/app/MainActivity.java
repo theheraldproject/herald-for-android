@@ -137,14 +137,26 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // MARK:- Test UI specific functions, not required in production solution.
 
     // Update targets table
-    private void updateTargets() {
-        final List<Target> targetList = new ArrayList<>(payloads.values());
+    private synchronized void updateTargets() {
+        // De-duplicate targets based on short name and last updated at time stamp
+        final Map<String,Target> shortNames = new HashMap<>(payloads.size());
+        for (Map.Entry<PayloadData,Target> entry : payloads.entrySet()) {
+            final String shortName = entry.getKey().shortName();
+            final Target target = entry.getValue();
+            final Target duplicate = shortNames.get(shortName);
+            if (duplicate == null || duplicate.lastUpdatedAt().getTime() < target.lastUpdatedAt().getTime()) {
+                shortNames.put(shortName, target);
+            }
+        }
+        // Get target list in alphabetical order
+        final List<Target> targetList = new ArrayList<>(shortNames.values());
         Collections.sort(targetList, new Comparator<Target>() {
             @Override
             public int compare(Target t0, Target t1) {
                 return t0.payloadData().shortName().compareTo(t1.payloadData().shortName());
             }
         });
+        // Update UI
         ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetListAdapter.getCount() + ")");
         targetListAdapter.clear();
         targetListAdapter.addAll(targetList);
