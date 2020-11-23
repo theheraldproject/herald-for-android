@@ -97,9 +97,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            requiredPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
         }
