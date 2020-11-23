@@ -8,6 +8,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanRecord;
 
+import com.vmware.herald.sensor.datatype.Calibration;
+import com.vmware.herald.sensor.datatype.CalibrationMeasurementUnit;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PseudoDeviceAddress;
@@ -253,6 +255,13 @@ public class BLEDevice {
         this.txPower = txPower;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.txPower);
+    }
+
+    public Calibration calibration() {
+        if (txPower == null) {
+            return null;
+        }
+        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, new Double(txPower.value));
     }
 
     public boolean receiveOnly() {

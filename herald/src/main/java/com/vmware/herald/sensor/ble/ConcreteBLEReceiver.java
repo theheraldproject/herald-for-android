@@ -17,6 +17,7 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Build;
 import android.os.ParcelUuid;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
@@ -379,10 +380,18 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final List<BLEDevice> devices = new ArrayList<>();
         for (ScanResult scanResult : scanResultList) {
             final BLEDevice device = database.device(scanResult);
-            device.scanRecord(scanResult.getScanRecord());
             if (deviceSet.add(device)) {
                 logger.debug("didDiscover (device={})", device);
                 devices.add(device);
+            }
+            // Set scan record
+            device.scanRecord(scanResult.getScanRecord());
+            // Set TX power level
+            if (device.scanRecord() != null) {
+                int txPowerLevel = device.scanRecord().getTxPowerLevel();
+                if (txPowerLevel != Integer.MIN_VALUE) {
+                    device.txPower(new BLE_TxPower(txPowerLevel));
+                }
             }
             // Identify operating system from scan record where possible
             // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
