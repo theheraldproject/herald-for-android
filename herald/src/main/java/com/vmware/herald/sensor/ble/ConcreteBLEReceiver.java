@@ -67,13 +67,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
     private enum NextTask {
-        nothing, readPayload, writePayload, writeRSSI, writePayloadSharing, immediateSend
+        nothing, readPayload, writePayload, writeRSSI, writePayloadSharing, immediateSend,
+        readModel, readDeviceName
     }
 
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            logger.debug("onScanResult (result={})", scanResult);
+            logger.debug("onScanResult (result={}, data={})", scanResult,
+                    BLEAdvertParser.hex(scanResult.getScanRecord().getBytes()));
 
             scanResults.add(scanResult);
             // Create or update device in database
@@ -648,6 +650,67 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onServicesDiscovered (device={},status={})", device, bleStatus(status));
 
+        String model = "?";
+        String manufacturer = "?";
+        String deviceName = "?";
+        String appearance = "?";
+        String txPower = "?";
+        final List<BluetoothGattService> services = gatt.getServices();
+        for (BluetoothGattService svc : services) {
+            String uuidString = svc.getUuid().toString();
+            logger.debug("onServicesDiscovered (device={},service={})", device, uuidString);
+            if ("00001801-0000-1000-8000-00805f9b34fb".equals(uuidString)) {
+                // Generic Attribute Service
+                // TODO determine if this fact is useful at all
+                List<BluetoothGattCharacteristic> chars = svc.getCharacteristics();
+                for (BluetoothGattCharacteristic c : chars) {
+                    String charUuid = c.getUuid().toString();
+                    logger.debug("onServicesDiscovered (device={},foundService={},withCharacteristic={})", device, uuidString, charUuid);
+                    //gatt.readCharacteristic(c);
+                }
+            } else if ("00001800-0000-1000-8000-00805f9b34fb".equals(uuidString)) {
+                // Generic Access Service
+                // Check for device name and appearance details
+                List<BluetoothGattCharacteristic> chars = svc.getCharacteristics();
+                for (BluetoothGattCharacteristic c : chars) {
+                    String charUuid = c.getUuid().toString();
+                    logger.debug("onServicesDiscovered (device={},foundService={},withCharacteristic={})", device, uuidString, charUuid);
+                    if ("00002a00-0000-1000-8000-00805f9b34fb".equals(charUuid)) {
+                        // deviceName
+                        deviceName = c.getStringValue(0);
+                        //gatt.readCharacteristic(c);
+                        device.deviceNameCharacteristic(c);
+                    } else if ("00002a01-0000-1000-8000-00805f9b34fb".equals(charUuid)) {
+                        appearance = c.getStringValue(0);
+                        //gatt.readCharacteristic(c);
+                    }
+                }
+            } else if ("0000180a-0000-1000-8000-00805f9b34fb".equals(uuidString)) {
+                // Device information service
+                // Check for model number and manufacturer details
+                List<BluetoothGattCharacteristic> chars = svc.getCharacteristics();
+                for (BluetoothGattCharacteristic c : chars) {
+                    String charUuid = c.getUuid().toString();
+                    logger.debug("onServicesDiscovered (device={},foundService={},withCharacteristic={})", device, uuidString, charUuid);
+                    if ("00002a24-0000-1000-8000-00805f9b34fb".equals(charUuid)) {
+                        // model
+                        model = c.getStringValue(0);
+                        //gatt.readCharacteristic(c);
+                        device.modelCharacteristic(c);
+                    } else if ("00002a29-0000-1000-8000-00805f9b34fb".equals(charUuid)) {
+                        manufacturer = c.getStringValue(0);
+                        //gatt.readCharacteristic(c);
+                    } else if ("00002a07-0000-1000-8000-00805f9b34fb".equals(charUuid)) {
+                        txPower = c.getStringValue(0);
+                        //gatt.readCharacteristic(c);
+                    }
+                }
+            }
+            logger.debug("onServicesDiscovered (device={},foundService={})", device, uuidString);
+        }
+        logger.debug("onServicesDiscovered (device={},model={},manufacturer={},deviceName={},appearance={},txPower={})",
+                device, model,manufacturer,deviceName,appearance,txPower);
+
         final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
         if (service == null) {
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
@@ -655,7 +718,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                 device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 // Add training example to device filter for device to be ignored
-                deviceFilter.train(device, true);
+                //deviceFilter.train(device, true);
             }
             gatt.disconnect();
             return;
@@ -708,6 +771,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // No task for devices marked as receive only (no advert to connect to)
         if (device.receiveOnly()) {
             return NextTask.nothing;
+        }
+        // Resolve deviceName and model if they can be introspected first
+        if (device.supportsModelCharacteristic() && null == device.model()) {
+            logger.debug("nextTaskForDevice (device={},task=readModel)", device);
+            return NextTask.readModel;
+        }
+        if (device.supportsDeviceNameCharacteristic() && null == device.deviceName()) {
+            logger.debug("nextTaskForDevice (device={},task=readDeviceName)", device);
+            return NextTask.readDeviceName;
         }
         // Resolve or confirm operating system by reading payload which
         // triggers characteristic discovery to confirm the operating system
@@ -784,6 +856,36 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
         switch (nextTask) {
+            case readModel: {
+                final BluetoothGattCharacteristic modelCharacteristic = device.modelCharacteristic();
+                if (modelCharacteristic == null) {
+                    logger.fault("nextTask failed (task=readModel,device={},reason=missingModelCharacteristic)", device);
+                    gatt.disconnect();
+                    return; // => onConnectionStateChange
+                }
+                if (!gatt.readCharacteristic(modelCharacteristic)) {
+                    logger.fault("nextTask failed (task=readModel,device={},reason=readModelCharacteristicFailed)", device);
+                    gatt.disconnect();
+                    return; // => onConnectionStateChange
+                }
+                logger.debug("nextTask (task=readModel,device={})", device);
+                return; // => onCharacteristicRead | timeout
+            }
+            case readDeviceName: {
+                final BluetoothGattCharacteristic deviceNameCharacteristic = device.deviceNameCharacteristic();
+                if (deviceNameCharacteristic == null) {
+                    logger.fault("nextTask failed (task=readDeviceName,device={},reason=missingDeviceNameCharacteristic)", device);
+                    gatt.disconnect();
+                    return; // => onConnectionStateChange
+                }
+                if (!gatt.readCharacteristic(deviceNameCharacteristic)) {
+                    logger.fault("nextTask failed (task=readDeviceName,device={},reason=readDeviceNameCharacteristicFailed)", device);
+                    gatt.disconnect();
+                    return; // => onConnectionStateChange
+                }
+                logger.debug("nextTask (task=readDeviceName,device={})", device);
+                return; // => onCharacteristicRead | timeout
+            }
             case readPayload: {
                 final BluetoothGattCharacteristic payloadCharacteristic = device.payloadCharacteristic();
                 if (payloadCharacteristic == null) {
@@ -946,7 +1048,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
-        logger.debug("onCharacteristicRead (device={},status={})", device, bleStatus(status));
+        logger.debug("onCharacteristicRead (device={},status={},characteristic={})", device, bleStatus(status), characteristic.getUuid().toString());
         if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
             final PayloadData payloadData = (characteristic.getValue() != null ? new PayloadData(characteristic.getValue()) : null);
             if (success) {
@@ -959,6 +1061,32 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } else {
                 logger.fault("onCharacteristicRead, read payload data failed (device={})", device);
             }
+        } else if (characteristic.getUuid().equals(BLESensorConfiguration.modelCharacteristicUUID)) {
+            final String model = characteristic.getStringValue(0);
+            if (success) {
+                if (model != null) {
+                    logger.debug("onCharacteristicRead, read model data success (device={},model={})", device, model);
+                    device.model(model);
+                } else {
+                    logger.fault("onCharacteristicRead, read model data failed, no data (device={})", device);
+                }
+            } else {
+                logger.fault("onCharacteristicRead, read model data failed (device={})", device);
+            }
+        } else if (characteristic.getUuid().equals(BLESensorConfiguration.deviceNameCharacteristicUUID)) {
+            final String deviceName = characteristic.getStringValue(0);
+            if (success) {
+                if (deviceName != null) {
+                    logger.debug("onCharacteristicRead, read deviceName data success (device={},deviceName={})", device, deviceName);
+                    device.deviceName(deviceName);
+                } else {
+                    logger.fault("onCharacteristicRead, read deviceName data failed, no data (device={})", device);
+                }
+            } else {
+                logger.fault("onCharacteristicRead, read deviceName data failed (device={})", device);
+            }
+        } else {
+            logger.debug("onCharacteristicRead (device={},status={},characteristic={},value={})", device, bleStatus(status), characteristic.getUuid().toString(), characteristic.getStringValue(0));
         }
         nextTask(gatt);
     }

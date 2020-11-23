@@ -62,6 +62,11 @@ public class BLEDevice {
     protected byte[] signalCharacteristicWriteValue = null;
     protected Queue<byte[]> signalCharacteristicWriteQueue = null;
 
+    private BluetoothGattCharacteristic modelCharacteristic = null;
+    private String model = null;
+    private BluetoothGattCharacteristic deviceNameCharacteristic = null;
+    private String deviceName = null;
+
     /// Track connection timestamps
     private Date lastDiscoveredAt = null;
     private Date lastConnectedAt = null;
@@ -294,6 +299,34 @@ public class BLEDevice {
     public void payloadCharacteristic(BluetoothGattCharacteristic characteristic) {
         this.payloadCharacteristic = characteristic;
         lastUpdatedAt = new Date();
+    }
+
+    public boolean supportsModelCharacteristic() { return null != modelCharacteristic; }
+
+    public BluetoothGattCharacteristic modelCharacteristic() { return modelCharacteristic; }
+
+    public void modelCharacteristic(BluetoothGattCharacteristic modelCharacteristic) {
+        this.modelCharacteristic = modelCharacteristic;
+    }
+
+    public boolean supportsDeviceNameCharacteristic() { return null != deviceNameCharacteristic; }
+
+    public BluetoothGattCharacteristic deviceNameCharacteristic() { return deviceNameCharacteristic; }
+
+    public void deviceNameCharacteristic(BluetoothGattCharacteristic deviceNameCharacteristic) {
+        this.deviceNameCharacteristic = deviceNameCharacteristic;
+    }
+
+    public String deviceName() { return deviceName; }
+
+    public void deviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
+
+    public String model() { return model; }
+
+    public void model(String model) {
+        this.model = model;
     }
 
     public void registerDiscovery() {
