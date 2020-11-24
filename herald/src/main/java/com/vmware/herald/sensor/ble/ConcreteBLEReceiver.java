@@ -772,14 +772,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         if (device.receiveOnly()) {
             return NextTask.nothing;
         }
-        // Resolve deviceName and model if they can be introspected first
-        if (device.supportsModelCharacteristic() && null == device.model()) {
-            logger.debug("nextTaskForDevice (device={},task=readModel)", device);
-            return NextTask.readModel;
-        }
-        if (device.supportsDeviceNameCharacteristic() && null == device.deviceName()) {
-            logger.debug("nextTaskForDevice (device={},task=readDeviceName)", device);
-            return NextTask.readDeviceName;
+        if (BLESensorConfiguration.deviceIntrospectionEnabled) {
+            // Resolve deviceName and model if they can be introspected first
+            if (device.supportsModelCharacteristic() && null == device.model()) {
+                logger.debug("nextTaskForDevice (device={},task=readModel)", device);
+                return NextTask.readModel;
+            }
+            if (device.supportsDeviceNameCharacteristic() && null == device.deviceName()) {
+                logger.debug("nextTaskForDevice (device={},task=readDeviceName)", device);
+                return NextTask.readDeviceName;
+            }
         }
         // Resolve or confirm operating system by reading payload which
         // triggers characteristic discovery to confirm the operating system
