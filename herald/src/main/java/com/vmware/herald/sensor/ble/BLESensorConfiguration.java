@@ -29,10 +29,11 @@ public class BLESensorConfiguration {
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
-    /// Characteristic for reading device modelName
+    /// Service and characteristic UUIDs for standard device services. These are fixed UUID from the BLE standard
+    /// Device characteristic for reading device model name
     /// - Characteristic UUID from BLE standard
     public final static UUID modelCharacteristicUUID = UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb");
-    /// Characteristic for reading deviceName
+    /// Device characteristic for reading device name
     /// - Characteristic UUID from BLE standard
     public final static UUID deviceNameCharacteristicUUID = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
     /// Manufacturer data is being used on Android to store pseudo device address
@@ -41,7 +42,7 @@ public class BLESensorConfiguration {
     /// BLE advert manufacturer ID for Apple, for scanning of background iOS devices
     public final static int manufacturerIdForApple = 76;
     // Whether we try to find a device make/model or not
-    public static boolean deviceIntrospectionEnabled = false;
+    public static boolean deviceIntrospectionEnabled = true;
 
     // MARK:- BLE signal characteristic action codes
 

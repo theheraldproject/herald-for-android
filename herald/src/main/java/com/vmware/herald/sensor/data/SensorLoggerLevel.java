@@ -5,5 +5,5 @@
 package com.vmware.herald.sensor.data;
 
 public enum SensorLoggerLevel {
-    debug, info, fault
+    off, debug, info, fault
 }
