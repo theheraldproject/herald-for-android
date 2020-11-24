@@ -17,12 +17,13 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.os.Build;
 import android.os.ParcelUuid;
 
+import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.analysis.Sample;
+import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.datatype.Base64;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
@@ -30,12 +31,10 @@ import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.RSSI;
-import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicDataType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
-import com.vmware.herald.sensor.SensorDelegate;
 
 import java.util.ArrayList;
 import java.util.HashSet;
