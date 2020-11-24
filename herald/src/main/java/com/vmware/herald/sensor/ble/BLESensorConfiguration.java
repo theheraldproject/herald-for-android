@@ -59,8 +59,6 @@ public class BLESensorConfiguration {
     public final static int manufacturerIdForSensor = 65530;
     /// BLE advert manufacturer ID for Apple, for scanning of background iOS devices
     public final static int manufacturerIdForApple = 76;
-    // Whether we try to find a device make/model or not
-    public static boolean deviceIntrospectionEnabled = true;
 
     // MARK:- BLE signal characteristic action codes
 
@@ -105,4 +103,7 @@ public class BLESensorConfiguration {
 
     /// Advert refresh time interval
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+
+    /// Interrogate standard Bluetooth services to obtain device make/model data
+    public static boolean deviceIntrospectionEnabled = false;
 }
