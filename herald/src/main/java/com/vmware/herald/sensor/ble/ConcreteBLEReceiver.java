@@ -62,7 +62,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BluetoothStateManager bluetoothStateManager;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
-    private final BLEDeviceFilter deviceFilter;
+    //private final BLEDeviceFilter deviceFilter;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -107,7 +107,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.bluetoothStateManager = bluetoothStateManager;
         this.database = database;
         this.transmitter = transmitter;
-        this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
+        //this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
         timer.add(new ScanLoopTask());
     }
 
@@ -420,10 +420,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // Use scan record data as hint to determine whether the device
                 // should be ignored, to avoid reconnecting to devices that have
                 // previously failed or doesn't advertise sensor service
-                if (deviceFilter.ignore(device)) {
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
-                    logger.debug("didDiscover, ignoring device (device={},scanRecord={})", device, device.scanRecord());
-                }
+//                if (deviceFilter.ignore(device)) {
+//                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+//                    logger.debug("didDiscover, ignoring device (device={},scanRecord={})", device, device.scanRecord());
+//                }
             } else {
                 // Sensor service not found + Manufacturer not Apple should be impossible
                 // as we are scanning for devices with sensor service or Apple device.
@@ -635,9 +635,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             device.state(BLEDeviceState.disconnected);
             if (status != 0) {
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                    // THIS CAUSES VALID DEVICES TO NEVER BE DISCOVERED IN SOME SCENARIOS - DO NOT ENABLE!
+                    //device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     // Add training example to device filter for device to be ignored
-                    deviceFilter.train(device, true);
+                    //deviceFilter.train(device, true);
                 }
             }
         } else {
@@ -716,17 +717,16 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
             // Ignore device for a while unless it is a confirmed iOS or Android device
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                //device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 // Add training example to device filter for device to be ignored
                 //deviceFilter.train(device, true);
             }
             gatt.disconnect();
             return;
         }
-
         logger.debug("onServicesDiscovered, found sensor service (device={})", device);
         // Add training example to device filter for device not to be ignored
-        deviceFilter.train(device, false);
+        //deviceFilter.train(device, false);
 
         device.invalidateCharacteristics();
         for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
