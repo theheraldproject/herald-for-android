@@ -31,6 +31,9 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
     private boolean suppress(SensorLoggerLevel level) {
+        if (BLESensorConfiguration.logLevel == SensorLoggerLevel.off) {
+            return true;
+        }
         switch (level) {
             case debug:
                 return (BLESensorConfiguration.logLevel == SensorLoggerLevel.info || BLESensorConfiguration.logLevel == SensorLoggerLevel.fault);

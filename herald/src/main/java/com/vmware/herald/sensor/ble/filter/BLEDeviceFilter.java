@@ -2,11 +2,13 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.ble;
+package com.vmware.herald.sensor.ble.filter;
 
 import android.bluetooth.le.ScanRecord;
 import android.content.Context;
 
+import com.vmware.herald.sensor.ble.BLEDevice;
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.data.TextFile;

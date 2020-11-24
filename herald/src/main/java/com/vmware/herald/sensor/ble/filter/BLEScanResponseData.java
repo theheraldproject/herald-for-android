@@ -2,7 +2,7 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.ble;
+package com.vmware.herald.sensor.ble.filter;
 
 import java.util.List;
 

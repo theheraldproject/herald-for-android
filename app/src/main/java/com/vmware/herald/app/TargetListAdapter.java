@@ -38,12 +38,21 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
         }
         final TextView textLabel = (TextView) convertView.findViewById(R.id.targetTextLabel);
         final TextView detailedTextLabel = (TextView) convertView.findViewById(R.id.targetDetailedTextLabel);
-        final String method = "read" + (target.didShare() == null ? "" : ",share");
-        final String didReadTimeInterval = (target.didReadTimeInterval().count() == 0 ? null : decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
-        final String didMeasureTimeInterval = (target.didMeasureTimeInterval().count() == 0 ? null : decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
-        final String timeIntervals = (didReadTimeInterval == null || didMeasureTimeInterval == null ? "" : " (R:" + didReadTimeInterval + "," + "M:" + didMeasureTimeInterval + ")");
+        final StringBuilder attributes = new StringBuilder();
+        attributes.append("Read");
+        if (target.didReadTimeInterval().count() != 0) {
+            attributes.append("=");
+            attributes.append(decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
+        }
+        if (target.didMeasureTimeInterval().count() != 0) {
+            attributes.append(",Measure=");
+            attributes.append(decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
+        }
+        if (target.didShare() != null) {
+            attributes.append(",Share");
+        }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
-        textLabel.setText(target.payloadData().shortName() + " [" + method + "]" + timeIntervals);
+        textLabel.setText(target.payloadData().shortName() + " [" + attributes.toString() + "]");
         detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + didReceive);
         return convertView;
     }

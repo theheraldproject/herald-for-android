@@ -4,11 +4,12 @@
 
 package com.vmware.herald.sensor.ble;
 
+import com.vmware.herald.sensor.ble.filter.BLEAdvertManufacturerData;
+import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
+import com.vmware.herald.sensor.ble.filter.BLEScanResponseData;
+
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;

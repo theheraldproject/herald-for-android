@@ -29,19 +29,36 @@ public class BLESensorConfiguration {
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
-    /// Characteristic for reading device modelName
+
+    /// Standard Bluetooth service and characteristics
+    /// These are all fixed UUID from the BLE standard.
+    /// Standard Bluetooth Service UUID for Generic Access Service
+    /// - Service UUID from BLE standard
+    public final static UUID bluetoothGenericAccessServiceUUID = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Characteristic UUID for Generic Access Service : Device Name
     /// - Characteristic UUID from BLE standard
-    public final static UUID modelCharacteristicUUID = UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb");
-    /// Characteristic for reading deviceName
+    public final static UUID bluetoothGenericAccessServiceDeviceNameCharacteristicUUID = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Characteristic UUID for Generic Access Service : Device Name
     /// - Characteristic UUID from BLE standard
-    public final static UUID deviceNameCharacteristicUUID = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
+    public final static UUID bluetoothGenericAccessServiceAppearanceCharacteristicUUID = UUID.fromString("00002a01-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Service UUID for Device Information Service
+    /// - Service UUID from BLE standard
+    public final static UUID bluetoothDeviceInformationServiceUUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Characteristic UUID for Device Information Service : Model
+    /// - Characteristic UUID from BLE standard
+    public final static UUID bluetoothDeviceInformationServiceModelCharacteristicUUID = UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Characteristic UUID for Device Information Service : Manufacturer
+    /// - Characteristic UUID from BLE standard
+    public final static UUID bluetoothDeviceInformationServiceManufacturerCharacteristicUUID = UUID.fromString("00002a29-0000-1000-8000-00805f9b34fb");
+    /// Standard Bluetooth Characteristic UUID for Device Information Service : TX Power
+    /// - Characteristic UUID from BLE standard
+    public final static UUID bluetoothDeviceInformationServiceTxPowerCharacteristicUUID = UUID.fromString("00002a07-0000-1000-8000-00805f9b34fb");
+
     /// Manufacturer data is being used on Android to store pseudo device address
     /// - Pending update to dedicated ID
     public final static int manufacturerIdForSensor = 65530;
     /// BLE advert manufacturer ID for Apple, for scanning of background iOS devices
     public final static int manufacturerIdForApple = 76;
-    // Whether we try to find a device make/model or not
-    public static boolean deviceIntrospectionEnabled = false;
 
     // MARK:- BLE signal characteristic action codes
 
@@ -86,4 +103,7 @@ public class BLESensorConfiguration {
 
     /// Advert refresh time interval
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+
+    /// Interrogate standard Bluetooth services to obtain device make/model data
+    public static boolean deviceIntrospectionEnabled = false;
 }

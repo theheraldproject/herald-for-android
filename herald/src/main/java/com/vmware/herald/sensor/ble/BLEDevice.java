@@ -95,7 +95,14 @@ public class BLEDevice {
     }
 
     public String description() {
-        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + ",payload=" + payloadData() + ",address=" + pseudoDeviceAddress() + "]";
+        return "BLEDevice[" +
+                "id=" + identifier +
+                ",os=" + operatingSystem +
+                ",payload=" + payloadData() +
+                (pseudoDeviceAddress() != null ? ",address=" + pseudoDeviceAddress() : "") +
+                (deviceName() != null ? ",name=" + deviceName() : "") +
+                (model() != null ? ",model=" + model() : "") +
+                "]";
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
@@ -125,6 +132,10 @@ public class BLEDevice {
         this.scanRecord = device.scanRecord;
         this.signalCharacteristic = device.signalCharacteristic;
         this.payloadCharacteristic = device.payloadCharacteristic;
+        this.modelCharacteristic = device.modelCharacteristic;
+        this.deviceNameCharacteristic = device.deviceNameCharacteristic;
+        this.model = device.model;
+        this.deviceName = device.deviceName;
         this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
         this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
         this.lastDiscoveredAt = device.lastDiscoveredAt;
@@ -281,6 +292,8 @@ public class BLEDevice {
     public void invalidateCharacteristics() {
         signalCharacteristic = null;
         payloadCharacteristic = null;
+        modelCharacteristic = null;
+        deviceNameCharacteristic = null;
     }
 
     public BluetoothGattCharacteristic signalCharacteristic() {
@@ -307,6 +320,7 @@ public class BLEDevice {
 
     public void modelCharacteristic(BluetoothGattCharacteristic modelCharacteristic) {
         this.modelCharacteristic = modelCharacteristic;
+        lastUpdatedAt = new Date();
     }
 
     public boolean supportsDeviceNameCharacteristic() { return null != deviceNameCharacteristic; }
@@ -315,18 +329,21 @@ public class BLEDevice {
 
     public void deviceNameCharacteristic(BluetoothGattCharacteristic deviceNameCharacteristic) {
         this.deviceNameCharacteristic = deviceNameCharacteristic;
+        lastUpdatedAt = new Date();
     }
 
     public String deviceName() { return deviceName; }
 
     public void deviceName(String deviceName) {
         this.deviceName = deviceName;
+        lastUpdatedAt = new Date();
     }
 
     public String model() { return model; }
 
     public void model(String model) {
         this.model = model;
+        lastUpdatedAt = new Date();
     }
 
     public void registerDiscovery() {
