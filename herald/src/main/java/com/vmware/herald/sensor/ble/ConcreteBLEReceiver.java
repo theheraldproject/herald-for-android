@@ -635,7 +635,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             device.state(BLEDeviceState.disconnected);
             if (status != 0) {
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                    // THIS CAUSES VALID DEVICES TO NEVER BE DISCOVERED IN SOME SCENARIOS - DO NOT ENABLE!
+                    //device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                     // Add training example to device filter for device to be ignored
                     //deviceFilter.train(device, true);
                 }
@@ -716,14 +717,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
             // Ignore device for a while unless it is a confirmed iOS or Android device
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                //device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 // Add training example to device filter for device to be ignored
                 //deviceFilter.train(device, true);
             }
             gatt.disconnect();
             return;
         }
-
         logger.debug("onServicesDiscovered, found sensor service (device={})", device);
         // Add training example to device filter for device not to be ignored
         //deviceFilter.train(device, false);
