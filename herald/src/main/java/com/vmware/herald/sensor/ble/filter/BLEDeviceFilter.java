@@ -68,7 +68,7 @@ public class BLEDeviceFilter {
         return segments;
     }
 
-    /// Extract all message data from manufacturer data segments
+    /// Extract all messages from manufacturer data segments
     protected final static List<Data> extractMessageData(final List<Data> manufacturerData) {
         final List<Data> messages = new ArrayList<>();
         for (Data segment : manufacturerData) {
@@ -77,7 +77,7 @@ public class BLEDeviceFilter {
                 if (segment.value[0] == (byte) 0x01) {
                     messages.add(segment);
                 }
-                // Assume all other prefixes marks new messages "Type:Length:Data"
+                // Assume all other prefixes mark new messages "Type:Length:Data"
                 else {
                     final byte[] raw = segment.value;
                     for (int i=0; i<raw.length - 1; i++) {
