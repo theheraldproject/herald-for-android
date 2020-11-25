@@ -54,6 +54,15 @@ public class BLEAdvertParser {
         return result.toString();
     }
 
+    public static String binaryString(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+            result.append(" ");
+        }
+        return result.toString();
+    }
+
     public static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
         if (offset <= 0 || length <= 0) {
             return new byte[]{};
@@ -104,11 +113,6 @@ public class BLEAdvertParser {
                     continue; // there may be a valid segment of same type... Happens for manufacturer data
                 }
                 // Create a manufacturer data segment
-//                final ByteBuffer byteBuffer = ByteBuffer.allocate(2);
-//                byteBuffer.order(ByteOrder.BIG_ENDIAN);
-//                byteBuffer.put(segment.data,0,2);
-//                int intValue = byteBuffer.getInt();
-
                 int intValue = ((segment.data[1]&0xff) << 8) | (segment.data[0]&0xff);
                 manufacturerData.add(new BLEAdvertManufacturerData(intValue,subDataBigEndian(segment.data,2,segment.dataLength - 2)));
             }
@@ -116,20 +120,21 @@ public class BLEAdvertParser {
         return manufacturerData;
     }
 
-    public static boolean isAppleTV(List<BLEAdvertSegment> segments) {
-        List<BLEAdvertManufacturerData> manufacturerData = extractManufacturerData(segments);
-        if (manufacturerData.size() == 0) {
-            return false;
-        }
-        for (BLEAdvertManufacturerData manu : manufacturerData) {
-            if (manu.data.length < 2) {
-                continue;
+    public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(List <BLEAdvertManufacturerData> manuData) {
+        List<BLEAdvertAppleManufacturerSegment> appleSegments = new ArrayList<>();
+        for (BLEAdvertManufacturerData manu : manuData) {
+            int bytePos = 0;
+            // Read type and length
+            while (bytePos < manu.data.length) {
+                int typeValue = ((manu.data[bytePos + 1] & 0xff) << 8) | (manu.data[bytePos + 0] & 0xff);
+                int length = ((manu.data[bytePos + 3] & 0xff) << 8) | (manu.data[bytePos + 2] & 0xff);
+                bytePos += 4;
+                int maxLength = (length < manu.data.length - bytePos) ? length : manu.data.length - bytePos;
+                BLEAdvertAppleManufacturerSegment seg = new BLEAdvertAppleManufacturerSegment(typeValue, length, subDataBigEndian(manu.data, bytePos, maxLength));
+                appleSegments.add(seg);
+                bytePos += maxLength;
             }
-            if (16 == manu.data[0] && 7 == manu.data[1]) {
-                return true;
-            }
         }
-        return false;
+        return appleSegments;
     }
-
 }
