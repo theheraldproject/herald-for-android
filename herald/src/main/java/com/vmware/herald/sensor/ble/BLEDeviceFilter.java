@@ -2,7 +2,7 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.ble.filter;
+package com.vmware.herald.sensor.ble;
 
 import android.bluetooth.le.ScanRecord;
 import android.content.Context;
@@ -20,12 +20,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/// Adaptive filter to ignoring devices that have repeatedly failed connection or does
-/// not advertise sensor services.
+/// Device filter for avoiding connection to devices that definitely cannot
+/// host sensor services.
 public class BLEDeviceFilter {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
+    private final List<FilterPattern> filterPatterns;
     private final TextFile textFile;
     private final Map<Data, ShouldIgnore> samples = new HashMap<>();
 
@@ -35,17 +38,91 @@ public class BLEDeviceFilter {
         public long no = 0;
     }
 
-    /// BLE device filter with in-memory lookup table
-    public BLEDeviceFilter() {
-        textFile = null;
+    // Pattern for filtering device based on message content
+    public final static class FilterPattern {
+        public final String regularExpression;
+        public final Pattern pattern;
+        public FilterPattern(final String regularExpression, final Pattern pattern) {
+            this.regularExpression = regularExpression;
+            this.pattern = pattern;
+        }
     }
 
-    /// BLE device filter with in-memory lookup table and persisted training data file
-    public BLEDeviceFilter(final Context context, final String file) {
-        textFile = new TextFile(context, file);
-        if (textFile.empty()) {
-            textFile.write("time,ignore,featureData,scanRecordRawData,identifier,rssi,deviceModel,deviceName");
+    // Match of a filter pattern
+    public final static class MatchingPattern {
+        public final FilterPattern filterPattern;
+        public final String message;
+        public MatchingPattern(FilterPattern filterPattern, String message) {
+            this.filterPattern = filterPattern;
+            this.message = message;
         }
+    }
+
+    /// BLE device filter for matching devices against filters defined
+    /// in BLESensorConfiguration.deviceFilterFeaturePatterns.
+    public BLEDeviceFilter() {
+        this(null, null, BLESensorConfiguration.deviceFilterFeaturePatterns);
+    }
+
+    /// BLE device filter for matching devices against BLESensorConfiguration.deviceFilterFeaturePatterns
+    /// and writing advert data to file for analysis.
+    public BLEDeviceFilter(final Context context, final String file) {
+        this(context, file, BLESensorConfiguration.deviceFilterFeaturePatterns);
+    }
+
+    /// BLE device filter for matching devices against the given set of patterns
+    /// and writing advert data to file for analysis.
+    public BLEDeviceFilter(final Context context, final String file, final String[] patterns) {
+        if (context == null || file == null) {
+            textFile = null;
+        } else {
+            textFile = new TextFile(context, file);
+            if (textFile.empty()) {
+                textFile.write("time,ignore,featureData,scanRecordRawData,identifier,rssi,deviceModel,deviceName");
+            }
+        }
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled || patterns == null || patterns.length == 0) {
+            filterPatterns = null;
+        } else {
+            filterPatterns = compilePatterns(patterns);
+        }
+    }
+
+    // MARK:- Pattern matching functions
+    // Using regular expression over hex representation of feature data for maximum flexibility and usability
+
+    /// Match message against all patterns in sequential order, returns matching pattern or null
+    protected static FilterPattern match(final List<FilterPattern> filterPatterns, final String message) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
+        if (message == null) {
+            return null;
+        }
+        for (final FilterPattern filterPattern : filterPatterns) {
+            try {
+                final Matcher matcher = filterPattern.pattern.matcher(message);
+                if (matcher.find()) {
+                    return filterPattern;
+                }
+            } catch (Throwable e) {
+            }
+        }
+        return null;
+    }
+
+    /// Compile regular expressions into patterns.
+    protected static List<FilterPattern> compilePatterns(final String[] regularExpressions) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
+        final List<FilterPattern> filterPatterns = new ArrayList<>(regularExpressions.length);
+        for (final String regularExpression : regularExpressions) {
+            try {
+                final Pattern pattern = Pattern.compile(regularExpression, Pattern.CASE_INSENSITIVE);
+                final FilterPattern filterPattern = new FilterPattern(regularExpression, pattern);
+                filterPatterns.add(filterPattern);
+            } catch (Throwable e) {
+                logger.fault("compilePatterns, invalid filter pattern (regularExpression={})", regularExpression);
+            }
+        }
+        return filterPatterns;
     }
 
     /// Extract all manufacturer data segments from raw scan record data
@@ -96,6 +173,8 @@ public class BLEDeviceFilter {
         }
         return messages;
     }
+
+    // MARK:- Filtering functions
 
     /// Extract feature data from scan record
     private List<Data> extractFeatures(final ScanRecord scanRecord) {
@@ -177,8 +256,35 @@ public class BLEDeviceFilter {
         }
     }
 
+    /// Match scan record messages against all registered patterns, returns matching pattern or null.
+    public MatchingPattern match(final BLEDevice device) {
+        // No pattern to match against
+        if (filterPatterns == null || filterPatterns.isEmpty()) {
+            return null;
+        }
+        final ScanRecord scanRecord = device.scanRecord();
+        // Cannot match device without any scan record data
+        if (scanRecord == null) {
+            return null;
+        }
+        // Extract feature data from scan record
+        // Cannot match device without any feature data
+        final List<Data> featureList = extractFeatures(scanRecord);
+        if (featureList == null || featureList.isEmpty()) {
+            return null;
+        }
+        for (Data featureData : featureList) {
+            final String message = featureData.hexEncodedString();
+            final FilterPattern filterPattern = match(filterPatterns, message);
+            if (filterPattern != null) {
+                return new MatchingPattern(filterPattern, message);
+            }
+        }
+        return null;
+    }
+
     /// Should the device be ignored based on scan record data?
-    public boolean ignore(final BLEDevice device) {
+    private boolean ignoreBasedOnStatistics(final BLEDevice device) {
         final ScanRecord scanRecord = device.scanRecord();
         // Do not ignore device without any scan record data
         if (scanRecord == null) {

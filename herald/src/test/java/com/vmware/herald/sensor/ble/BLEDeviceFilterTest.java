@@ -2,9 +2,9 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.ble.filter;
+package com.vmware.herald.sensor.ble;
 
-import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
+import com.vmware.herald.sensor.ble.BLEDeviceFilter;
 import com.vmware.herald.sensor.datatype.Data;
 
 import org.junit.Test;
@@ -15,13 +15,15 @@ import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class BLEDeviceFilterTest {
 
     @Test
     public void testHexTransform() throws Exception {
         final Random random = new Random(0);
-        for (int i=0; i<1000; i++) {
+        for (int i = 0; i < 1000; i++) {
             final byte[] expected = new byte[i];
             random.nextBytes(expected);
             final String hex = new Data(expected).hexEncodedString();
@@ -102,5 +104,25 @@ public class BLEDeviceFilterTest {
             assertEquals("1005421C1E616A", messages.get(1).hexEncodedString());
             assertEquals("1006071EA3DD89E0", messages.get(2).hexEncodedString());
         }
+    }
+
+    @Test
+    public void testCompilePatterns() throws Exception {
+        final List<BLEDeviceFilter.FilterPattern> filterPatterns = BLEDeviceFilter.compilePatterns(new String[]{"^10....04", "^10....14"});
+        assertEquals(2, filterPatterns.size());
+        assertNotNull(BLEDeviceFilter.match(filterPatterns, "10060C044FDE4DF7"));
+        assertNotNull(BLEDeviceFilter.match(filterPatterns, "10060C144FDE4DF7"));
+
+        // Ignoring dots
+        assertNotNull(BLEDeviceFilter.match(filterPatterns, "10XXXX044FDE4DF7"));
+        assertNotNull(BLEDeviceFilter.match(filterPatterns, "10XXXX144FDE4DF7"));
+
+        // Not correct values
+        assertNull(BLEDeviceFilter.match(filterPatterns, "10060C054FDE4DF7"));
+        assertNull(BLEDeviceFilter.match(filterPatterns, "10060C154FDE4DF7"));
+
+        // Not start of pattern
+        assertNull(BLEDeviceFilter.match(filterPatterns, "010060C054FDE4DF7"));
+        assertNull(BLEDeviceFilter.match(filterPatterns, "010060C154FDE4DF7"));
     }
 }

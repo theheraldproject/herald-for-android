@@ -22,8 +22,6 @@ import android.os.ParcelUuid;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
-import com.vmware.herald.sensor.ble.filter.BLEAdvertSegment;
-import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
@@ -426,6 +424,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
+                // Filter device by advert messages unless it is already confirmed ios device
+                final BLEDeviceFilter.MatchingPattern matchingPattern = deviceFilter.match(device);
+                if (device.operatingSystem() != BLEDeviceOperatingSystem.ios && matchingPattern != null) {
+                    logger.fault("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
