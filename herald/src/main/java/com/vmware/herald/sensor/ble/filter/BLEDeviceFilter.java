@@ -44,7 +44,7 @@ public class BLEDeviceFilter {
     public BLEDeviceFilter(final Context context, final String file) {
         textFile = new TextFile(context, file);
         if (textFile.empty()) {
-            textFile.write("time,ignore,featureData,scanRecordRawData,identifier,deviceModel,deviceName");
+            textFile.write("time,ignore,featureData,scanRecordRawData,identifier,rssi,deviceModel,deviceName");
         }
     }
 
@@ -157,6 +157,10 @@ public class BLEDeviceFilter {
             stringBuilder.append(scanRecordData.hexEncodedString());
             stringBuilder.append(',');
             stringBuilder.append(device.identifier.value);
+            stringBuilder.append(',');
+            if (device.rssi() != null) {
+                stringBuilder.append(device.rssi().value);
+            }
             stringBuilder.append(',');
             if (device.model() != null) {
                 stringBuilder.append('"');
