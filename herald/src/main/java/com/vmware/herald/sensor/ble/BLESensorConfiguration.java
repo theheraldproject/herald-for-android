@@ -81,7 +81,7 @@ public class BLESensorConfiguration {
     /// - Set to .never to disable this function.
     /// - Payload updates are reported to SensorDelegate as didRead.
     /// - Setting take immediate effect, no need to restart BLESensor, can also be applied while BLESensor is active.
-    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.never;
+    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.seconds(15);
 
     /// Filter duplicate payload data and suppress sensor(didRead:fromTarget) delegate calls
     /// - Set to .never to disable this feature
@@ -105,5 +105,5 @@ public class BLESensorConfiguration {
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
-    public static boolean deviceIntrospectionEnabled = false;
+    public static boolean deviceIntrospectionEnabled = true;
 }

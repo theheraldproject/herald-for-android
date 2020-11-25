@@ -53,6 +53,16 @@ public class Data {
         return stringBuilder.toString();
     }
 
+    public final static Data fromHexEncodedString(String hexEncodedString) {
+        final int length = hexEncodedString.length();
+        final byte[] value = new byte[length / 2];
+        for (int i = 0; i < length; i += 2) {
+            value[i / 2] = (byte) ((Character.digit(hexEncodedString.charAt(i), 16) << 4) +
+                    Character.digit(hexEncodedString.charAt(i+1), 16));
+        }
+        return new Data(value);
+    }
+
     public String description() {
         return base64EncodedString();
     }

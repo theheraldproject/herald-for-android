@@ -130,7 +130,7 @@ public class BLEAdvertParser {
                 int length = ((manu.data[bytePos + 3] & 0xff) << 8) | (manu.data[bytePos + 2] & 0xff);
                 bytePos += 4;
                 int maxLength = (length < manu.data.length - bytePos) ? length : manu.data.length - bytePos;
-                BLEAdvertAppleManufacturerSegment seg = new BLEAdvertAppleManufacturerSegment(typeValue, length, subDataBigEndian(manu.data, bytePos, maxLength));
+                BLEAdvertAppleManufacturerSegment seg = new BLEAdvertAppleManufacturerSegment(typeValue, length, subDataBigEndian(manu.data, bytePos, maxLength), subDataBigEndian(manu.data, bytePos - 4, maxLength + 4));
                 appleSegments.add(seg);
                 bytePos += maxLength;
             }
