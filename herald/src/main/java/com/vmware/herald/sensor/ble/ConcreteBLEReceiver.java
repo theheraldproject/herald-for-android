@@ -22,6 +22,7 @@ import android.os.ParcelUuid;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
+import com.vmware.herald.sensor.ble.filter.BLEAdvertSegment;
 import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
@@ -107,8 +108,22 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.bluetoothStateManager = bluetoothStateManager;
         this.database = database;
         this.transmitter = transmitter;
-        this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
         timer.add(new ScanLoopTask());
+
+        // Enable device introspection if device filter training is enabled
+        // to obtain device name and model data for all devices, and also
+        // log the device and advert data to "filter.csv" file
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled) {
+            // Obtain device model and name where available
+            BLESensorConfiguration.deviceIntrospectionEnabled = true;
+            // Trigger connection every minute to gather sample advert data
+            BLESensorConfiguration.payloadDataUpdateTimeInterval = TimeInterval.minute;
+            // Log results to file for analysis
+            this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
+        } else {
+            // Standard rule-based filter
+            this.deviceFilter = new BLEDeviceFilter();
+        }
     }
 
     // MARK:- BLEReceiver
@@ -612,7 +627,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
         }
         // Train device filter
-        deviceFilter.train(device, device.payloadCharacteristic() == null);
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled) {
+            deviceFilter.train(device, device.payloadCharacteristic() == null);
+        }
         return success;
     }
 
@@ -645,7 +662,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
         if (service == null) {
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
-            if (!BLESensorConfiguration.deviceIntrospectionEnabled) {
+            if (!BLESensorConfiguration.deviceFilterTrainingEnabled) {
                 // Ignore device for a while unless it is a confirmed iOS or Android device,
                 // where the sensor service has been found before, so ignore for a limited
                 // time and try again in the near future.
@@ -654,6 +671,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
                 gatt.disconnect();
                 return;
+            } else {
+                // Device filter training enabled, maintain connection to obtain device
+                // name and model for all devices, regardless of whether the device is
+                // offering sensor services.
             }
         } else {
             logger.debug("onServicesDiscovered, found sensor service (device={})", device);
@@ -675,7 +696,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
         }
 
-        // Device characteristics
+        // Device characteristics : Enabled if either device introspection or device filter training is enabled
         if (BLESensorConfiguration.deviceIntrospectionEnabled) {
             // Generic access : Device name
             if (device.deviceName() == null) {

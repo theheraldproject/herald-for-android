@@ -100,6 +100,14 @@ public class BLESensorConfiguration {
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
     public static boolean deviceIntrospectionEnabled = true;
+
+    /// Enable device filter training
+    /// - Use this to gather device make/model and advert messages
+    /// - Generates "filter.csv" log file for analysis
+    /// - Enable device introspection to obtain device make/model data
+    /// - Performs device introspection even if the device does not advertise sensor services
+    /// - Triggers update every minute for each device to gather sample advert data
+    public static boolean deviceFilterTrainingEnabled = true;
 }
 
 
