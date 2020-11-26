@@ -21,7 +21,7 @@ import java.util.List;
 
 /// Target list adapter for presenting list of targets on UI
 public class TargetListAdapter extends ArrayAdapter<Target> {
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final static SimpleDateFormat dateFormatterTime = new SimpleDateFormat("HH:mm:ss");
     private final static DecimalFormat decimalFormat = new DecimalFormat("0.0");
 
