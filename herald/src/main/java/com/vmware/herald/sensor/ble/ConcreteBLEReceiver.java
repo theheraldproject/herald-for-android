@@ -22,6 +22,7 @@ import android.os.ParcelUuid;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
+import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
@@ -61,6 +62,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BluetoothStateManager bluetoothStateManager;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
+    private final BLEDeviceFilter deviceFilter;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
 
@@ -106,6 +108,21 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         this.database = database;
         this.transmitter = transmitter;
         timer.add(new ScanLoopTask());
+
+        // Enable device introspection if device filter training is enabled
+        // to obtain device name and model data for all devices, and also
+        // log the device and advert data to "filter.csv" file
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled) {
+            // Obtain device model and name where available
+            BLESensorConfiguration.deviceIntrospectionEnabled = true;
+            // Trigger connection every minute to gather sample advert data
+            BLESensorConfiguration.payloadDataUpdateTimeInterval = TimeInterval.minute;
+            // Log results to file for analysis
+            this.deviceFilter = new BLEDeviceFilter(context, "filter.csv");
+        } else {
+            // Standard rule-based filter
+            this.deviceFilter = new BLEDeviceFilter();
+        }
     }
 
     // MARK:- BLEReceiver
@@ -408,6 +425,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.operatingSystem(BLEDeviceOperatingSystem.android_tbc);
                 }
             } else if (isAppleDevice) { // !hasSensorService implied
+                // Filter device by advert messages unless it is already confirmed ios device
+                final BLEDeviceFilter.MatchingPattern matchingPattern = deviceFilter.match(device);
+                if (device.operatingSystem() != BLEDeviceOperatingSystem.ios && matchingPattern != null) {
+                    logger.fault("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
                 // Possibly an iOS device offering sensor service in background mode,
                 // can't be sure without additional checks after connection, so
                 // only set operating system if it is unknown to offer a guess.
@@ -608,6 +631,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         } else {
             logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
         }
+        // Train device filter
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled) {
+            deviceFilter.train(device, device.payloadCharacteristic() == null);
+        }
         return success;
     }
 
@@ -636,39 +663,45 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onServicesDiscovered (device={},status={})", device, bleStatus(status));
 
+        // Sensor characteristics
         final BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
         if (service == null) {
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
-            // Ignore device for a while unless it is a confirmed iOS or Android device,
-            // where the sensor service has been found before, so ignore for a limited
-            // time and try again in the near future.
-            if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
-                device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+            if (!BLESensorConfiguration.deviceFilterTrainingEnabled) {
+                // Ignore device for a while unless it is a confirmed iOS or Android device,
+                // where the sensor service has been found before, so ignore for a limited
+                // time and try again in the near future.
+                if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
+                gatt.disconnect();
+                return;
+            } else {
+                // Device filter training enabled, maintain connection to obtain device
+                // name and model for all devices, regardless of whether the device is
+                // offering sensor services.
             }
-            gatt.disconnect();
-            return;
+        } else {
+            logger.debug("onServicesDiscovered, found sensor service (device={})", device);
+            device.invalidateCharacteristics();
+            for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
+                // Confirm operating system with signal characteristic
+                if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
+                    logger.debug("onServicesDiscovered, found Android signal characteristic (device={})", device);
+                    device.operatingSystem(BLEDeviceOperatingSystem.android);
+                    device.signalCharacteristic(characteristic);
+                } else if (characteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
+                    logger.debug("onServicesDiscovered, found iOS signal characteristic (device={})", device);
+                    device.operatingSystem(BLEDeviceOperatingSystem.ios);
+                    device.signalCharacteristic(characteristic);
+                } else if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
+                    logger.debug("onServicesDiscovered, found payload characteristic (device={})", device);
+                    device.payloadCharacteristic(characteristic);
+                }
+            }
         }
 
-        // Sensor characteristics
-        logger.debug("onServicesDiscovered, found sensor service (device={})", device);
-        device.invalidateCharacteristics();
-        for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
-            // Confirm operating system with signal characteristic
-            if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
-                logger.debug("onServicesDiscovered, found Android signal characteristic (device={})", device);
-                device.operatingSystem(BLEDeviceOperatingSystem.android);
-                device.signalCharacteristic(characteristic);
-            } else if (characteristic.getUuid().equals(BLESensorConfiguration.iosSignalCharacteristicUUID)) {
-                logger.debug("onServicesDiscovered, found iOS signal characteristic (device={})", device);
-                device.operatingSystem(BLEDeviceOperatingSystem.ios);
-                device.signalCharacteristic(characteristic);
-            } else if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
-                logger.debug("onServicesDiscovered, found payload characteristic (device={})", device);
-                device.payloadCharacteristic(characteristic);
-            }
-        }
-
-        // Device characteristics
+        // Device characteristics : Enabled if either device introspection or device filter training is enabled
         if (BLESensorConfiguration.deviceIntrospectionEnabled) {
             // Generic access : Device name
             if (device.deviceName() == null) {
@@ -717,7 +750,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private NextTask nextTaskForDevice(final BLEDevice device) {
         // No task for devices marked as .ignore
         if (device.ignore()) {
-            logger.debug("nextTaskForDevice, ignore (device={},ignoreExpiresIn={},ignoreRequestCount={})", device, device.timeIntervalUntilIgnoreExpires(), device.ignoreRequestCount());
+            logger.debug("nextTaskForDevice, ignore (device={},ignoreExpiresIn={})", device, device.timeIntervalUntilIgnoreExpires());
             return NextTask.nothing;
         }
         // If marked as ignore but ignore has expired, change to unknown

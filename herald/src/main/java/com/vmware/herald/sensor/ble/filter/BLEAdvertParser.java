@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor.ble.filter;
 
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.UInt8;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class BLEAdvertParser {
         int segmentLength;
         int segmentType;
         byte[] segmentData;
+        Data rawData;
         int c;
 
         while (position < raw.length) {
@@ -31,8 +33,9 @@ public class BLEAdvertParser {
                 // check reported length with actual remaining data length
                 if ((position + segmentLength - 1) <= raw.length) {
                     segmentData = subDataBigEndian(raw, position, segmentLength - 1); // Note: type IS INCLUDED in length
+                    rawData = new Data(subDataBigEndian(raw, position - 2, segmentLength + 1));
                     position += segmentLength - 1;
-                    segments.add(new BLEAdvertSegment(BLEAdvertSegmentType.typeFor(segmentType), segmentLength - 1, segmentData));
+                    segments.add(new BLEAdvertSegment(BLEAdvertSegmentType.typeFor(segmentType), segmentLength - 1, segmentData, rawData));
                 } else {
                     // error in data length - advance to end
                     position = raw.length;
@@ -64,7 +67,10 @@ public class BLEAdvertParser {
     }
 
     public static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
-        if (offset <= 0 || length <= 0) {
+        if (raw == null) {
+            return new byte[]{};
+        }
+        if (offset < 0 || length <= 0) {
             return new byte[]{};
         }
         if (length + offset > raw.length) {
@@ -79,7 +85,10 @@ public class BLEAdvertParser {
     }
 
     public static byte[] subDataLittleEndian(byte[] raw, int offset, int length) {
-        if (offset <= 0 || length <= 0) {
+        if (raw == null) {
+            return new byte[]{};
+        }
+        if (offset < 0 || length <= 0) {
             return new byte[]{};
         }
         if (length + offset > raw.length) {
@@ -114,25 +123,38 @@ public class BLEAdvertParser {
                 }
                 // Create a manufacturer data segment
                 int intValue = ((segment.data[1]&0xff) << 8) | (segment.data[0]&0xff);
-                manufacturerData.add(new BLEAdvertManufacturerData(intValue,subDataBigEndian(segment.data,2,segment.dataLength - 2)));
+                manufacturerData.add(new BLEAdvertManufacturerData(intValue,subDataBigEndian(segment.data,2,segment.dataLength - 2), segment.raw));
             }
         }
         return manufacturerData;
     }
 
     public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(List <BLEAdvertManufacturerData> manuData) {
-        List<BLEAdvertAppleManufacturerSegment> appleSegments = new ArrayList<>();
+        final List<BLEAdvertAppleManufacturerSegment> appleSegments = new ArrayList<>();
         for (BLEAdvertManufacturerData manu : manuData) {
             int bytePos = 0;
-            // Read type and length
             while (bytePos < manu.data.length) {
-                int typeValue = ((manu.data[bytePos + 1] & 0xff) << 8) | (manu.data[bytePos + 0] & 0xff);
-                int length = ((manu.data[bytePos + 3] & 0xff) << 8) | (manu.data[bytePos + 2] & 0xff);
-                bytePos += 4;
-                int maxLength = (length < manu.data.length - bytePos) ? length : manu.data.length - bytePos;
-                BLEAdvertAppleManufacturerSegment seg = new BLEAdvertAppleManufacturerSegment(typeValue, length, subDataBigEndian(manu.data, bytePos, maxLength));
-                appleSegments.add(seg);
-                bytePos += maxLength;
+                final byte type = manu.data[bytePos];
+                final int typeValue = type & 0xFF;
+                // "01" marks legacy service UUID encoding without length data
+                if (type == 0x01) {
+                    final int length = manu.data.length - bytePos - 1;
+                    final Data data = new Data(subDataBigEndian(manu.data, bytePos + 1, length));
+                    final Data raw = new Data(subDataBigEndian(manu.data, bytePos, manu.data.length - bytePos));
+                    final BLEAdvertAppleManufacturerSegment segment = new BLEAdvertAppleManufacturerSegment(typeValue, length, data.value, raw);
+                    appleSegments.add(segment);
+                    bytePos = manu.data.length;
+                }
+                // Parse according to Type-Length-Data
+                else {
+                    final int length = manu.data[bytePos + 1] & 0xFF;
+                    final int maxLength = (length < manu.data.length - bytePos - 2 ? length : manu.data.length - bytePos - 2);
+                    final Data data = new Data(subDataBigEndian(manu.data, bytePos + 2, maxLength));
+                    final Data raw = new Data(subDataBigEndian(manu.data, bytePos, maxLength + 2));
+                    final BLEAdvertAppleManufacturerSegment segment = new BLEAdvertAppleManufacturerSegment(typeValue, length, data.value, raw);
+                    appleSegments.add(segment);
+                    bytePos += (maxLength + 2);
+                }
             }
         }
         return appleSegments;

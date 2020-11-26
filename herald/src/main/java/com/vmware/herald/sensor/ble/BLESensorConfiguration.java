@@ -90,14 +90,6 @@ public class BLESensorConfiguration {
     /// - Filters all occurrences of payload data from all targets
     public static TimeInterval filterDuplicatePayloadData = TimeInterval.never;
 
-    /// Ignore device permanently after a number of failed connection and service discovery attempts. This
-    /// is particularly useful for ignoring Apple devices not advertising HERALD services, i.e. Apple TV,
-    /// and Mac computers.
-    /// - Set to null to disable this feature, to ensure all devices are found
-    /// - Set to N to ignore device permanently after N failed attempts to connect or find HERALD service
-    /// - Note the ignore logic increases time between retries on each failed attempt to up to 3 mins per retry
-    public static Integer ignoreDevicePermanentlyAfterRetries = null;
-
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
     public static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
 
@@ -106,4 +98,27 @@ public class BLESensorConfiguration {
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
     public static boolean deviceIntrospectionEnabled = false;
+
+    /// Enable device filter training
+    /// - Use this to gather device make/model and advert messages
+    /// - Generates "filter.csv" log file for analysis
+    /// - Enable device introspection to obtain device make/model data
+    /// - Performs device introspection even if the device does not advertise sensor services
+    /// - Triggers update every minute for each device to gather sample advert data
+    /// - Disables device filter feature patterns
+    public static boolean deviceFilterTrainingEnabled = false;
+
+    /// Define device filtering rules based on message patterns
+    /// - Avoids connections to devices that cannot host sensor services
+    /// - Matches against every manufacturer specific data message (Hex format) in advert
+    /// - Java regular expression patterns, case insensitive, find pattern anywhere in message
+    /// - Remember to include ^ to match from start of message
+    /// - Use deviceFilterTrainingEnabled in development environment to identify patterns
+    public static String[] deviceFilterFeaturePatterns = new String[]{
+            "^10....04",
+            "^10....14",
+            "^10....1C"
+    };
 }
+
+
