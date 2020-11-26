@@ -116,7 +116,8 @@ public class BLESensorConfiguration {
     /// - Use deviceFilterTrainingEnabled in development environment to identify patterns
     public static String[] deviceFilterFeaturePatterns = new String[]{
             "^10....04",
-            "^10....14"
+            "^10....14",
+            "^10....1C"
     };
 }
 

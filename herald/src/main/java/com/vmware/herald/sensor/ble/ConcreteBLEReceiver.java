@@ -22,6 +22,7 @@ import android.os.ParcelUuid;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
+import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;

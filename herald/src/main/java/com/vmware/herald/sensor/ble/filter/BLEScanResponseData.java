@@ -14,4 +14,9 @@ public class BLEScanResponseData {
         this.dataLength = dataLength;
         this.segments = segments;
     }
+
+    @Override
+    public String toString() {
+        return segments.toString();
+    }
 }

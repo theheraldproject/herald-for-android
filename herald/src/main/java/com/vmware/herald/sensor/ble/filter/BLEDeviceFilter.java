@@ -2,7 +2,7 @@
 //  SPDX-License-Identifier: MIT
 //
 
-package com.vmware.herald.sensor.ble;
+package com.vmware.herald.sensor.ble.filter;
 
 import android.bluetooth.le.ScanRecord;
 import android.content.Context;
@@ -14,6 +14,7 @@ import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.data.TextFile;
 import com.vmware.herald.sensor.datatype.Data;
 
+import java.math.MathContext;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -125,50 +126,31 @@ public class BLEDeviceFilter {
         return filterPatterns;
     }
 
-    /// Extract all manufacturer data segments from raw scan record data
-    protected final static List<Data> extractManufacturerData(final Data raw) {
-        final List<Data> segments = new ArrayList<>(1);
-        // Scan raw data to search for "FF4C00" and use preceding 1-byte to establish length of segment
-        for (int i=0; i<raw.value.length-2; i++) {
-            try {
-                // Search for "FF4C00"
-                if (raw.value[i] == (byte) 0xFF && raw.value[i+1] == (byte) 0x4C && raw.value[i+2] == (byte) 0x00) {
-                    // Extract segment based on 1-byte length value preceding "FF4C00"
-                    final int lengthOfManufacturerDataSegment = raw.value[i-1] & 0xFF;
-                    final Data segment = raw.subdata(i+3, lengthOfManufacturerDataSegment - 3);
-                    segments.add(segment);
-                }
-            } catch (Throwable e) {
-                // Errors are expected due to parsing errors and corrupted data
-            }
+    /// Extract messages from manufacturer specific data
+    protected final static List<Data> extractMessages(final byte[] rawScanRecordData) {
+        // Parse raw scan record data in scan response data
+        if (rawScanRecordData == null || rawScanRecordData.length == 0) {
+            return null;
         }
-        return segments;
-    }
-
-    /// Extract all messages from manufacturer data segments
-    protected final static List<Data> extractMessageData(final List<Data> manufacturerData) {
-        final List<Data> messages = new ArrayList<>();
-        for (Data segment : manufacturerData) {
-            try {
-                // "01" marks legacy service UUID encoding
-                if (segment.value[0] == (byte) 0x01) {
-                    messages.add(segment);
-                }
-                // Assume all other prefixes mark new messages "Type:Length:Data"
-                else {
-                    final byte[] raw = segment.value;
-                    for (int i=0; i<raw.length - 1; i++) {
-                        // Type (1-byte), Length (1-byte), Data
-                        final int lengthOfMessage = raw[i+1] & 0xFF;
-                        final Data message = segment.subdata(i, lengthOfMessage + 2);
-                        if (message != null) {
-                            messages.add(message);
-                        }
-                        i += (lengthOfMessage + 1);
-                    }
-                }
-            } catch (Throwable e) {
-                // Errors are expected due to parsing errors and corrupted data
+        final BLEScanResponseData bleScanResponseData = BLEAdvertParser.parseScanResponse(rawScanRecordData, 0);
+        // Parse scan response data into manufacturer specific data
+        if (bleScanResponseData == null || bleScanResponseData.segments == null || bleScanResponseData.segments.isEmpty()) {
+            return null;
+        }
+        final List<BLEAdvertManufacturerData> bleAdvertManufacturerDataList = BLEAdvertParser.extractManufacturerData(bleScanResponseData.segments);
+        // Parse manufacturer specific data into messages
+        if (bleAdvertManufacturerDataList == null || bleAdvertManufacturerDataList.isEmpty()) {
+            return null;
+        }
+        final List<BLEAdvertAppleManufacturerSegment> bleAdvertAppleManufacturerSegments = BLEAdvertParser.extractAppleManufacturerSegments(bleAdvertManufacturerDataList);
+        // Convert segments to messages
+        if (bleAdvertAppleManufacturerSegments == null || bleAdvertAppleManufacturerSegments.isEmpty()) {
+            return null;
+        }
+        final List<Data> messages = new ArrayList<>(bleAdvertAppleManufacturerSegments.size());
+        for (BLEAdvertAppleManufacturerSegment segment : bleAdvertAppleManufacturerSegments) {
+            if (segment.raw != null && segment.raw.value.length > 0) {
+                messages.add(segment.raw);
             }
         }
         return messages;
@@ -183,11 +165,9 @@ public class BLEDeviceFilter {
         }
         // Get message data
         final List<Data> featureList = new ArrayList<>();
-        final byte[] rawData = scanRecord.getBytes();
-        if (rawData != null) {
-            final List<Data> manufacturerData = extractManufacturerData(new Data(rawData));
-            final List<Data> messageData = extractMessageData(manufacturerData);
-            featureList.addAll(messageData);
+        final List<Data> messages = extractMessages(scanRecord.getBytes());
+        if (messages != null) {
+            featureList.addAll(messages);
         }
         return featureList;
     }
@@ -256,31 +236,40 @@ public class BLEDeviceFilter {
         }
     }
 
-    /// Match scan record messages against all registered patterns, returns matching pattern or null.
-    public MatchingPattern match(final BLEDevice device) {
+    /// Match filter patterns against data items, returning the first match
+    protected final static MatchingPattern match(final List<FilterPattern> patternList, final Data rawData) {
         // No pattern to match against
-        if (filterPatterns == null || filterPatterns.isEmpty()) {
+        if (patternList == null || patternList.isEmpty()) {
             return null;
         }
+        // Empty raw data
+        if (rawData == null || rawData.value.length == 0) {
+            return null;
+        }
+        // Extract messages
+        final List<Data> messages = extractMessages(rawData.value);
+        if (messages == null || messages.isEmpty()) {
+            return null;
+        }
+        for (Data message : messages) {
+            final String hexEncodedString = message.hexEncodedString();
+            final FilterPattern pattern = match(patternList, hexEncodedString);
+            if (pattern != null) {
+                return new MatchingPattern(pattern, hexEncodedString);
+            }
+        }
+        return null;
+    }
+
+    /// Match scan record messages against all registered patterns, returns matching pattern or null.
+    public MatchingPattern match(final BLEDevice device) {
         final ScanRecord scanRecord = device.scanRecord();
         // Cannot match device without any scan record data
         if (scanRecord == null) {
             return null;
         }
-        // Extract feature data from scan record
-        // Cannot match device without any feature data
-        final List<Data> featureList = extractFeatures(scanRecord);
-        if (featureList == null || featureList.isEmpty()) {
-            return null;
-        }
-        for (Data featureData : featureList) {
-            final String message = featureData.hexEncodedString();
-            final FilterPattern filterPattern = match(filterPatterns, message);
-            if (filterPattern != null) {
-                return new MatchingPattern(filterPattern, message);
-            }
-        }
-        return null;
+        final Data rawData = new Data(scanRecord.getBytes());
+        return match(filterPatterns, rawData);
     }
 
     /// Should the device be ignored based on scan record data?
