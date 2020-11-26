@@ -117,8 +117,12 @@ public class BLEDeviceFilter {
         for (final String regularExpression : regularExpressions) {
             try {
                 final Pattern pattern = Pattern.compile(regularExpression, Pattern.CASE_INSENSITIVE);
-                final FilterPattern filterPattern = new FilterPattern(regularExpression, pattern);
-                filterPatterns.add(filterPattern);
+                if (regularExpression != null && !regularExpression.isEmpty() && pattern != null) {
+                    final FilterPattern filterPattern = new FilterPattern(regularExpression, pattern);
+                    filterPatterns.add(filterPattern);
+                } else {
+                    logger.fault("compilePatterns, invalid filter pattern (regularExpression={})", regularExpression);
+                }
             } catch (Throwable e) {
                 logger.fault("compilePatterns, invalid filter pattern (regularExpression={})", regularExpression);
             }
@@ -149,7 +153,7 @@ public class BLEDeviceFilter {
         }
         final List<Data> messages = new ArrayList<>(bleAdvertAppleManufacturerSegments.size());
         for (BLEAdvertAppleManufacturerSegment segment : bleAdvertAppleManufacturerSegments) {
-            if (segment.raw != null && segment.raw.value.length > 0) {
+            if (segment != null && segment.raw != null && segment.raw.value.length > 0) {
                 messages.add(segment.raw);
             }
         }
@@ -243,7 +247,7 @@ public class BLEDeviceFilter {
             return null;
         }
         // Empty raw data
-        if (rawData == null || rawData.value.length == 0) {
+        if (rawData == null || rawData.value == null || rawData.value.length == 0) {
             return null;
         }
         // Extract messages
@@ -252,10 +256,17 @@ public class BLEDeviceFilter {
             return null;
         }
         for (Data message : messages) {
-            final String hexEncodedString = message.hexEncodedString();
-            final FilterPattern pattern = match(patternList, hexEncodedString);
-            if (pattern != null) {
-                return new MatchingPattern(pattern, hexEncodedString);
+            if (message == null) {
+                continue;
+            }
+            try {
+                final String hexEncodedString = message.hexEncodedString();
+                final FilterPattern pattern = match(patternList, hexEncodedString);
+                if (pattern != null) {
+                    return new MatchingPattern(pattern, hexEncodedString);
+                }
+            } catch (Throwable e) {
+                // Errors are acceptable
             }
         }
         return null;
@@ -263,13 +274,29 @@ public class BLEDeviceFilter {
 
     /// Match scan record messages against all registered patterns, returns matching pattern or null.
     public MatchingPattern match(final BLEDevice device) {
-        final ScanRecord scanRecord = device.scanRecord();
-        // Cannot match device without any scan record data
-        if (scanRecord == null) {
+        try {
+            final ScanRecord scanRecord = device.scanRecord();
+            // Cannot match device without any scan record data
+            if (scanRecord == null) {
+                return null;
+            }
+            // Cannot match scan record where data is null
+            final byte[] bytes = scanRecord.getBytes();
+            if (bytes == null) {
+                return null;
+            }
+            final Data rawData = new Data(bytes);
+            // Attempt to match
+            final MatchingPattern matchingPattern = match(filterPatterns, rawData);
+            if (matchingPattern == null || matchingPattern.filterPattern == null || matchingPattern.filterPattern.pattern == null || matchingPattern.filterPattern.regularExpression == null || matchingPattern.message == null) {
+                return null;
+            } else {
+                return matchingPattern;
+            }
+        } catch (Throwable e) {
+            logger.fault("match, unknown error (device={},scanRecord={})", device, device.scanRecord());
             return null;
         }
-        final Data rawData = new Data(scanRecord.getBytes());
-        return match(filterPatterns, rawData);
     }
 
     /// Should the device be ignored based on scan record data?
