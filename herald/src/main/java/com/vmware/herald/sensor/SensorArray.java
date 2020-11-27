@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import com.vmware.herald.BuildConfig;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
 import com.vmware.herald.sensor.data.BatteryLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
@@ -56,12 +57,13 @@ public class SensorArray implements Sensor {
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-        add(new ContactLog(context, "contacts.csv"));
-        add(new StatisticsLog(context, "statistics.csv", payloadData));
-        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
-        add(new DetectionLog(context,"detection.csv", payloadData));
-        new BatteryLog(context, "battery.csv");
-
+		if (BuildConfig.DEBUG) {
+	        add(new ContactLog(context, "contacts.csv"));
+	        add(new StatisticsLog(context, "statistics.csv", payloadData));
+	        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
+	        add(new DetectionLog(context,"detection.csv", payloadData));
+	        new BatteryLog(context, "battery.csv");
+		}
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
     }
 
