@@ -1,3 +1,10 @@
+plugins {
+    id 'maven-publish'
+}
+
+group = 'com.vmware.herald'
+version = '1.1.0-beta4'
+
 apply plugin: 'com.android.library'
 
 android {
@@ -30,4 +37,80 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'androidx.appcompat:appcompat:1.2.0'
     testImplementation 'junit:junit:4.12'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = 'com.vmware.herald'
+                artifactId = 'herald'
+                pom {
+                    name = 'Herald'
+                    description = 'Reliable consumer device Bluetooth library'
+                    url = 'https://vmware.github.io/herald/'
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'adamfowleruk'
+                            name = 'Adam Fowler'
+                            email = 'adamfowleruk@gmail.com'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/vmware/herald-for-android.git'
+                        developerConnection = 'scm:git:ssh://github.com/vmware/herald-for-android.git'
+                        url = 'https://vmware.github.io/herald/'
+                    }
+                }
+            }
+            debug(MavenPublication) {
+                // Applies the component for the debug build variant.
+                from components.debug
+
+                groupId = 'com.vmware.herald'
+                artifactId = 'herald-debug'
+                pom {
+                    name = 'Herald'
+                    description = 'Reliable consumer device Bluetooth library'
+                    url = 'https://vmware.github.io/herald/'
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'adamfowleruk'
+                            name = 'Adam Fowler'
+                            email = 'adamfowleruk@gmail.com'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/vmware/herald-for-android.git'
+                        developerConnection = 'scm:git:ssh://github.com/vmware/herald-for-android.git'
+                        url = 'https://vmware.github.io/herald/'
+                    }
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                name = 'myRepo'
+                url = "file://${buildDir}/repo"
+                // def releasesRepoUrl = "https://oss.sonatype.org/content/repositories/releases/"
+                // def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+                // url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            }
+        }
+    }
 }
