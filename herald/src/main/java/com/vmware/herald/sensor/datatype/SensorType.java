@@ -8,10 +8,16 @@ package com.vmware.herald.sensor.datatype;
 public enum SensorType {
     /// Bluetooth Low Energy (BLE)
     BLE,
-    /// GPS location sensor
-    GPS
-//    /// Physical beacon, e.g. iBeacon
-//    BEACON,
-//    /// Ultrasound audio beacon.
-//    ULTRASOUND
+    /// Bluetooth Mesh
+    BLMESH,
+    /// Awake Sensor - Used on iOS
+    AWAKE,
+    /// GPS location sensor - Not used in Herald by default
+    GPS,
+    /// Physical beacon, e.g. iBeacon
+    BEACON,
+    /// Ultrasound audio beacon.
+    ULTRASOUND,
+    /// Other - in case of new sensor types in use between major versions
+    OTHER
 }
