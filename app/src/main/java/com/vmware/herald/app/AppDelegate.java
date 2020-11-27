@@ -99,7 +99,7 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
-        Log.i(tag, sensor.name() + ",didVisit=" + didVisit.description());
+        Log.i(tag, sensor.name() + ",didVisit=" + ((null == didVisit) ? "" : didVisit.description()));
     }
 
     @Override
