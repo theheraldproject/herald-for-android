@@ -5,6 +5,7 @@
 package com.vmware.herald.sensor.ble;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -17,6 +18,7 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Build;
 import android.os.ParcelUuid;
 
 import com.vmware.herald.sensor.SensorDelegate;
@@ -546,7 +548,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final long timeConnect = System.currentTimeMillis();
         logger.debug("taskConnectDevice, connect (device={})", device);
         device.state(BLEDeviceState.connecting);
-        final BluetoothGatt gatt = device.peripheral().connectGatt(context, false, this);
+        BluetoothGatt gatt = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // API 23 and above - force Low Energy only
+            gatt = device.peripheral().connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
+        } else {
+            // support back to API 21
+            gatt = device.peripheral().connectGatt(context, false, this);
+        }
         if (gatt == null) {
             logger.fault("taskConnectDevice, connect failed (device={})", device);
             device.state(BLEDeviceState.disconnected);
