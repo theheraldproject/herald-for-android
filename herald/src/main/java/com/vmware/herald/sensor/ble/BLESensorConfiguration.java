@@ -121,11 +121,12 @@ public class BLESensorConfiguration {
     /// - Remember to include ^ to match from start of message
     /// - Use deviceFilterTrainingEnabled in development environment to identify patterns
     public static String[] deviceFilterFeaturePatterns = new String[]{
+            "^00","^03","^05","^06","^07","^08","^09","^0B","^0C","^0D","^0E","^0F",
             "^10....04",
             "^10....14",
             "^10....1C",
-            "^05","^07","^09",
-            "^00","^01","^1002","^06","^08","^03","^0C","^0D","^0F","^0E","^0B"
+            "^1002",
+            "^0101000000000000000000000000000000"
     };
 }
 
