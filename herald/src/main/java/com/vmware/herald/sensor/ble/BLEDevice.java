@@ -58,6 +58,7 @@ public class BLEDevice {
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
     private BluetoothGattCharacteristic payloadCharacteristic = null;
+    private BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
     protected byte[] signalCharacteristicWriteValue = null;
     protected Queue<byte[]> signalCharacteristicWriteQueue = null;
 
@@ -136,6 +137,7 @@ public class BLEDevice {
         this.deviceName = device.deviceName;
         this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
         this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
+        this.legacyPayloadCharacteristic = device.legacyPayloadCharacteristic;
         this.lastDiscoveredAt = device.lastDiscoveredAt;
         this.lastConnectedAt = device.lastConnectedAt;
         this.payloadSharingData.addAll(device.payloadSharingData);
@@ -254,6 +256,15 @@ public class BLEDevice {
         delegate.device(this, BLEDeviceAttribute.rssi);
     }
 
+    public void legacyPayloadCharacteristic(BluetoothGattCharacteristic characteristic) {
+        this.legacyPayloadCharacteristic = characteristic;
+        lastPayloadDataUpdate = new Date();
+    }
+
+    public BluetoothGattCharacteristic getLegacyPayloadCharacteristic() {
+        return  legacyPayloadCharacteristic;
+    }
+
     public BLE_TxPower txPower() {
         return txPower;
     }
@@ -285,6 +296,7 @@ public class BLEDevice {
         payloadCharacteristic = null;
         modelCharacteristic = null;
         deviceNameCharacteristic = null;
+        legacyPayloadCharacteristic = null;
     }
 
     public BluetoothGattCharacteristic signalCharacteristic() {

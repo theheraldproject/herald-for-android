@@ -693,6 +693,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         } else {
             logger.debug("onServicesDiscovered, found sensor service (device={})", device);
             device.invalidateCharacteristics();
+			boolean readService = false;
             for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                 // Confirm operating system with signal characteristic
                 if (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
@@ -705,8 +706,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.signalCharacteristic(characteristic);
                 } else if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
                     logger.debug("onServicesDiscovered, found payload characteristic (device={})", device);
+					readService = true;
                     device.payloadCharacteristic(characteristic);
-                }
+                } else if (characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID) && !readService) {
+                	logger.debug("onServicesDiscovered, found legacy payload characteristic (device={})", device);
+                    device.payloadCharacteristic(characteristic);
+                    device.legacyPayloadCharacteristic(characteristic);
+					// If they have the legacy characteristic we know it a COVID app and can set the OS to be confirmed
+	                if (device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
+	                    device.operatingSystem(BLEDeviceOperatingSystem.android);
+	                } else if(device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
+	                    device.operatingSystem(BLEDeviceOperatingSystem.ios);
+	                }
+				}
             }
         }
 
@@ -898,6 +910,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
+                // TODO incorporate Android non-auth security patch once license confirmed
                 logger.debug("nextTask (task=readPayload,device={})", device);
                 return; // => onCharacteristicRead | timeout
             }
@@ -1049,12 +1062,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
         logger.debug("onCharacteristicRead (device={},status={},characteristic={})", device, bleStatus(status), characteristic.getUuid().toString());
-        if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
+        if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID) || characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
             final PayloadData payloadData = (characteristic.getValue() != null ? new PayloadData(characteristic.getValue()) : null);
             if (success) {
                 if (payloadData != null) {
                     logger.debug("onCharacteristicRead, read payload data success (device={},payload={})", device, payloadData.shortName());
                     device.payloadData(payloadData);
+                    // TODO incorporate Android non-auth security patch once license confirmed
                 } else {
                     logger.fault("onCharacteristicRead, read payload data failed, no data (device={})", device);
                 }

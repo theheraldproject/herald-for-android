@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.ble;
 
+import android.bluetooth.BluetoothGattCharacteristic;
+
 import com.vmware.herald.sensor.data.SensorLoggerLevel;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
@@ -19,7 +21,7 @@ public class BLESensorConfiguration {
     /// - Service and characteristic UUIDs are V4 UUIDs that have been randomly generated and tested
     /// for uniqueness by conducting web searches to ensure it returns no results.
     /// - Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
-    public final static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
+    public static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
     /// Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID androidSignalCharacteristicUUID = UUID.fromString("f617b813-092e-437a-8324-e09a80821a11");
@@ -29,7 +31,11 @@ public class BLESensorConfiguration {
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
-
+	/// Legacy payload sharing characteristic
+	public static UUID legacyPayloadCharacteristicUUID = null;
+	/// A full characteristic description itself for a legacy payload
+	public static BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
+	
     /// Standard Bluetooth service and characteristics
     /// These are all fixed UUID from the BLE standard.
     /// Standard Bluetooth Service UUID for Generic Access Service
