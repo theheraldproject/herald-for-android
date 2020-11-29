@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.payload.sonar;
@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 
 /// Mock SONAR payload supplier for simulating payload transfer of 129 byte Sonar payload data.
 public class SonarPayloadDataSupplier extends DefaultPayloadDataSupplier {
-    private static final int length = 129;
+    private final static int length = 129;
     private final int identifier;
 
     public SonarPayloadDataSupplier(int identifier) {

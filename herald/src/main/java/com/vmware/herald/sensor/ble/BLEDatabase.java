@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.ble;
@@ -26,6 +26,9 @@ public interface BLEDatabase {
 
     /// Get or create device for collating information from asynchronous BLE operations.
     BLEDevice device(PayloadData payloadData);
+
+    /// Get a device from a TargetIdentifier
+    BLEDevice device(TargetIdentifier targetIdentifier);
 
     /// Get all devices
     List<BLEDevice> devices();

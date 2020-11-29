@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.ble;
@@ -25,6 +25,7 @@ import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
@@ -35,7 +36,7 @@ import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.datatype.Triple;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
 
 import java.util.ArrayList;
@@ -412,6 +413,19 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     return;
                 }
                 final Data data = new Data(onCharacteristicWriteSignalData(device, value));
+				if (characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+				    if (null == data.value) {
+				        return;
+                    }
+                    final PayloadData payloadData = new PayloadData(data.value);
+                    logger.debug("didReceiveWrite (dataType=payload,central={},payload={})", targetDevice, payloadData);
+                    targetDevice.payloadData(payloadData);
+                    onCharacteristicWriteSignalData.remove(device.getAddress());
+                    if (responseNeeded) {
+                        server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+                    }
+                    return;
+                }
                 switch (SignalCharacteristicData.detect(data)) {
                     case rssi: {
                         final RSSI rssi = SignalCharacteristicData.decodeWriteRSSI(data);
@@ -461,6 +475,18 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         }
                         break;
                     }
+                    case immediateSend: {
+                        final ImmediateSendData immediateSendData = SignalCharacteristicData.decodeImmediateSend(data);
+                        if (immediateSendData == null) {
+                            // Fragmented immediate send data may be incomplete
+                            break;
+                        }
+                        for (SensorDelegate delegate : delegates) {
+                            delegate.sensor(SensorType.BLE, immediateSendData, targetIdentifier);
+                        }
+                        logger.debug("didReceiveWrite (dataType=immediateSend,central={},immediateSendData={})", targetDevice, immediateSendData.data);
+                        break;
+                    }
                 }
                 if (responseNeeded) {
                     server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
@@ -470,7 +496,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
                 final BLEDevice targetDevice = database.device(device);
-                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID) {
+                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
                     final PayloadData payloadData = onCharacteristicReadPayloadData(device);
                     if (offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
@@ -520,6 +546,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
+		if (null != BLESensorConfiguration.legacyPayloadCharacteristic) {
+			final BluetoothGattCharacteristic legacyPayloadCharacteristic = 
+			BLESensorConfiguration.legacyPayloadCharacteristic;
+        	service.addCharacteristic(legacyPayloadCharacteristic);
+		}
         service.addCharacteristic(payloadCharacteristic);
         bluetoothGattServer.addService(service);
         logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",

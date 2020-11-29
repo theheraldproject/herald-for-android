@@ -1,12 +1,16 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.ble;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.le.ScanRecord;
 
+import com.vmware.herald.sensor.datatype.Calibration;
+import com.vmware.herald.sensor.datatype.CalibrationMeasurementUnit;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PseudoDeviceAddress;
 import com.vmware.herald.sensor.datatype.RSSI;
@@ -22,36 +26,46 @@ public class BLEDevice {
     /// Device registration timestamp
     public final Date createdAt;
     /// Last time anything changed, e.g. attribute update
-    public Date lastUpdatedAt;
+    public Date lastUpdatedAt = null;
     /// Ephemeral device identifier, e.g. peripheral identifier UUID
     public final TargetIdentifier identifier;
     /// Pseudo device address for tracking Android devices that change address constantly.
-    private PseudoDeviceAddress pseudoDeviceAddress;
+    private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
     private final BLEDeviceDelegate delegate;
     /// Android Bluetooth device object for interacting with this device.
-    private BluetoothDevice peripheral;
+    private BluetoothDevice peripheral = null;
     /// Bluetooth device connection state.
     private BLEDeviceState state = BLEDeviceState.disconnected;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
-    private PayloadData payloadData;
+    private PayloadData payloadData = null;
+    private Date lastPayloadDataUpdate = null;
+    /// Immediate Send data to send next
+    private Data immediateSendData = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
-    private RSSI rssi;
+    private RSSI rssi = null;
     /// Transmit power data where available (only provided by Android devices)
-    private BLE_TxPower txPower;
+    private BLE_TxPower txPower = null;
     /// Is device receive only?
     private boolean receiveOnly = false;
     /// Ignore logic
     private TimeInterval ignoreForDuration = null;
     private Date ignoreUntil = null;
+    private ScanRecord scanRecord = null;
 
     /// BLE characteristics
     private BluetoothGattCharacteristic signalCharacteristic = null;
     private BluetoothGattCharacteristic payloadCharacteristic = null;
+    private BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
     protected byte[] signalCharacteristicWriteValue = null;
     protected Queue<byte[]> signalCharacteristicWriteQueue = null;
+
+    private BluetoothGattCharacteristic modelCharacteristic = null;
+    private String model = null;
+    private BluetoothGattCharacteristic deviceNameCharacteristic = null;
+    private String deviceName = null;
 
     /// Track connection timestamps
     private Date lastDiscoveredAt = null;
@@ -81,7 +95,14 @@ public class BLEDevice {
     }
 
     public String description() {
-        return "BLEDevice[id=" + identifier + ",os=" + operatingSystem + ",payload=" + payloadData() + ",address=" + pseudoDeviceAddress() + "]";
+        return "BLEDevice[" +
+                "id=" + identifier +
+                ",os=" + operatingSystem +
+                ",payload=" + payloadData() +
+                (pseudoDeviceAddress() != null ? ",address=" + pseudoDeviceAddress() : "") +
+                (deviceName() != null ? ",name=" + deviceName() : "") +
+                (model() != null ? ",model=" + model() : "") +
+                "]";
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
@@ -101,15 +122,22 @@ public class BLEDevice {
         this.state = device.state;
         this.operatingSystem = device.operatingSystem;
         this.payloadData = device.payloadData;
+        this.lastPayloadDataUpdate = device.lastPayloadDataUpdate;
         this.rssi = device.rssi;
         this.txPower = device.txPower;
         this.receiveOnly = device.receiveOnly;
         this.ignoreForDuration = device.ignoreForDuration;
         this.ignoreUntil = device.ignoreUntil;
+        this.scanRecord = device.scanRecord;
         this.signalCharacteristic = device.signalCharacteristic;
         this.payloadCharacteristic = device.payloadCharacteristic;
+        this.modelCharacteristic = device.modelCharacteristic;
+        this.deviceNameCharacteristic = device.deviceNameCharacteristic;
+        this.model = device.model;
+        this.deviceName = device.deviceName;
         this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
         this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
+        this.legacyPayloadCharacteristic = device.legacyPayloadCharacteristic;
         this.lastDiscoveredAt = device.lastDiscoveredAt;
         this.lastConnectedAt = device.lastConnectedAt;
         this.payloadSharingData.addAll(device.payloadSharingData);
@@ -168,9 +196,13 @@ public class BLEDevice {
             }
             ignoreUntil = new Date(lastUpdatedAt.getTime() + ignoreForDuration.millis());
         } else {
-            ignoreForDuration = null;
             ignoreUntil = null;
         }
+        // Reset ignore for duration and request count if operating system has been confirmed
+        if (operatingSystem == BLEDeviceOperatingSystem.ios || operatingSystem == BLEDeviceOperatingSystem.android) {
+            ignoreForDuration = null;
+        }
+        // Set operating system
         if (this.operatingSystem != operatingSystem) {
             this.operatingSystem = operatingSystem;
             delegate.device(this, BLEDeviceAttribute.operatingSystem);
@@ -194,8 +226,24 @@ public class BLEDevice {
 
     public void payloadData(PayloadData payloadData) {
         this.payloadData = payloadData;
-        lastUpdatedAt = new Date();
+        lastPayloadDataUpdate = new Date();
+        lastUpdatedAt = lastPayloadDataUpdate;
         delegate.device(this, BLEDeviceAttribute.payloadData);
+    }
+
+    public TimeInterval timeIntervalSinceLastPayloadDataUpdate() {
+        if (lastPayloadDataUpdate == null) {
+            return TimeInterval.never;
+        }
+        return new TimeInterval((new Date().getTime() - lastPayloadDataUpdate.getTime()) / 1000);
+    }
+
+    public void immediateSendData(Data immediateSendData) {
+        this.immediateSendData = immediateSendData;
+    }
+
+    public Data immediateSendData() {
+        return immediateSendData;
     }
 
     public RSSI rssi() {
@@ -208,6 +256,15 @@ public class BLEDevice {
         delegate.device(this, BLEDeviceAttribute.rssi);
     }
 
+    public void legacyPayloadCharacteristic(BluetoothGattCharacteristic characteristic) {
+        this.legacyPayloadCharacteristic = characteristic;
+        lastPayloadDataUpdate = new Date();
+    }
+
+    public BluetoothGattCharacteristic getLegacyPayloadCharacteristic() {
+        return  legacyPayloadCharacteristic;
+    }
+
     public BLE_TxPower txPower() {
         return txPower;
     }
@@ -216,6 +273,13 @@ public class BLEDevice {
         this.txPower = txPower;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.txPower);
+    }
+
+    public Calibration calibration() {
+        if (txPower == null) {
+            return null;
+        }
+        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, new Double(txPower.value));
     }
 
     public boolean receiveOnly() {
@@ -230,6 +294,9 @@ public class BLEDevice {
     public void invalidateCharacteristics() {
         signalCharacteristic = null;
         payloadCharacteristic = null;
+        modelCharacteristic = null;
+        deviceNameCharacteristic = null;
+        legacyPayloadCharacteristic = null;
     }
 
     public BluetoothGattCharacteristic signalCharacteristic() {
@@ -247,6 +314,38 @@ public class BLEDevice {
 
     public void payloadCharacteristic(BluetoothGattCharacteristic characteristic) {
         this.payloadCharacteristic = characteristic;
+        lastUpdatedAt = new Date();
+    }
+
+    public boolean supportsModelCharacteristic() { return null != modelCharacteristic; }
+
+    public BluetoothGattCharacteristic modelCharacteristic() { return modelCharacteristic; }
+
+    public void modelCharacteristic(BluetoothGattCharacteristic modelCharacteristic) {
+        this.modelCharacteristic = modelCharacteristic;
+        lastUpdatedAt = new Date();
+    }
+
+    public boolean supportsDeviceNameCharacteristic() { return null != deviceNameCharacteristic; }
+
+    public BluetoothGattCharacteristic deviceNameCharacteristic() { return deviceNameCharacteristic; }
+
+    public void deviceNameCharacteristic(BluetoothGattCharacteristic deviceNameCharacteristic) {
+        this.deviceNameCharacteristic = deviceNameCharacteristic;
+        lastUpdatedAt = new Date();
+    }
+
+    public String deviceName() { return deviceName; }
+
+    public void deviceName(String deviceName) {
+        this.deviceName = deviceName;
+        lastUpdatedAt = new Date();
+    }
+
+    public String model() { return model; }
+
+    public void model(String model) {
+        this.model = model;
         lastUpdatedAt = new Date();
     }
 
@@ -289,6 +388,24 @@ public class BLEDevice {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastWritePayloadSharingAt.getTime()) / 1000);
+    }
+
+    public TimeInterval timeIntervalUntilIgnoreExpires() {
+        if (ignoreUntil == null) {
+            return TimeInterval.zero;
+        }
+        if (ignoreUntil.getTime() == Long.MAX_VALUE) {
+            return TimeInterval.never;
+        }
+        return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
+    }
+
+    public void scanRecord(ScanRecord scanRecord) {
+        this.scanRecord = scanRecord;
+    }
+
+    public ScanRecord scanRecord() {
+        return scanRecord;
     }
 
     @Override

@@ -1,9 +1,9 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.data;
 
 public enum SensorLoggerLevel {
-    debug, info, fault
+    off, debug, info, fault
 }

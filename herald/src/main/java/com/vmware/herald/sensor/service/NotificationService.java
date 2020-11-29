@@ -1,3 +1,7 @@
+//  Copyright 2020 VMware, Inc.
+//  SPDX-License-Identifier: Apache-2.0
+//
+
 package com.vmware.herald.sensor.service;
 
 import android.app.Application;
@@ -18,8 +22,8 @@ import com.vmware.herald.sensor.datatype.Tuple;
 
 /// Notification service for enabling foreground service (notification must be displayed to show app is running in the background).
 public class NotificationService {
-    private static NotificationService shared;
-    private static Application application;
+    private static NotificationService shared = null;
+    private static Application application = null;
     private final Context context;
     private final static String notificationChannelName = "NotificationChannel";
     private final int notificationChannelId = notificationChannelName.hashCode();

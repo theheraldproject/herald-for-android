@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.data;
@@ -8,7 +8,7 @@ import android.content.Context;
 
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
-import com.vmware.herald.sensor.datatype.Sample;
+import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.DefaultSensorDelegate;

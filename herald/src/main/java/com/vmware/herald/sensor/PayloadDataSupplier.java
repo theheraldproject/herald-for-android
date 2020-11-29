@@ -1,8 +1,8 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
-package com.vmware.herald.sensor.payload;
+package com.vmware.herald.sensor;
 
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;

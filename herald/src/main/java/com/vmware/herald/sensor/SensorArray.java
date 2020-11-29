@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor;
@@ -8,16 +8,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import com.vmware.herald.BuildConfig;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
 import com.vmware.herald.sensor.data.BatteryLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.data.StatisticsDidReadLog;
 import com.vmware.herald.sensor.data.StatisticsLog;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;
@@ -32,6 +35,7 @@ public class SensorArray implements Sensor {
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
+    private final ConcreteBLESensor concreteBleSensor;
 
     public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
@@ -48,16 +52,24 @@ public class SensorArray implements Sensor {
         }
 
         // Define sensor array
-        sensorArray.add(new ConcreteBLESensor(context, payloadDataSupplier));
+        concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
+        sensorArray.add(concreteBleSensor);
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-        add(new ContactLog(context, "contacts.csv"));
-        add(new StatisticsLog(context, "statistics.csv", payloadData));
-        add(new DetectionLog(context,"detection.csv", payloadData));
-        new BatteryLog(context, "battery.csv");
-
+		if (BuildConfig.DEBUG) {
+	        add(new ContactLog(context, "contacts.csv"));
+	        add(new StatisticsLog(context, "statistics.csv", payloadData));
+	        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
+	        add(new DetectionLog(context,"detection.csv", payloadData));
+	        new BatteryLog(context, "battery.csv");
+		}
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
+    }
+
+    /// Immediate send data.
+    public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
+        return concreteBleSensor.immediateSend(data,targetIdentifier);
     }
 
     public final PayloadData payloadData() {

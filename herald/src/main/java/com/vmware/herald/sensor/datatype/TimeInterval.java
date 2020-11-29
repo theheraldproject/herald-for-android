@@ -1,8 +1,10 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
+
+import java.util.Date;
 
 /// Time interval in seconds.
 public class TimeInterval {
@@ -13,6 +15,14 @@ public class TimeInterval {
 
     public TimeInterval(long seconds) {
         this.value = seconds;
+    }
+
+    public TimeInterval(Date date) {
+        this.value = date.getTime() / 1000;
+    }
+
+    public TimeInterval(Date from, Date to) {
+        this.value = (to.getTime() - from.getTime()) / 1000;
     }
 
     public static TimeInterval minutes(long minutes) {

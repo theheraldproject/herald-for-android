@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.app;
@@ -11,13 +11,14 @@ import android.util.Log;
 import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
-import com.vmware.herald.sensor.payload.PayloadDataSupplier;
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.payload.sonar.SonarPayloadDataSupplier;
 
 import java.util.ArrayList;
@@ -25,10 +26,10 @@ import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private final static String tag = AppDelegate.class.getName();
-    private static AppDelegate appDelegate;
+    private static AppDelegate appDelegate = null;
 
     // Sensor for proximity detection
-    private Sensor sensor;
+    private Sensor sensor = null;
 
     /// Generate unique and consistent device identifier for testing detection and tracking
     private int identifier() {
@@ -78,6 +79,11 @@ public class AppDelegate extends Application implements SensorDelegate {
     }
 
     @Override
+    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+        Log.i(tag, sensor.name() + ",didReceive=" + didReceive.data.base64EncodedString() + ",fromTarget=" + fromTarget);
+    }
+
+    @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final List<String> payloads = new ArrayList<>(didShare.size());
         for (PayloadData payloadData : didShare) {
@@ -93,7 +99,7 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
-        Log.i(tag, sensor.name() + ",didVisit=" + didVisit.description());
+        Log.i(tag, sensor.name() + ",didVisit=" + ((null == didVisit) ? "" : didVisit.description()));
     }
 
     @Override

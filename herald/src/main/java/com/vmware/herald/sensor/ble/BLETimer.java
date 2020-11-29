@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.ble;
@@ -9,7 +9,7 @@ import android.os.PowerManager;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.datatype.Sample;
+import com.vmware.herald.sensor.analysis.Sample;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;

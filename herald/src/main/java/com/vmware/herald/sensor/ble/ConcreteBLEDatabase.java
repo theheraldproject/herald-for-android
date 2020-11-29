@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.ble;
@@ -174,6 +174,10 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return payloadData;
     }
 
+    @Override
+    public BLEDevice device(TargetIdentifier targetIdentifier) {
+        return database.get(targetIdentifier);
+    }
 
     @Override
     public BLEDevice device(BluetoothDevice bluetoothDevice) {

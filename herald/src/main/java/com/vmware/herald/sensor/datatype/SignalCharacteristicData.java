@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
@@ -119,6 +119,43 @@ public class SignalCharacteristicData {
         return new PayloadSharingData(new RSSI(rssiValue.intValue()), payloadSharingDataBytes);
     }
 
+    /// Encode immediate send data bundle
+    // immediateSend data format
+    // 0-0 : actionCode
+    // 1-2 : payload data count in bytes (Int16)
+    // 3.. : payload data
+    public static Data encodeImmediateSend(final ImmediateSendData immediateSendData) {
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + immediateSendData.data.value.length);
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWriteImmediate);
+        byteBuffer.putShort(1, (short) immediateSendData.data.value.length);
+        byteBuffer.position(3);
+        byteBuffer.put(immediateSendData.data.value);
+        return new Data(byteBuffer.array());
+    }
+
+    /// Decode immediate send data bundle
+    public static ImmediateSendData decodeImmediateSend(final Data data) {
+        if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteImmediate) {
+            return null;
+        }
+        if (data.value.length < 3) {
+            return null;
+        }
+        final Short immediateSendDataCount = int16(data.value, 1);
+        if (immediateSendDataCount == null) {
+            return null;
+        }
+        if (data.value.length != (3 + immediateSendDataCount.intValue())) {
+            return null;
+        }
+        final Data immediateSendDataBytes = new Data(data.value).subdata(3);
+        if (immediateSendDataBytes == null) {
+            return null;
+        }
+        return new ImmediateSendData(immediateSendDataBytes);
+    }
+
     /// Detect signal characteristic data bundle type
     public static SignalCharacteristicDataType detect(Data data) {
         switch (signalDataActionCode(data.value)) {
@@ -128,6 +165,8 @@ public class SignalCharacteristicData {
                 return SignalCharacteristicDataType.payload;
             case BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing:
                 return SignalCharacteristicDataType.payloadSharing;
+            case BLESensorConfiguration.signalCharacteristicActionWriteImmediate:
+                return SignalCharacteristicDataType.immediateSend;
             default:
                 return SignalCharacteristicDataType.unknown;
         }

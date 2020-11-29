@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.payload.c19x;
@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 /// Shared secret between device and server for deriving day codes and beacon codes.
 public class SharedSecret {
-    public byte[] value;
+    public final byte[] value;
 
     public SharedSecret(byte[] value) {
         this.value = value;

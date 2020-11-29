@@ -1,5 +1,5 @@
 //  Copyright 2020 VMware, Inc.
-//  SPDX-License-Identifier: MIT
+//  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
@@ -12,15 +12,25 @@ public class Proximity {
     public final ProximityMeasurementUnit unit;
     /// Measured value, e.g. raw RSSI value.
     public final Double value;
+    /// Calibration data (optional), e.g. transmit power
+    public final Calibration calibration;
 
     public Proximity(ProximityMeasurementUnit unit, Double value) {
+        this(unit, value, null);
+    }
+
+    public Proximity(ProximityMeasurementUnit unit, Double value, Calibration calibration) {
         this.unit = unit;
         this.value = value;
+        this.calibration = calibration;
     }
 
     /// Get plain text description of proximity data
     public String description() {
-        return unit + ":" + value;
+        if (calibration == null) {
+            return unit + ":" + value;
+        }
+        return unit + ":" + value + "[" + calibration.description() + "]";
     }
 
     @NonNull
