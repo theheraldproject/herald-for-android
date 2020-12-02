@@ -63,7 +63,7 @@ public class Base64 {
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         for (int i = 0; i < bytes.length; ) {
             int b = 0;
-            if (decodeTable[bytes[i]] != -1) {
+            if (bytes[i] >=0 && bytes[i] < decodeTable.length && decodeTable[bytes[i]] != -1) {
                 b = (decodeTable[bytes[i]] & 0xFF) << 18;
             } else {
                 // skip unknown characters
