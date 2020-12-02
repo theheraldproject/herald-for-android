@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.payload.simple;
 
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.security.SecureRandom;
@@ -50,10 +52,29 @@ public class K {
 
     /// Generate 2048-bit secret key, K_s
     protected static SecretKey secretKey() {
-        final SecureRandom secureRandom = new SecureRandom();
+        final SecureRandom secureRandom = getSecureRandom();
         final byte[] bytes = new byte[secretKeyLength];
         secureRandom.nextBytes(bytes);
         return new SecretKey(bytes);
+    }
+
+    public final static SecureRandom getSecureRandom() {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.Simple.K");
+        try {
+            // Retrieve a SHA1PRNG
+            final SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+            // Generate a secure seed
+            final SecureRandom seedSr = new SecureRandom();
+            // We need a 440 bit seed - see NIST SP800-90A
+            final byte[] seed = seedSr.generateSeed(55);
+            sr.setSeed(seed); // seed with random number
+            // Securely generate bytes
+            sr.nextBytes(new byte[256 + sr.nextInt(1024)]); // start from random position
+            return sr;
+        } catch (Throwable e) {
+            logger.fault("Could not retrieve SHA1PRNG SecureRandom instance", e);
+            return new SecureRandom();
+        }
     }
 
     /// Generate matching keys K_{m}^{0...days}

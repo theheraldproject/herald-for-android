@@ -21,7 +21,7 @@ public class TargetIdentifier {
 
     /// Create random target identifier
     public TargetIdentifier() {
-        this.value = UUID.randomUUID().toString();
+        this.value = UUID.randomUUID().toString(); // generated securely, see https://docs.oracle.com/javase/7/docs/api/java/util/UUID.html#randomUUID()
     }
 
     @Override
