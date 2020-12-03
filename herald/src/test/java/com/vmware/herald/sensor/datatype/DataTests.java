@@ -127,7 +127,7 @@ public class DataTests {
     public void testSubdataOffset() {
         // Deliberately making it random but deterministic for consistent testing
         final Random random = new Random(0);
-        for (int length=0; length<1000; length++) {
+        for (int length=0; length<100; length++) {
             final byte[] expected = new byte[length];
             random.nextBytes(expected);
             final Data data = new Data(expected);

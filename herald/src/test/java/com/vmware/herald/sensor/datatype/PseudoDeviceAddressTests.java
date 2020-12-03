@@ -38,6 +38,7 @@ public class PseudoDeviceAddressTests {
         }
     }
 
+    /// This test may fail sometimes, as not every byte will rotate all the time
     @Test
     public void testRandomBytes() {
         // Every byte should rotate (most of the time)
@@ -65,7 +66,7 @@ public class PseudoDeviceAddressTests {
     public void testPerformanceOfRandom() {
         final Sample sample = new Sample();
         long t0, t1;
-        for (int i=1000000; i-->0;) {
+        for (int i=100000; i-->0;) {
             t0 = System.nanoTime();
             Math.random();
             t1 = System.nanoTime();
@@ -78,7 +79,7 @@ public class PseudoDeviceAddressTests {
     public void testPerformanceOfSecureRandom() {
         final Sample sample = new Sample();
         long t0, t1;
-        for (int i=1000000; i-->0;) {
+        for (int i=100000; i-->0;) {
             t0 = System.nanoTime();
             PseudoDeviceAddress.getSecureRandom().nextLong();
             t1 = System.nanoTime();

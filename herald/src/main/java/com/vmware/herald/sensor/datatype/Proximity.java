@@ -6,6 +6,8 @@ package com.vmware.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
 
+import java.util.Objects;
+
 /// Raw data for estimating proximity between sensor and target, e.g. RSSI for BLE.
 public class Proximity {
     /// Unit of measurement, e.g. RSSI
@@ -31,6 +33,21 @@ public class Proximity {
             return unit + ":" + value;
         }
         return unit + ":" + value + "[" + calibration.description() + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Proximity proximity = (Proximity) o;
+        return unit == proximity.unit &&
+                Objects.equals(value, proximity.value) &&
+                Objects.equals(calibration, proximity.calibration);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(unit, value, calibration);
     }
 
     @NonNull

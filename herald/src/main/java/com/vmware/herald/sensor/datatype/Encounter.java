@@ -25,37 +25,45 @@ public class Encounter {
     }
 
     public Encounter(String row) {
-        final String[] fields = row.split(",");
+        final String[] fields = row.split(",", -1);
         if (!(fields.length >= 6)) {
             return;
         }
         try {
-            this.timestamp = dateFormatter.parse(fields[0]);
+            if (fields[0] != null && !fields[0].isEmpty()) {
+                this.timestamp = dateFormatter.parse(fields[0]);
+            }
         } catch (Throwable e) {
         }
         Calibration calibration = null;
         try {
-            final double calibrationValue = Double.parseDouble(fields[3]);
-            final CalibrationMeasurementUnit calibrationUnit = CalibrationMeasurementUnit.valueOf(fields[4]);
-            calibration = new Calibration(calibrationUnit, calibrationValue);
+            if (fields[3] != null && fields[4] != null && !fields[3].isEmpty() && !fields[4].isEmpty()) {
+                final double calibrationValue = Double.parseDouble(fields[3]);
+                final CalibrationMeasurementUnit calibrationUnit = CalibrationMeasurementUnit.valueOf(fields[4]);
+                calibration = new Calibration(calibrationUnit, calibrationValue);
+            }
         } catch (Throwable e) {
         }
         try {
-            final double proximityValue = Double.parseDouble(fields[1]);
-            final ProximityMeasurementUnit proximityUnit = ProximityMeasurementUnit.valueOf(fields[2]);
-            this.proximity = new Proximity(proximityUnit, proximityValue, calibration);
+            if (fields[1] != null && fields[2] != null && !fields[1].isEmpty() && !fields[2].isEmpty()) {
+                final double proximityValue = Double.parseDouble(fields[1]);
+                final ProximityMeasurementUnit proximityUnit = ProximityMeasurementUnit.valueOf(fields[2]);
+                this.proximity = new Proximity(proximityUnit, proximityValue, calibration);
+            }
         } catch (Throwable e) {
         }
-        this.payload = new PayloadData(fields[5]);
+        if (fields[5] != null) {
+            this.payload = new PayloadData(fields[5]);
+        }
     }
 
     public String csvString() {
-        final String f0 = dateFormatter.format(timestamp);
-        final String f1 = proximity.value.toString();
-        final String f2 = proximity.unit.name();
-        final String f3 = (proximity.calibration == null || proximity.calibration.value == null ? "" : proximity.calibration.value.toString());
-        final String f4 = (proximity.calibration == null || proximity.calibration.unit == null ? "" : proximity.calibration.unit.name());
-        final String f5 = payload.base64EncodedString();
+        final String f0 = (timestamp == null ? "" : dateFormatter.format(timestamp));
+        final String f1 = (proximity == null || proximity.value == null ? "" : proximity.value.toString());
+        final String f2 = (proximity == null || proximity.unit == null ? "" : proximity.unit.name());
+        final String f3 = (proximity == null || proximity.calibration == null || proximity.calibration.value == null ? "" : proximity.calibration.value.toString());
+        final String f4 = (proximity == null || proximity.calibration == null || proximity.calibration.unit == null ? "" : proximity.calibration.unit.name());
+        final String f5 = (payload == null ? "" : payload.base64EncodedString());
         return f0 + "," + f1 + "," + f2 + "," + f3 + "," + f4 + "," + f5;
     }
 
