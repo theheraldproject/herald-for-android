@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.datatype;
 
+import com.vmware.herald.sensor.analysis.Sample;
+
 import org.junit.Test;
 
 import java.security.SecureRandom;
@@ -57,5 +59,31 @@ public class PseudoDeviceAddressTests {
             final PseudoDeviceAddress address = new PseudoDeviceAddress();
             System.err.println(Arrays.toString(address.data));
         }
+    }
+
+    @Test
+    public void testPerformanceOfRandom() {
+        final Sample sample = new Sample();
+        long t0, t1;
+        for (int i=1000000; i-->0;) {
+            t0 = System.nanoTime();
+            Math.random();
+            t1 = System.nanoTime();
+            sample.add(t1 - t0);
+        }
+        System.err.println(sample);
+    }
+
+    @Test
+    public void testPerformanceOfSecureRandom() {
+        final Sample sample = new Sample();
+        long t0, t1;
+        for (int i=1000000; i-->0;) {
+            t0 = System.nanoTime();
+            PseudoDeviceAddress.getSecureRandom().nextLong();
+            t1 = System.nanoTime();
+            sample.add(t1 - t0);
+        }
+        System.err.println(sample);
     }
 }
