@@ -13,6 +13,7 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class PseudoDeviceAddressTests {
 
@@ -42,15 +43,20 @@ public class PseudoDeviceAddressTests {
     @Test
     public void testRandomBytes() {
         // Every byte should rotate (most of the time)
+        int repeated = 0;
         byte[] last = new byte[6];
         for (int i=0; i<10; i++) {
             final PseudoDeviceAddress address = new PseudoDeviceAddress();
             assertEquals(6, address.data.length);
             for (int j=0; j<6; j++) {
-                assertNotEquals(address.data[j], last[j]);
+                if (address.data[j] == last[j]) {
+                    repeated++;
+                }
             }
             last = address.data;
         }
+        // Tolerate a couple of repeats
+        assertTrue(repeated < 2);
     }
 
     @Test
