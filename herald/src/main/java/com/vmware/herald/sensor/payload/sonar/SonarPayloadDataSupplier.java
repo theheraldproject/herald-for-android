@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 
 /// Mock SONAR payload supplier for simulating payload transfer of 129 byte Sonar payload data.
 public class SonarPayloadDataSupplier extends DefaultPayloadDataSupplier {
-    private final static int length = 129;
+    private final static int length = 300;
     private final int identifier;
 
     public SonarPayloadDataSupplier(int identifier) {
