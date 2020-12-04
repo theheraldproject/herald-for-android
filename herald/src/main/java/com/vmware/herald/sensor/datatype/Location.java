@@ -21,6 +21,6 @@ public class Location {
 
     /// Get plain text description of proximity data
     public String description() {
-        return value.description() + ":[from=" + start + ",to=" + end + "]";
+        return (value == null ? "null" : value.description()) + ":[from=" + start + ",to=" + end + "]";
     }
 }

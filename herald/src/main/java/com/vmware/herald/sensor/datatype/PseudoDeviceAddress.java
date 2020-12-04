@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.SecureRandom;
 import java.util.Objects;
+import java.util.Random;
 
 /// Pseudo device address to enable caching of device payload without relying on device mac address
 // that may change frequently like the A10 and A20.
@@ -21,9 +22,20 @@ public class PseudoDeviceAddress {
     public final byte[] data;
 
     public PseudoDeviceAddress() {
+        this(false);
+    }
+
+    /// Using secure random can cause blocking on app initialisation due to lack of entropy
+    /// on some devices. Worst case scenario is app blocking upon initialisation, bluetooth
+    /// power cycle, or advert refresh that occurs once every 15 minutes, leading to zero
+    /// detection until sufficient entropy has been collected, which may take time given
+    /// the device is likely to be idle. Not using secure random is acceptable and recommended
+    /// in this instance because it is non-blocking and the sequence has sufficient uncertainty
+    /// introduced programmatically to make an attack impractical from limited obeservations.
+    protected PseudoDeviceAddress(final boolean useSecureRandom) {
         // Bluetooth device address is 48-bit (6 bytes), using
         // the same length to offer the same collision avoidance
-        final long value = getSecureRandom().nextLong();
+        final long value = (useSecureRandom ? getSecureRandom().nextLong() : getRandomLong());
         this.data = encode(value);
         this.address = decode(this.data);
     }
@@ -31,6 +43,21 @@ public class PseudoDeviceAddress {
     public PseudoDeviceAddress(final byte[] data) {
         this.data = data;
         this.address = decode(data);
+    }
+
+    /// Non-blocking random number generator with appropriate strength for this purpose
+    protected final static long getRandomLong() {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.PseudoDeviceAddress");
+        try {
+            // Use a different instance with random seed from another sequence each time
+            final Random random = new Random(Math.round(Math.random() * Long.MAX_VALUE));
+            // Skip a random number of bytes from another sequence
+            random.nextBytes(new byte[256 + (int) Math.round(Math.random() * 1024)]);
+            return random.nextLong();
+        } catch (Throwable e) {
+            logger.fault("Could not retrieve Random instance", e);
+            return Math.round(Math.random() * Long.MAX_VALUE);
+        }
     }
 
     // Use a different instance each time, so you cannot infer a sequence

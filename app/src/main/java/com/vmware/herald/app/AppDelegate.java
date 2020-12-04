@@ -40,6 +40,7 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void onCreate() {
         super.onCreate();
+
         appDelegate = this;
         // Initialise sensor array for given payload data supplier
         final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
