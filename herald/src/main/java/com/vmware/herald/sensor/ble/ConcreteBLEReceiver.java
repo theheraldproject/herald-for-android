@@ -40,10 +40,13 @@ import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -171,6 +174,31 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // 9. Connection is closed immediately
         device.immediateSendData(dataToSend);
         return taskConnectDevice(device);
+    }
+
+    @Override
+    public boolean immediateSendAll(Data data) {
+        logger.debug("immediateSendAll");
+        // Encode data
+        final Data dataToSend = SignalCharacteristicData.encodeImmediateSend(new ImmediateSendData(data));
+        logger.debug("immediateSendAll (dataLength={})", dataToSend.value.length);
+
+        // Order by descending time seen (most recent first)
+        // Choose targets
+        SortedSet<BLEDevice> targets = new TreeSet<>(new BLEDeviceLastUpdatedComparator());
+        // Fetch targets seen (for RSSI via advert) in the last minute
+        for (BLEDevice device : database.devices()) {
+            if (!device.ignore() && device.timeIntervalSinceLastUpdate().value < 60) {
+                targets.add(device);
+            }
+        }
+        // Send messages
+        // Connect and immediate send to each
+        // NOTE: This separate loop doesn't order interactions yet. Once working, refactor so this has an effect.
+        for (BLEDevice target : targets) {
+            target.immediateSendData(dataToSend);
+        }
+        return true; // fire and forget
     }
 
     // MARK:- Scan loop for startScan-wait-stopScan-processScanResults-wait-repeat

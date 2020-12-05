@@ -90,7 +90,11 @@ public class BLEDevice {
     }
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
+    /// This is also used by immediateSendAll to choose targets
     public TimeInterval timeIntervalSinceLastUpdate() {
+        if (lastUpdatedAt == null) {
+            return TimeInterval.never;
+        }
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
     }
 
