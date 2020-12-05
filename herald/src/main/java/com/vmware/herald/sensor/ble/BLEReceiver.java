@@ -20,4 +20,7 @@ public interface BLEReceiver extends Sensor {
 
     /// Immediate send data.
     boolean immediateSend(Data data, TargetIdentifier targetIdentifier);
+
+    // Immediate send to all (connected / recent / nearby)
+    boolean immediateSendAll(Data data);
 }

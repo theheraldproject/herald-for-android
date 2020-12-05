@@ -75,6 +75,10 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         return receiver.immediateSend(data, targetIdentifier);
     }
 
+    public boolean immediateSendAll(Data data) {
+        return receiver.immediateSendAll(data);
+    }
+
     // MARK:- BLEDatabaseDelegate
 
     @Override
