@@ -72,6 +72,11 @@ public class SensorArray implements Sensor {
         return concreteBleSensor.immediateSend(data,targetIdentifier);
     }
 
+    /// Immediate send to all (connected / recent / nearby)
+    public boolean immediateSendAll(Data data) {
+        return concreteBleSensor.immediateSendAll(data);
+    }
+
     public final PayloadData payloadData() {
         return payloadData;
     }
