@@ -20,34 +20,26 @@ public class PseudoDeviceAddressTests {
 
     @Test
     public void testRandom() {
-        // Address should be different every time
-        long last = 0;
-        for (int i=0; i<1000; i++) {
-            final long value = PseudoDeviceAddress.getRandomLong();
-            assertNotEquals(last, value);
-            last = value;
-        }
-    }
-
-    @Test
-    public void testSecureRandom() {
-        // Address should be different every time
-        long last = 0;
-        for (int i=0; i<1000; i++) {
-            final long value = PseudoDeviceAddress.getSecureRandomLong();
-            assertNotEquals(last, value);
-            last = value;
-        }
-    }
-
-    @Test
-    public void testNistSecureRandom() {
-        // Address should be different every time
-        long last = 0;
-        for (int i=0; i<1000; i++) {
-            final long value = PseudoDeviceAddress.getNISTSecureRandomLong();
-            assertNotEquals(last, value);
-            last = value;
+        for (RandomSource.Method method : RandomSource.Method.values()) {
+            int repeated = 0;
+            long lastAddress = 0;
+            byte[] lastBytes = new byte[6];
+            for (int i = 0; i < 1000; i++) {
+                final PseudoDeviceAddress pseudoDeviceAddress = new PseudoDeviceAddress(method);
+                // Address should be different every time
+                assertNotEquals(lastAddress, pseudoDeviceAddress.address);
+                // Bytes should be different most of the time
+                assertEquals(6, pseudoDeviceAddress.data.length);
+                for (int j=0; j<6; j++) {
+                    if (pseudoDeviceAddress.data[j] == lastBytes[j]) {
+                        repeated++;
+                    }
+                }
+                lastAddress = pseudoDeviceAddress.address;
+                lastBytes = pseudoDeviceAddress.data;
+            }
+            // Tolerate 10% repeats for individual bytes
+            assertTrue(repeated < (1000 * 6 / 10));
         }
     }
 
@@ -61,27 +53,6 @@ public class PseudoDeviceAddressTests {
         }
     }
 
-    /// This test may fail sometimes, as not every byte will rotate all the time
-    @Test
-    public void testRandomBytes() {
-        // Every byte should rotate (most of the time)
-        int repeated = 0;
-        byte[] last = new byte[6];
-        for (int i=0; i<1000; i++) {
-            final PseudoDeviceAddress address = new PseudoDeviceAddress();
-            assertEquals(6, address.data.length);
-            for (int j=0; j<6; j++) {
-                if (address.data[j] == last[j]) {
-                    repeated++;
-                }
-            }
-            last = address.data;
-        }
-        // Tolerate a few repeats
-        System.err.println(repeated);
-        assertTrue(repeated < 30);
-    }
-
     @Test
     public void testVisualCheck() {
         // Visual check for randomness and byte fill
@@ -92,28 +63,17 @@ public class PseudoDeviceAddressTests {
     }
 
     @Test
-    public void testPerformanceOfRandom() {
-        final Sample sample = new Sample();
-        long t0, t1;
-        for (int i=100000; i-->0;) {
-            t0 = System.nanoTime();
-            Math.random();
-            t1 = System.nanoTime();
-            sample.add(t1 - t0);
+    public void testPerformance() {
+        for (RandomSource.Method method : RandomSource.Method.values()) {
+            final Sample sample = new Sample();
+            long t0, t1;
+            for (int i = 100000; i-- > 0; ) {
+                t0 = System.nanoTime();
+                new PseudoDeviceAddress(method);
+                t1 = System.nanoTime();
+                sample.add(t1 - t0);
+            }
+            System.err.println(method.name() + " : " + sample);
         }
-        System.err.println(sample);
-    }
-
-    @Test
-    public void testPerformanceOfSecureRandom() {
-        final Sample sample = new Sample();
-        long t0, t1;
-        for (int i=100000; i-->0;) {
-            t0 = System.nanoTime();
-            PseudoDeviceAddress.getNISTSecureRandomLong();
-            t1 = System.nanoTime();
-            sample.add(t1 - t0);
-        }
-        System.err.println(sample);
     }
 }

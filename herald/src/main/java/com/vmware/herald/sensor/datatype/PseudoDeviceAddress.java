@@ -4,102 +4,78 @@
 
 package com.vmware.herald.sensor.datatype;
 
-import android.util.Base64;
-
-import com.vmware.herald.sensor.data.ConcreteSensorLogger;
-import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.SecureRandom;
 import java.util.Objects;
-import java.util.Random;
 
 /// Pseudo device address to enable caching of device payload without relying on device mac address
 // that may change frequently like the A10 and A20.
 public class PseudoDeviceAddress {
+    private static RandomSource randomSource = new RandomSource(RandomSource.Method.Random);
     public final long address;
     public final byte[] data;
 
-    /// Using secure random can cause blocking on app initialisation due to lack of entropy
-    /// on some devices. Worst case scenario is app blocking upon initialisation, bluetooth
-    /// power cycle, or advert refresh that occurs once every 15 minutes, leading to zero
-    /// detection until sufficient entropy has been collected, which may take time given
-    /// the device is likely to be idle. Not using secure random is acceptable and recommended
-    /// in this instance because it is non-blocking and the sequence has sufficient uncertainty
-    /// introduced programmatically to make an attack impractical from limited obeservations.
-    public PseudoDeviceAddress() {
+    /// Pseudo device address is generated from an adaptation of Random, not SecureRandom.
+    /// This is necessary to avoid app blocking caused by SecureRandom on idle devices with
+    /// limited entropy. SecureRandom uses /dev/urandom (derived from /dev/random) as random
+    /// seed source which is a shared resource that when exhausted causes disruption across
+    /// the whole system beyond the app. /dev/random gathers entropy from system events such
+    /// as storage activities and user actions which can easily become exhausted on idle
+    /// devices. Tests have shown blocking can start within 4 to 8 hours, and time to recover
+    /// increases over time, leading the app and underlying services to eventually halt.
+    /// The same issue has been observed on both mobile and server hardware, hence the use
+    /// of SecureRandom should be reserved for the production of strong encryption keys on
+    /// rare occasions, rather than repeated use in the production of ephemeral time limited
+    /// address data.
+    /// Given /dev/random is easily exhausted on idle mobile devices because entropy is gathered
+    /// from a specific set of events (e.g. boot up, storage, user activities) that should
+    /// normally occur more frequently than encryption key generation requests. A similar
+    /// approach can be taken to adapt Random to use an entropy source that is guaranteed to
+    /// be non-exhaustive in this context, thus avoiding the blocking issue while achieving
+    /// appropriate strength that is fit for purpose. The adaptation takes advantage of the
+    /// continuous running nature of the proximity detection process where timing events are
+    /// highly variable due to external factors such as OS state, phones in the vicinity,
+    /// Bluetooth connection time, and other system processes. The result is a reliable
+    /// entropy source that is sufficiently challenging to predict for this purpose.
+    /// In short, an attacker will need to establish the seed of Math.random() based on
+    /// limited observations of truncated values where any number of values and bits could
+    /// have been skipped between observations and from initialisation. While cracking the
+    /// seed of Random is trivial when the value index is known (i.e. it simply confirms
+    /// Random value sequence is deterministic, given the seed, as per Java documentation),
+    /// it is significantly more challenging when the position data is unknown, and information
+    /// has been discarded (truncated) in the process, especially when the position is in
+    /// essence selected by a highly random process.
+    /// In practice, using secure random can cause blocking on app initialisation, bluetooth
+    /// power cycle, advert refresh that occurs once every 15 minutes, and also blocking of
+    /// underlying system services which impacts a wide range of services including Bluetooth
+    /// operation and garbage collection, leading to zero detection until sufficient entropy has
+    /// been collected, which will take increasing time when the device is idle.
+    public PseudoDeviceAddress(final RandomSource.Method method) {
         // Bluetooth device address is 48-bit (6 bytes), using
         // the same length to offer the same collision avoidance
-        // Choose between random, secure random, and NIST compliant secure random as random source
-        // - Random is non-blocking and sufficiently secure for this purpose, recommended
-        // - SecureRandom is potentially blocking and unnecessary in this instance, not recommended
-        // - NISTSecureRandom is most likely to block and unnecessary in this instance, not recommended
-        this.data = encode(getRandomLong());
+        // Choose between random, secure random singleton, secure random, and NIST compliant secure random as random source
+        // - Random is non-blocking and has been adapted to obtain entropy from reliable source in this context. It is
+        //   sufficiently secure for this purpose, validated and recommended.
+        // - SecureRandomSingleton is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
+        // - SecureRandom is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
+        // - SecureRandomNIST is block after 6 hours on idle devices and inappropriate for this use case, not recommended
+        if (randomSource == null || randomSource.method != method) {
+            randomSource = new RandomSource(method);
+        }
+        this.data = encode(randomSource.nextLong());
         this.address = decode(this.data);
+    }
+
+    /// Default constructor uses Random as random source, see above and RandomSource for details.
+    public PseudoDeviceAddress() {
+        this(BLESensorConfiguration.pseudoDeviceAddressRandomisation);
     }
 
     public PseudoDeviceAddress(final byte[] data) {
         this.data = data;
         this.address = decode(data);
-    }
-
-    /// Non-blocking random number generator with appropriate strength for this purpose
-    protected final static long getRandomLong() {
-        // Use a different instance with random seed from another sequence each time
-        final Random random = new Random(Math.round(Math.random() * Long.MAX_VALUE));
-        // Skip a random number of bytes from another sequence
-        random.nextBytes(new byte[256 + (int) Math.round(Math.random() * 1024)]);
-        return random.nextLong();
-    }
-
-    /// Secure random number generator that is potentially blocking. Experiments have
-    /// shown blocking can occur, especially on idle device, due to lack of entropy.
-    protected final static long getSecureRandomLong() {
-        return new SecureRandom().nextLong();
-    }
-
-    /// Get secure random instance seed according to NIST SP800-90A recommendations
-    /// - SHA1PRNG algorithm
-    /// - Algorithm seeded with 440 bits of secure random data
-    /// - Skips first random number of bytes to mitigate against poor implementations
-    /// Compliance to NIST SP800-90A offers quality assurance against an accepted
-    /// standard. The aim here is not to offer the most perfect random source, but
-    /// a source with well defined and understood characteristics, thus enabling
-    /// selection of the most appropropriate method, given the intented purpose.
-    /// This implementation supports security strength for NIST SP800-57
-    /// Part 1 Revision 5 (informally, generation of cryptographic keys for
-    /// encryption of sensitive data).
-    public final static long getNISTSecureRandomLong() {
-        try {
-            // Obtain SHA1PRNG specifically where possible for NIST SP800-90A compliance.
-            // Ignoring Android recommendation to use "new SecureRandom()" because that
-            // decision was taken based on a single peer reviewed statistical test that
-            // showed SHA1PRNG has bias. The test has not been adopted by NIST yet which
-            // already uses 15 other statistical tests for quality assurance. This does
-            // not mean the new test is invalid, but it is more appropriate for this work
-            // to adopt and comply with an accepted standard for security assurance.
-            final SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
-            // Obtain the most secure PRNG claimed by the platform for generating the seed
-            // according to Android recommendation.
-            final SecureRandom secureRandomForSeed = new SecureRandom();
-            // NIST SP800-90A (see section 10.1) recommends 440 bit seed for SHA1PRNG
-            // to support security strength defined in NIST SP800-57 Part 1 Revision 5.
-            final byte[] seed = secureRandomForSeed.generateSeed(55);
-            // Seed secure random with 440 bit seed according to NIST SP800-90A recommendation.
-            secureRandom.setSeed(seed); // seed with random number
-            // Skip the first 256 - 1280 bytes as mitigation against poor implementations
-            // of SecureRandom where the initial values are predictable given the seed
-            secureRandom.nextBytes(new byte[256 + secureRandom.nextInt(1024)]);
-            return secureRandom.nextLong();
-        } catch (Throwable e) {
-            // Android OS may mandate the use of "new SecureRandom()" and forbid the use
-            // of a specific provider in the future. Fallback to Android mandated option
-            // and log the fact that it is no longer NIST SP800-90A compliant.
-            final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.PseudoDeviceAddress");
-            logger.fault("NIST SP800-90A compliant SecureRandom initialisation failed, reverting back to SecureRandom", e);
-            return getSecureRandomLong();
-        }
     }
 
     protected final static byte[] encode(final long value) {
@@ -133,6 +109,6 @@ public class PseudoDeviceAddress {
 
     @Override
     public String toString() {
-        return Base64.encodeToString(data, Base64.DEFAULT | Base64.NO_WRAP);
+        return Base64.encode(data);
     }
 }

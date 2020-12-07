@@ -13,22 +13,17 @@ import java.util.Random;
 /// Source of random data
 public class RandomSource {
     final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RandomSource");
-    private final Method method;
-    private final boolean newInstancePerCall;
+    public final Method method;
     private Random random = null;
-    private boolean secureRandom;
-    private boolean nistCompliant;
     private short externalEntropy = 0;
     public enum Method {
         // Singleton random source reused per call
-        RANDOM, SECURE_RANDOM, NIST,
-        // Random source re-initialised per call
-        RANDOM_NEW, SECURE_RANDOM_NEW, NIST_NEW
+        Random, SecureRandomSingleton, SecureRandom, SecureRandomNIST
     }
 
     public RandomSource(final Method method) {
         this.method = method;
-        this.newInstancePerCall = (method == Method.RANDOM_NEW || method == Method.SECURE_RANDOM_NEW || method == Method.NIST_NEW);
+        externalEntropy = (short) (Math.random() * Short.MAX_VALUE);
     }
 
     /// Contribute entropy from external source, e.g. unpredictable time intervals
@@ -63,49 +58,85 @@ public class RandomSource {
 
     /// Initialise random according to method
     protected synchronized void init() {
-        if (random == null || newInstancePerCall) {
-            switch (method) {
-                case RANDOM:
-                case RANDOM_NEW:
-                    initRandom();
-                    break;
-                case SECURE_RANDOM:
-                case SECURE_RANDOM_NEW:
-                    initSecureRandom();
-                    break;
-                case NIST:
-                case NIST_NEW:
-                    initSecureRandomNistCompliant();
-                    break;
+        switch (method) {
+            case Random: {
+                random = getRandom();
+                break;
+            }
+            case SecureRandomSingleton: {
+                random = getSecureRandomSingleton();
+                break;
+            }
+            case SecureRandom: {
+                random = getSecureRandom();
+                break;
+            }
+            case SecureRandomNIST: {
+                random = getSecureRandomNIST();
+                break;
             }
         }
-        // Use external entropy to adjust PRNG sequence position
-        for (int i=(externalEntropy < 0 ? -externalEntropy : externalEntropy); i-->0;) {
+        // Use external entropy to adjust PRNG sequence position by 0-128 bits
+        final int skipPositions = (Math.abs(externalEntropy) % 128);
+        for (int i=skipPositions; i-->0;) {
             random.nextBoolean();
         }
         externalEntropy = 0;
     }
 
-    /// Get random instance
-    protected void initRandom() {
-        this.random = new Random();
-        this.secureRandom = false;
-        this.nistCompliant = false;
-    }
+    // MARK:- PRNG implementations
 
-    /// Get secure random instance
-    protected void initSecureRandom() {
-        try {
-            this.random = new SecureRandom();
-            this.secureRandom = true;
-            this.nistCompliant = false;
-        } catch (Throwable e) {
-            logger.fault("SecureRandom initialisation failed, reverting back to Random", e);
-            initRandom();
+    /// Non-blocking random number generator with reliable entropy source.
+    private static long getRandomLongLastCalledAt = System.nanoTime();
+    private synchronized final static Random getRandom() {
+        // Use unpredictable time between calls to add entropy
+        final long timestamp = System.nanoTime();
+        final long entropy = (timestamp - getRandomLongLastCalledAt);
+        // Skip 0 - 128 values on shared random resource Math.random() to increase search space
+        // from Math.random() values to Math.random() seed. Note, other systems are also calling
+        // Math.random(), thus the number of skipped values is inherent unpredictable. This has
+        // been added to provide assurance that values are skipped even if nothing else is using
+        // the Math.random() function.
+        final int skipRandomSequence = (int) Math.abs(entropy % 128);
+        for (int i=skipRandomSequence; i-->0;) {
+            Math.random();
         }
+        // Create a new instance of Random with seed from Math.random() to increase search space
+        // from value obtained from new Random instance to seed of Math.random().
+        final Random random = new Random(Math.round(Math.random() * Long.MAX_VALUE));
+        // Skip 256 - 1280 bits on new Random instance to increase search space from
+        // new Random instance values to its seed. Using Math.random() to select skip
+        // distance to increase search space.
+        final int skipInitialBits = (int) Math.abs(256 + Math.round(Math.random() * 1024));
+        for (int i=skipInitialBits; i-->0;) {
+            random.nextBoolean();
+        }
+        // Update timestamp for use in next call
+        getRandomLongLastCalledAt = timestamp;
+        // Get next long
+        return random;
     }
 
-    /// Get secure random instance seed according to NIST SP800-90A recommendations
+    /// Secure random number generator that is blocking after about 7.5 hours
+    /// on idle devices due to lack of entropy.
+    private static SecureRandom secureRandomSingleton = null;
+    private synchronized final static Random getSecureRandomSingleton() {
+        if (secureRandomSingleton == null) {
+            secureRandomSingleton = new SecureRandom();
+        }
+        return secureRandomSingleton;
+    }
+
+
+    /// Secure random number generator that is blocking after about 4.5 hours
+    /// on idle devices due to lack of entropy.
+    private final static Random getSecureRandom() {
+        return new SecureRandom();
+    }
+
+    /// Secure random number generator that is blocking after about 6.0 hours
+    /// on idle devices due to lack of entropy.
+    /// SecureRandom seeded according to NIST SP800-90A recommendations
     /// - SHA1PRNG algorithm
     /// - Algorithm seeded with 440 bits of secure random data
     /// - Skips first random number of bytes to mitigate against poor implementations
@@ -116,7 +147,7 @@ public class RandomSource {
     /// This implementation supports security strength for NIST SP800-57
     /// Part 1 Revision 5 (informally, generation of cryptographic keys for
     /// encryption of sensitive data).
-    protected void initSecureRandomNistCompliant() {
+    private final static Random getSecureRandomNIST() {
         try {
             // Obtain SHA1PRNG specifically where possible for NIST SP800-90A compliance.
             // Ignoring Android recommendation to use "new SecureRandom()" because that
@@ -136,16 +167,16 @@ public class RandomSource {
             secureRandom.setSeed(seed); // seed with random number
             // Skip the first 256 - 1280 bytes as mitigation against poor implementations
             // of SecureRandom where the initial values are predictable given the seed
-            secureRandom.nextBytes(new byte[256 + secureRandomForSeed.nextInt(1024)]);
-            this.random = secureRandom;
-            this.secureRandom = true;
-            this.nistCompliant = true;
+            secureRandom.nextBytes(new byte[256 + secureRandom.nextInt(1024)]);
+            return secureRandom;
         } catch (Throwable e) {
             // Android OS may mandate the use of "new SecureRandom()" and forbid the use
             // of a specific provider in the future. Fallback to Android mandated option
             // and log the fact that it is no longer NIST SP800-90A compliant.
+            final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.PseudoDeviceAddress");
             logger.fault("NIST SP800-90A compliant SecureRandom initialisation failed, reverting back to SecureRandom", e);
-            initSecureRandom();
+            return getSecureRandom();
         }
     }
+
 }
