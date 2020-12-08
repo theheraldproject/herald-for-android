@@ -9,6 +9,7 @@ import org.junit.Test;
 import java.util.Date;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -36,5 +37,19 @@ public class ProximityTests {
         assertEquals(new Double(3), new Proximity(ProximityMeasurementUnit.RSSI, 3d, null).value);
         assertEquals(new Double(3), new Proximity(ProximityMeasurementUnit.RSSI, 3d).value);
         assertNull(new Proximity(ProximityMeasurementUnit.RSSI, 3d).calibration);
+        assertNotNull(new Proximity(ProximityMeasurementUnit.RSSI, 3d).toString());
+        assertNotNull(new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)).toString());
+    }
+
+    @Test
+    public void testEquals() {
+        assertEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d), new Proximity(ProximityMeasurementUnit.RSSI, 3d));
+        assertEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d).hashCode(), new Proximity(ProximityMeasurementUnit.RSSI, 3d).hashCode());
+        assertNotEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d), new Proximity(ProximityMeasurementUnit.RSSI, 4d));
+        assertNotEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d), new Proximity(ProximityMeasurementUnit.RTT, 3d));
+
+        assertEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)), new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)));
+        assertEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)).hashCode(), new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)).hashCode());
+        assertNotEquals(new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 5d)), new Proximity(ProximityMeasurementUnit.RSSI, 3d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 6d)));
     }
 }

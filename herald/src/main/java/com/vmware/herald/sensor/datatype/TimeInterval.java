@@ -5,6 +5,7 @@
 package com.vmware.herald.sensor.datatype;
 
 import java.util.Date;
+import java.util.Objects;
 
 /// Time interval in seconds.
 public class TimeInterval {
@@ -35,6 +36,19 @@ public class TimeInterval {
 
     public long millis() {
         return value * 1000;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TimeInterval that = (TimeInterval) o;
+        return value == that.value;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
     }
 
     @Override

@@ -50,6 +50,9 @@ public class PseudoDeviceAddressTests {
             final PseudoDeviceAddress expected = new PseudoDeviceAddress();
             final PseudoDeviceAddress actual = new PseudoDeviceAddress(expected.data);
             assertEquals(expected.address, actual.address);
+            assertEquals(expected, actual);
+            assertEquals(expected.hashCode(), actual.hashCode());
+            assertEquals(expected.toString(), actual.toString());
         }
     }
 
