@@ -16,7 +16,6 @@ import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.EventTimeIntervalLog;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.data.StatisticsDidReadLog;
 import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
