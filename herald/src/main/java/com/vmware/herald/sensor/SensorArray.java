@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-import com.vmware.herald.BuildConfig;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
 import com.vmware.herald.sensor.data.BatteryLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
@@ -57,7 +56,7 @@ public class SensorArray implements Sensor {
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-		if (BuildConfig.DEBUG) {
+		if (com.vmware.herald.BuildConfig.DEBUG) {
 	        add(new ContactLog(context, "contacts.csv"));
 	        add(new StatisticsLog(context, "statistics.csv", payloadData));
 	        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
