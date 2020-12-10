@@ -88,7 +88,7 @@ public class BLESensorConfiguration {
     /// - Set to .never to disable this function.
     /// - Payload updates are reported to SensorDelegate as didRead.
     /// - Setting take immediate effect, no need to restart BLESensor, can also be applied while BLESensor is active.
-    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.minutes(5);
+    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.never;
 
     /// Filter duplicate payload data and suppress sensor(didRead:fromTarget) delegate calls
     /// - Set to .never to disable this feature
