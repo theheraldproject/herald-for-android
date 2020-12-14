@@ -69,7 +69,7 @@ public class Data {
 
     /// Get subdata from offset to end
     public Data subdata(int offset) {
-        if (offset < value.length) {
+        if (offset >=0 && offset < value.length) {
             final byte[] offsetValue = new byte[value.length - offset];
             System.arraycopy(value, offset, offsetValue, 0, offsetValue.length);
             return new Data(offsetValue);
@@ -80,7 +80,7 @@ public class Data {
 
     /// Get subdata from offset to offset + length
     public Data subdata(int offset, int length) {
-        if (offset + length <= value.length) {
+        if (offset >= 0 && offset < value.length && offset + length <= value.length) {
             final byte[] offsetValue = new byte[length];
             System.arraycopy(value, offset, offsetValue, 0, length);
             return new Data(offsetValue);

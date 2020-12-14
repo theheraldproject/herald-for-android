@@ -13,11 +13,24 @@ public class UInt8 {
     public final Data bigEndian;
 
     public UInt8(int value) {
-        assert(value >= 0);
-        this.value = value;
+        this.bigEndian = encode(value);
+        this.value = decode(bigEndian);
+    }
+
+    protected final static Data encode(int value) {
+        final int valueForEncoding = (value < 0 ? 0 : (value > Byte.MAX_VALUE ? Byte.MAX_VALUE : value));
         final ByteBuffer byteBuffer = ByteBuffer.allocate(1);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
-        byteBuffer.put((byte) value);
-        this.bigEndian = new Data(byteBuffer.array());
+        byteBuffer.put((byte) valueForEncoding);
+        return new Data(byteBuffer.array());
+    }
+
+    protected final static int decode(Data data) {
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(1);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+        byteBuffer.put(data.value, 0, 1);
+        byteBuffer.position(0);
+        final int value = byteBuffer.get();
+        return (value < 0 ? 0 : (value > Byte.MAX_VALUE ? Byte.MAX_VALUE : value));
     }
 }

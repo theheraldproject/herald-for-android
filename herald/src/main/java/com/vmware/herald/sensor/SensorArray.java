@@ -8,18 +8,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
 import com.vmware.herald.sensor.data.BatteryLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
+import com.vmware.herald.sensor.data.EventTimeIntervalLog;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.data.StatisticsDidReadLog;
 import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;
@@ -36,7 +38,7 @@ public class SensorArray implements Sensor {
 
     private final ConcreteBLESensor concreteBleSensor;
 
-    public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
+    public SensorArray(final Context context, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);
@@ -59,9 +61,11 @@ public class SensorArray implements Sensor {
 		if (com.vmware.herald.BuildConfig.DEBUG) {
 	        add(new ContactLog(context, "contacts.csv"));
 	        add(new StatisticsLog(context, "statistics.csv", payloadData));
-	        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
 	        add(new DetectionLog(context,"detection.csv", payloadData));
 	        new BatteryLog(context, "battery.csv");
+            if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never) {
+                add(new EventTimeIntervalLog(context, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+            }
 		}
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
     }
