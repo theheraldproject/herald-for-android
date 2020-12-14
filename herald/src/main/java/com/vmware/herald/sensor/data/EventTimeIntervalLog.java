@@ -7,8 +7,10 @@ package com.vmware.herald.sensor.data;
 import android.content.Context;
 
 import com.vmware.herald.sensor.DefaultSensorDelegate;
+import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.analysis.Sample;
+import com.vmware.herald.sensor.datatype.Proximity;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 
@@ -19,16 +21,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV log of didRead calls for post event analysis and visualisation
-public class StatisticsDidReadLog extends DefaultSensorDelegate {
+/// CSV log of event time intervals for post event analysis and visualisation
+public class EventTimeIntervalLog extends DefaultSensorDelegate {
     private final TextFile textFile;
     private final PayloadData payloadData;
+    private final EventType eventType;
+    private final Map<TargetIdentifier, String> targetIdentifierToPayload = new ConcurrentHashMap<>();
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
     private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
+    public  enum EventType {
+        detect,read,measure,share,sharedPeer,visit
+    }
 
-    public StatisticsDidReadLog(final Context context, final String filename, final PayloadData payloadData) {
-        textFile = new TextFile(context, filename);
+    public EventTimeIntervalLog(final Context context, final String filename, final PayloadData payloadData, final EventType eventType) {
+        this.textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
+        this.eventType = eventType;
     }
 
     private String csv(String value) {
@@ -50,8 +58,10 @@ public class StatisticsDidReadLog extends DefaultSensorDelegate {
     }
 
     private void write() {
-        final StringBuilder content = new StringBuilder("payload,count,mean,sd,min,max\n");
+        final StringBuilder content = new StringBuilder("event,central,peripheral,count,mean,sd,min,max\n");
         final List<String> payloadList = new ArrayList<>();
+        final String event = csv(eventType.name());
+        final String centralPayload = csv(payloadData.shortName());
         for (String payload : payloadToSample.keySet()) {
             if (payload.equals(payloadData.shortName())) {
                 continue;
@@ -67,6 +77,10 @@ public class StatisticsDidReadLog extends DefaultSensorDelegate {
             if (sample.mean() == null || sample.standardDeviation() == null || sample.min() == null || sample.max() == null) {
                 continue;
             }
+            content.append(event);
+            content.append(',');
+            content.append(centralPayload);
+            content.append(',');
             content.append(csv(payload));
             content.append(',');
             content.append(sample.count());
@@ -88,13 +102,62 @@ public class StatisticsDidReadLog extends DefaultSensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        add(didRead.shortName());
+        final String payload = didRead.shortName();
+        targetIdentifierToPayload.put(fromTarget, payload);
+        if (eventType == EventType.read) {
+            add(payload);
+        }
+    }
+
+    @Override
+    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+        if (eventType == EventType.detect) {
+            final String payload = targetIdentifierToPayload.get(didDetect);
+            if (payload == null) {
+                return;
+            }
+            add(payload);
+        }
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+        if (eventType == EventType.measure) {
+            final String payload = targetIdentifierToPayload.get(fromTarget);
+            if (payload == null) {
+                return;
+            }
+            add(payload);
+        }
     }
 
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
-        for (PayloadData payload : didShare) {
-            add(payload.shortName());
+        if (eventType == EventType.share) {
+            final String payload = targetIdentifierToPayload.get(fromTarget);
+            if (payload == null) {
+                return;
+            }
+            add(payload);
+        } else if (eventType == EventType.sharedPeer) {
+            for (final PayloadData sharedPeer : didShare) {
+                final String payload = sharedPeer.shortName();
+                if (payload == null) {
+                    return;
+                }
+                add(payload);
+            }
+        }
+    }
+
+    @Override
+    public void sensor(SensorType sensor, Location didVisit) {
+        if (eventType == EventType.visit) {
+            final String payload = payloadData.shortName();
+            if (payload == null) {
+                return;
+            }
+            add(payload);
         }
     }
 }

@@ -7,6 +7,7 @@ package com.vmware.herald.sensor.ble;
 import android.bluetooth.BluetoothGattCharacteristic;
 
 import com.vmware.herald.sensor.data.SensorLoggerLevel;
+import com.vmware.herald.sensor.datatype.RandomSource;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.util.UUID;
@@ -101,6 +102,12 @@ public class BLESensorConfiguration {
 
     /// Advert refresh time interval
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
+
+    /// Randomisation method for generating the pseudo device addresses, see PseudoDeviceAddress and RandomSource for details.
+    /// - Set to Random for reliable continuous operation, validated
+    /// - Other methods will cause blocking after 4-8 hours and interrupt operation on idle devices
+    /// - Blocking can also occur at app initialisation, advert refresh, and also impact system services
+    public static RandomSource.Method pseudoDeviceAddressRandomisation = RandomSource.Method.Random;
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
     public static boolean deviceIntrospectionEnabled = false;

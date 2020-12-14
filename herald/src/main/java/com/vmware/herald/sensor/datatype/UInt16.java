@@ -13,11 +13,25 @@ public class UInt16 {
     public final Data bigEndian;
 
     public UInt16(int value) {
-        assert(value >= 0);
-        this.value = value;
+        this.bigEndian = encode(value);
+        this.value = decode(bigEndian);
+    }
+
+    protected final static Data encode(int value) {
+        final short valueForEncoding = (value < 0 ? 0 : (value > Short.MAX_VALUE ? Short.MAX_VALUE : (short) value));
         final ByteBuffer byteBuffer = ByteBuffer.allocate(2);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
-        byteBuffer.putShort((short) value);
-        this.bigEndian = new Data(byteBuffer.array());
+        byteBuffer.putShort(valueForEncoding);
+        return new Data(byteBuffer.array());
     }
+
+    protected final static int decode(Data data) {
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(2);
+        byteBuffer.order(ByteOrder.BIG_ENDIAN);
+        byteBuffer.put(data.value, 0, 2);
+        byteBuffer.position(0);
+        final short value = byteBuffer.getShort();
+        return (value < 0 ? 0 : (value > Short.MAX_VALUE ? Short.MAX_VALUE : value));
+    }
+
 }
