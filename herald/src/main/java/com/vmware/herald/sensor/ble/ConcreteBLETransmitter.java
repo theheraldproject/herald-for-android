@@ -64,6 +64,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
 
+    // Referenced by startAdvert and stopExistingGattServer ONLY
+    private BluetoothGattServer bluetoothGattServer = null;
+
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
      */
@@ -203,13 +206,29 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     // MARK:- Start and stop advert
 
+    private void stopExistingGattServer() {
+        if (null != bluetoothGattServer) {
+            // Stop old version, if there's already a proxy reference
+            try {
+                bluetoothGattServer.clearServices();
+                bluetoothGattServer.close();
+                bluetoothGattServer = null;
+            } catch (Throwable e2) {
+                logger.fault("stopGattServer failed to stop EXISTING GATT server", e2);
+                bluetoothGattServer = null;
+            }
+        }
+    }
+
     private void startAdvert(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final Callback<Triple<Boolean, AdvertiseCallback, BluetoothGattServer>> callback) {
         logger.debug("startAdvert");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
                 boolean result = true;
-                BluetoothGattServer bluetoothGattServer = null;
+
+                stopExistingGattServer();
+
                 try {
                     bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
                 } catch (Throwable e) {
