@@ -104,19 +104,24 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
-            //logger.fault("Bluetooth adapter unavailable");
+            logger.debug("bluetoothLeAdvertiser, no Bluetooth Adapter available");
             return null;
         }
-        if (!bluetoothAdapter.isMultipleAdvertisementSupported()) {
-            //logger.fault("Bluetooth advertisement unsupported");
+        boolean supported = bluetoothAdapter.isMultipleAdvertisementSupported();
+        try {
+            final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+            if (bluetoothLeAdvertiser == null) {
+                logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception=no)", supported);
+                return null;
+            }
+            // log this, as this will allow us to identify handsets with a different API implementation
+            logger.debug("bluetoothLeAdvertiser, LE advertiser present (multiSupported={})", supported);
+            return bluetoothLeAdvertiser;
+        } catch (Exception e) {
+            // log it, as this will allow us to identify handsets with the expected API implementation (from Android API source code)
+            logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception={})", supported, e.getMessage());
             return null;
         }
-        final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-        if (bluetoothLeAdvertiser == null) {
-            //logger.fault("Bluetooth advertisement unavailable");
-            return null;
-        }
-        return bluetoothLeAdvertiser;
     }
 
     private class AdvertLoopTask implements BLETimerDelegate {
