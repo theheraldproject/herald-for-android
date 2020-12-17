@@ -540,6 +540,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             bluetoothGattServer.cancelConnection(device);
         }
         bluetoothGattServer.clearServices();
+
+        // Logic check - ensure there are now no Gatt Services
+        List<BluetoothGattService> services = bluetoothGattServer.getServices();
+        for (BluetoothGattService svc : services) {
+            logger.fault("setGattService device clearServices() call did not correctly clear service (service={})",svc.getUuid());
+        }
+
         final BluetoothGattService service = new BluetoothGattService(BLESensorConfiguration.serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
         final BluetoothGattCharacteristic signalCharacteristic = new BluetoothGattCharacteristic(
                 BLESensorConfiguration.androidSignalCharacteristicUUID,
@@ -558,6 +565,19 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 		}
         service.addCharacteristic(payloadCharacteristic);
         bluetoothGattServer.addService(service);
+
+        // Logic check - ensure there can be only one Herald service
+        services = bluetoothGattServer.getServices();
+        int count = 0;
+        for (BluetoothGattService svc : services) {
+            if (svc.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+                count++;
+            }
+        }
+        if (count > 1) {
+            logger.fault("setGattService device incorrectly sharing multiple Herald services (count={})", count);
+        }
+
         logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",
                 service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid());
     }
