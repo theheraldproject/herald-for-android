@@ -188,7 +188,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         SortedSet<BLEDevice> targets = new TreeSet<>(new BLEDeviceLastUpdatedComparator());
         // Fetch targets seen (for RSSI via advert) in the last minute
         for (BLEDevice device : database.devices()) {
-            if (!device.ignore() && device.timeIntervalSinceLastUpdate().value < 60) {
+            if (!device.ignore() && device.signalCharacteristic() != null && device.timeIntervalSinceLastUpdate().value < 60) {
                 targets.add(device);
             }
         }
@@ -197,6 +197,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // NOTE: This separate loop doesn't order interactions yet. Once working, refactor so this has an effect.
         for (BLEDevice target : targets) {
             target.immediateSendData(dataToSend);
+        }
+        // Now force an out of sequence connection (and thus immediate send as the next action)
+        for (BLEDevice target : targets) {
+            taskConnectDevice(target);
         }
         return true; // fire and forget
     }
@@ -999,6 +1003,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
                 logger.debug("nextTask (task=immediateSend,device={},dataLength={})", device, data.value.length);
                 writeSignalCharacteristic(gatt, NextTask.immediateSend, data.value);
+                device.immediateSendData(null); // remove data to ensure it gets sent
                 return;
             }
         }
