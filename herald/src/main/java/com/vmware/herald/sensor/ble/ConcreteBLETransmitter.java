@@ -64,6 +64,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
 
+    // Referenced by startAdvert and stopExistingGattServer ONLY
+    private BluetoothGattServer bluetoothGattServer = null;
+
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
      */
@@ -104,19 +107,24 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
-            //logger.fault("Bluetooth adapter unavailable");
+            logger.debug("bluetoothLeAdvertiser, no Bluetooth Adapter available");
             return null;
         }
-        if (!bluetoothAdapter.isMultipleAdvertisementSupported()) {
-            //logger.fault("Bluetooth advertisement unsupported");
+        boolean supported = bluetoothAdapter.isMultipleAdvertisementSupported();
+        try {
+            final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+            if (bluetoothLeAdvertiser == null) {
+                logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception=no)", supported);
+                return null;
+            }
+            // log this, as this will allow us to identify handsets with a different API implementation
+            logger.debug("bluetoothLeAdvertiser, LE advertiser present (multiSupported={})", supported);
+            return bluetoothLeAdvertiser;
+        } catch (Exception e) {
+            // log it, as this will allow us to identify handsets with the expected API implementation (from Android API source code)
+            logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception={})", supported, e.getMessage());
             return null;
         }
-        final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-        if (bluetoothLeAdvertiser == null) {
-            //logger.fault("Bluetooth advertisement unavailable");
-            return null;
-        }
-        return bluetoothLeAdvertiser;
     }
 
     private class AdvertLoopTask implements BLETimerDelegate {
@@ -198,13 +206,29 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     // MARK:- Start and stop advert
 
+    private void stopExistingGattServer() {
+        if (null != bluetoothGattServer) {
+            // Stop old version, if there's already a proxy reference
+            try {
+                bluetoothGattServer.clearServices();
+                bluetoothGattServer.close();
+                bluetoothGattServer = null;
+            } catch (Throwable e2) {
+                logger.fault("stopGattServer failed to stop EXISTING GATT server", e2);
+                bluetoothGattServer = null;
+            }
+        }
+    }
+
     private void startAdvert(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final Callback<Triple<Boolean, AdvertiseCallback, BluetoothGattServer>> callback) {
         logger.debug("startAdvert");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
                 boolean result = true;
-                BluetoothGattServer bluetoothGattServer = null;
+
+                stopExistingGattServer();
+
                 try {
                     bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
                 } catch (Throwable e) {
@@ -535,6 +559,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             bluetoothGattServer.cancelConnection(device);
         }
         bluetoothGattServer.clearServices();
+
+        // Logic check - ensure there are now no Gatt Services
+        List<BluetoothGattService> services = bluetoothGattServer.getServices();
+        for (BluetoothGattService svc : services) {
+            logger.fault("setGattService device clearServices() call did not correctly clear service (service={})",svc.getUuid());
+        }
+
         final BluetoothGattService service = new BluetoothGattService(BLESensorConfiguration.serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
         final BluetoothGattCharacteristic signalCharacteristic = new BluetoothGattCharacteristic(
                 BLESensorConfiguration.androidSignalCharacteristicUUID,
@@ -553,6 +584,19 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 		}
         service.addCharacteristic(payloadCharacteristic);
         bluetoothGattServer.addService(service);
+
+        // Logic check - ensure there can be only one Herald service
+        services = bluetoothGattServer.getServices();
+        int count = 0;
+        for (BluetoothGattService svc : services) {
+            if (svc.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+                count++;
+            }
+        }
+        if (count > 1) {
+            logger.fault("setGattService device incorrectly sharing multiple Herald services (count={})", count);
+        }
+
         logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",
                 service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid());
     }
