@@ -148,10 +148,16 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         public void bleTimer(final long now) {
             if (!isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
                 if (advertLoopState != AdvertLoopState.stopped) {
-                    advertiseCallback = null;
-                    bluetoothGattServer = null;
-                    state(now, AdvertLoopState.stopped);
-                    logger.debug("advertLoopTask, stop advert (advert={}ms)", timeSincelastStateChange(now));
+                    logger.debug("advertLoopTask, stopping advert following bluetooth state change (isSupported={},bluetoothPowerOff={})", isSupported(), bluetoothStateManager.state() == BluetoothState.poweredOff);
+                    stopAdvert(bluetoothLeAdvertiser(), advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {
+                        @Override
+                        public void accept(Boolean value) {
+                            advertiseCallback = null;
+                            bluetoothGattServer = null;
+                            state(now, AdvertLoopState.stopped);
+                            logger.debug("advertLoopTask, stop advert (advert={}ms)", timeSincelastStateChange(now));
+                        }
+                    });
                 }
                 return;
             }
@@ -206,29 +212,28 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     // MARK:- Start and stop advert
 
-    private void stopExistingGattServer() {
-        if (null != bluetoothGattServer) {
-            // Stop old version, if there's already a proxy reference
-            try {
-                bluetoothGattServer.clearServices();
-                bluetoothGattServer.close();
-                bluetoothGattServer = null;
-            } catch (Throwable e2) {
-                logger.fault("stopGattServer failed to stop EXISTING GATT server", e2);
-                bluetoothGattServer = null;
-            }
-        }
-    }
-
     private void startAdvert(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final Callback<Triple<Boolean, AdvertiseCallback, BluetoothGattServer>> callback) {
         logger.debug("startAdvert");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
                 boolean result = true;
-
-                stopExistingGattServer();
-
+                // Stop existing advert if there is already a proxy reference.
+                // This should never happen because only the AdvertLoopTask calls
+                // startAdvert and it should only call startAdvert after stopAdvert
+                // has been called previously. Logging this condition to verify if
+                // this condition can ever occur to support investigation.
+                if (bluetoothGattServer != null) {
+                    logger.fault("startAdvert found existing GATT server");
+                    try {
+                        bluetoothGattServer.clearServices();
+                        bluetoothGattServer.close();
+                    } catch (Throwable e) {
+                        logger.fault("startAdvert found existing GATT server but failed to stop the server", e);
+                    }
+                    bluetoothGattServer = null;
+                }
+                // Start new GATT server
                 try {
                     bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
                 } catch (Throwable e) {
@@ -289,7 +294,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             public void run() {
                 boolean result = true;
                 try {
-                    if (advertiseCallback != null) {
+                    if (bluetoothLeAdvertiser != null && advertiseCallback != null) {
                         bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
                     }
                 } catch (Throwable e) {
