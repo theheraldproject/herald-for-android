@@ -134,6 +134,14 @@ public class BLESensorConfiguration {
             "^05","^07","^09",
             "^00","^1002","^06","^08","^03","^0C","^0D","^0F","^0E","^0B"
     };
+
+    /// Enable inertia sensor and set threshold
+    /// - Inertia sensor (accelerometer) measures acceleration in meters per second (m/s) along device X, Y and Z axis
+    /// - Generates SensorDelegate:didVisit callbacks with InertiaLocationReference data
+    /// - Set to null to disable sensor, and non-null value to enable sensor and define reporting threshold
+    /// - Reporting threshold is magnitude of acceleration in m/s along any direction
+    /// - This is used for automated capture of RSSI at different distances, where the didVisit data is used as markers
+    public static Double inertiaSensorEnabled = null;
 }
 
 
