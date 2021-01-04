@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2021 VMware, Inc.
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -30,11 +30,11 @@ public class CalibrationLog extends DefaultSensorDelegate {
         }
     }
 
-    private String timestamp() {
+    private static String timestamp() {
         return dateFormatter.format(new Date());
     }
 
-    private String csv(String value) {
+    private static String csv(String value) {
         return TextFile.csv(value);
     }
 

@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2021 VMware, Inc.
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -29,6 +29,8 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Context context;
     private final double threshold;
+    private final SensorManager sensorManager;
+    private final Sensor hardwareSensor;
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
@@ -63,12 +65,19 @@ public class ConcreteInertiaSensor implements InertiaSensor {
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
         }
     };
-    private SensorManager sensorManager;
-    private Sensor hardwareSensor;
 
     public ConcreteInertiaSensor(final Context context, final double threshold) {
         this.context = context;
         this.threshold = threshold;
+        this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        this.hardwareSensor = (sensorManager == null ? null : sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION));
+        if (sensorManager == null) {
+            logger.fault("init, sensor manager unavailable");
+        }
+        // Get hardware sensor
+        if (hardwareSensor == null) {
+            logger.fault("init, inertia sensor unavailable");
+        }
     }
 
     @Override
@@ -80,16 +89,10 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     public void start() {
         // Get sensor manager
         if (sensorManager == null) {
-            this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        }
-        if (sensorManager == null) {
             logger.fault("start, sensor manager unavailable");
             return;
         }
         // Get hardware sensor
-        if (hardwareSensor == null) {
-            hardwareSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        }
         if (hardwareSensor == null) {
             logger.fault("start, inertia sensor unavailable");
             return;

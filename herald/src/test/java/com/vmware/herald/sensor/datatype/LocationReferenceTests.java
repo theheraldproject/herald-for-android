@@ -59,5 +59,9 @@ public class LocationReferenceTests {
         assertEquals(3.464, (double) new InertiaLocationReference(2d, 2d, 2d).magnitude, 0.001);
         assertNotNull(new InertiaLocationReference(null, null, null).description());
         assertNotNull(new InertiaLocationReference(2d, 2d, 2d).description());
+        assertNotNull(new InertiaLocationReference(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE).description());
+        assertNotNull(new InertiaLocationReference(-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE).description());
+        assertEquals(Double.POSITIVE_INFINITY, (double) new InertiaLocationReference(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE).magnitude, 0.001);
+        assertEquals(Double.POSITIVE_INFINITY, (double) new InertiaLocationReference(-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE).magnitude, 0.001);
     }
 }
