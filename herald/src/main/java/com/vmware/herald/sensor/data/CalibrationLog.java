@@ -26,7 +26,7 @@ public class CalibrationLog extends DefaultSensorDelegate {
     public CalibrationLog(final Context context, final String filename) {
         textFile = new TextFile(context, filename);
         if (textFile.empty()) {
-            textFile.write("time,payload,rssi,movement");
+            textFile.write("time,payload,rssi,x,y,z");
         }
     }
 
@@ -43,13 +43,14 @@ public class CalibrationLog extends DefaultSensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
-        textFile.write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",");
+        textFile.write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
     }
 
     @Override
     public void sensor(SensorType sensor, Location didVisit) {
         if (didVisit.value instanceof InertiaLocationReference) {
-            textFile.write(timestamp() + ",,," + ((InertiaLocationReference) didVisit.value).y);
+            final InertiaLocationReference reference = (InertiaLocationReference) didVisit.value;
+            textFile.write(timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);
         }
     }
 }

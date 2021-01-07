@@ -28,13 +28,12 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Context context;
-    private final double threshold;
     private final SensorManager sensorManager;
     private final Sensor hardwareSensor;
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() != Sensor.TYPE_LINEAR_ACCELERATION) {
+            if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
                 return;
             }
             try {
@@ -43,9 +42,6 @@ public class ConcreteInertiaSensor implements InertiaSensor {
                 final double y = event.values[1];
                 final double z = event.values[2];
                 final InertiaLocationReference inertiaLocationReference = new InertiaLocationReference(x, y, z);
-                if (inertiaLocationReference.magnitude < threshold) {
-                    return;
-                }
                 final Location didVisit = new Location(inertiaLocationReference, timestamp, timestamp);
                 operationQueue.execute(new Runnable() {
                     @Override
@@ -66,11 +62,10 @@ public class ConcreteInertiaSensor implements InertiaSensor {
         }
     };
 
-    public ConcreteInertiaSensor(final Context context, final double threshold) {
+    public ConcreteInertiaSensor(final Context context) {
         this.context = context;
-        this.threshold = threshold;
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        this.hardwareSensor = (sensorManager == null ? null : sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION));
+        this.hardwareSensor = (sensorManager == null ? null : sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
         if (sensorManager == null) {
             logger.fault("init, sensor manager unavailable");
         }
@@ -98,6 +93,7 @@ public class ConcreteInertiaSensor implements InertiaSensor {
             return;
         }
         // Register listener
+        logger.debug("start");
         sensorManager.unregisterListener(sensorEventListener);
         sensorManager.registerListener(sensorEventListener, hardwareSensor, SensorManager.SENSOR_DELAY_NORMAL);
     }

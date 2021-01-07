@@ -58,9 +58,9 @@ public class SensorArray implements Sensor {
         concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
         sensorArray.add(concreteBleSensor);
         // Inertia sensor configured for automated RSSI-distance calibration data capture
-        if (BLESensorConfiguration.inertiaSensorEnabled != null) {
-            logger.debug("Inertia sensor enabled (threshold={})", BLESensorConfiguration.inertiaSensorEnabled);
-            sensorArray.add(new ConcreteInertiaSensor(context, BLESensorConfiguration.inertiaSensorEnabled));
+        if (BLESensorConfiguration.inertiaSensorEnabled) {
+            logger.debug("Inertia sensor enabled");
+            sensorArray.add(new ConcreteInertiaSensor(context));
             add(new CalibrationLog(context, "calibration.csv"));
         }
 
