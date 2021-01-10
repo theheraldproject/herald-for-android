@@ -11,6 +11,7 @@ import android.os.Build;
 import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
 import com.vmware.herald.sensor.data.BatteryLog;
+import com.vmware.herald.sensor.data.CalibrationLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
@@ -22,6 +23,7 @@ import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
+import com.vmware.herald.sensor.motion.ConcreteInertiaSensor;
 import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;
@@ -55,6 +57,12 @@ public class SensorArray implements Sensor {
         // Define sensor array
         concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
         sensorArray.add(concreteBleSensor);
+        // Inertia sensor configured for automated RSSI-distance calibration data capture
+        if (BLESensorConfiguration.inertiaSensorEnabled) {
+            logger.debug("Inertia sensor enabled");
+            sensorArray.add(new ConcreteInertiaSensor(context));
+            add(new CalibrationLog(context, "calibration.csv"));
+        }
 
         // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
