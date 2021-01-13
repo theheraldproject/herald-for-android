@@ -5,4 +5,16 @@
 
 <resources>
     <string name="app_name">Herald-for-Android</string>
+
+    <!-- Name of the Android notification channel. -->
+    <string name="notification_channel_name">Herald Status</string>
+
+    <string name="notification_channel_description">Notifications for current status of Herald</string>
+
+    <!-- Content title for foreground service notification -->
+    <string name="notification_content_title">Contact Tracing</string>
+
+    <!-- Content text for foreground service notification -->
+    <string name="notification_content_text">Sensor is working</string>
+
 </resources>

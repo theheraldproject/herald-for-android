@@ -4,18 +4,17 @@
 
 package com.vmware.herald.sensor.service;
 
-import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.datatype.Tuple;
-
 
 /// Foreground service for enabling continuous BLE operation in background
 public class ForegroundService extends Service {
+    public static final String ACTION_START = "ACTION_START_FOREGROUND_SERVICE";
+    public static final String ACTION_STOP = "ACTION_STOP_FOREGROUND_SERVICE";
     private final SensorLogger logger = new ConcreteSensorLogger("App", "ForegroundService");
 
     @Override
@@ -28,9 +27,19 @@ public class ForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         logger.debug("onStartCommand");
 
-        final NotificationService notificationService = NotificationService.shared(getApplication());
-        final Tuple<Integer, Notification> notification = notificationService.notification("Contact Tracing", "Sensor is working");
-        startForeground(notification.a, notification.b);
+        if (intent != null) {
+            String action = intent.getAction();
+
+            switch (action) {
+                case ACTION_START:
+                    this.startForegroundService();
+                    break;
+                case ACTION_STOP:
+                    this.stopForegroundService();
+                    break;
+            }
+        }
+
         super.onStartCommand(intent, flags, startId);
         return START_STICKY;
     }
@@ -44,5 +53,17 @@ public class ForegroundService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    private void startForegroundService() {
+        logger.debug("starting foreground service");
+        final NotificationService notificationService = NotificationService.shared(getApplication());
+        startForeground(notificationService.getForegroundServiceNotificationId(), notificationService.getForegroundServiceNotification());
+    }
+
+    private void stopForegroundService() {
+        logger.debug("stopping foreground service");
+        stopForeground(true);
+        stopSelf();
     }
 }

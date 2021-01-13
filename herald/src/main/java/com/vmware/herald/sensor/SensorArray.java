@@ -5,8 +5,6 @@
 package com.vmware.herald.sensor;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Build;
 
 import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
@@ -24,7 +22,6 @@ import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.motion.ConcreteInertiaSensor;
-import com.vmware.herald.sensor.service.ForegroundService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,14 +42,6 @@ public class SensorArray implements Sensor {
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);
         logger.debug("init");
-
-        // Start foreground service to enable background scan
-        final Intent intent = new Intent(context, ForegroundService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
 
         // Define sensor array
         concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
