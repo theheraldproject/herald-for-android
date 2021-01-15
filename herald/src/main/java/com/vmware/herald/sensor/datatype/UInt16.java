@@ -9,6 +9,7 @@ import java.nio.ByteOrder;
 
 /// Unsigned integer (16 bits)
 public class UInt16 {
+    public final static int MAX_VALUE = 65535;
     public final int value;
     public final Data bigEndian;
 
@@ -18,7 +19,7 @@ public class UInt16 {
     }
 
     protected final static Data encode(int value) {
-        final short valueForEncoding = (value < 0 ? 0 : (value > Short.MAX_VALUE ? Short.MAX_VALUE : (short) value));
+        final short valueForEncoding = (value < 0 ? 0 : (value > MAX_VALUE ? (short) MAX_VALUE : (short) value));
         final ByteBuffer byteBuffer = ByteBuffer.allocate(2);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
         byteBuffer.putShort(valueForEncoding);
@@ -30,8 +31,8 @@ public class UInt16 {
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
         byteBuffer.put(data.value, 0, 2);
         byteBuffer.position(0);
-        final short value = byteBuffer.getShort();
-        return (value < 0 ? 0 : (value > Short.MAX_VALUE ? Short.MAX_VALUE : value));
+        final int value = byteBuffer.getShort() & 0xffff;
+        return value < 0 ? 0 : Math.min(value, MAX_VALUE);
     }
 
 }
