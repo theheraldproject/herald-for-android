@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor.payload.simple;
 
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.Float16;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TimeInterval;
@@ -179,7 +180,7 @@ public class SimplePayloadDataSupplierTests {
 
         // Payload is 23 bytes long
         assertNotNull(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))).value.length, 23);
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))).value.length, ConcreteSimplePayloadDataSupplier.payloadLength);
 
         // Same payload in same period
         assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
@@ -213,25 +214,6 @@ public class SimplePayloadDataSupplierTests {
             ConcreteSimplePayloadDataSupplier.contactIdentifiers(km1);
         }
         final long t1 = System.currentTimeMillis();
-    }
-
-    @Test
-    public void testCrossPlatformUInt8() {
-        System.out.println("value,uint8");
-        for (int i=0; i<256; i++) {
-            System.out.println(i + "," + new UInt8(i).bigEndian.base64EncodedString());
-        }
-    }
-
-    @Test
-    public void testCrossPlatformUInt16() {
-        System.out.println("value,uint16");
-        for (int i=0; i<128; i++) {
-            System.out.println(i + "," + new UInt16(i).bigEndian.base64EncodedString());
-        }
-        for (int i=65536-128; i<65536; i++) {
-            System.out.println(i + "," + new UInt16(i).bigEndian.base64EncodedString());
-        }
     }
 
     @Test

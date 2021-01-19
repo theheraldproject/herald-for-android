@@ -20,26 +20,19 @@ import java.util.List;
 /// Simple payload data supplier.
 public class ConcreteSimplePayloadDataSupplier implements SimplePayloadDataSupplier {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
-    private final static int payloadLength = 23;
+    public final static int payloadLength = 21;
     private final Data commonPayload = new Data();
     private final MatchingKey[] matchingKeys;
     // Cache contact identifiers for the day
     private Integer day = null;
     private ContactIdentifier[] contactIdentifiers = null;
 
-
-    /// Simple payload data supplier where transmit power is unknown.
     public ConcreteSimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, SecretKey secretKey) {
-        this(protocolAndVersion, countryCode, stateCode, new Float16(0), secretKey);
-    }
-
-    public ConcreteSimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, Float16 transmitPower, SecretKey secretKey) {
         // Generate common header
         // All data is big endian
-        commonPayload.append(protocolAndVersion.bigEndian);
-        commonPayload.append(countryCode.bigEndian);
-        commonPayload.append(stateCode.bigEndian);
-        commonPayload.append(transmitPower.bigEndian);
+        commonPayload.append(protocolAndVersion);
+        commonPayload.append(countryCode);
+        commonPayload.append(stateCode);
 
         // Generate matching keys from secret key
         matchingKeys = K.matchingKeys(secretKey);

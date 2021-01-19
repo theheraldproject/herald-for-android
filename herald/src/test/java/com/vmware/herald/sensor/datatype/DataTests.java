@@ -246,5 +246,28 @@ public class DataTests {
             }
         }
     }
+
+    // MARK:- Tests for append methods
+
+    @Test
+    public void testUInt8() {
+        // Zero, Max
+        final Data dataRange = new Data();
+        dataRange.append(new UInt8(0));
+        dataRange.append(UInt8.min);
+        dataRange.append(UInt8.max);
+        assertEquals(new UInt8(0).value, dataRange.uint8(0).value);
+        assertEquals(UInt8.min.value, dataRange.uint8(1).value);
+        assertEquals(UInt8.max.value, dataRange.uint8(2).value);
+        // Values in range
+        for (int i=UInt8.min.value; i<UInt8.max.value; i++) {
+            final UInt8 value = new UInt8(i);
+            final Data data = new Data();
+            data.append(value);
+            assertEquals(i, data.uint8(0).value);
+        }
+    }
+
+
 }
 

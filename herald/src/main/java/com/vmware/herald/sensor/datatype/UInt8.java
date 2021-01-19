@@ -6,31 +6,34 @@ package com.vmware.herald.sensor.datatype;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Objects;
 
 /// Unsigned integer (8 bits)
 public class UInt8 {
+    public final static int bitWidth = 8;
+    public final static UInt8 min = new UInt8(0);
+    public final static UInt8 max = new UInt8(255);
     public final int value;
-    public final Data bigEndian;
 
     public UInt8(int value) {
-        this.bigEndian = encode(value);
-        this.value = decode(bigEndian);
+        this.value = (value < 0 ? 0 : (value > 255 ? 255 : value));
     }
 
-    protected final static Data encode(int value) {
-        final int valueForEncoding = (value < 0 ? 0 : (value > Byte.MAX_VALUE ? Byte.MAX_VALUE : value));
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(1);
-        byteBuffer.order(ByteOrder.BIG_ENDIAN);
-        byteBuffer.put((byte) valueForEncoding);
-        return new Data(byteBuffer.array());
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UInt8 uInt8 = (UInt8) o;
+        return value == uInt8.value;
     }
 
-    protected final static int decode(Data data) {
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(1);
-        byteBuffer.order(ByteOrder.BIG_ENDIAN);
-        byteBuffer.put(data.value, 0, 1);
-        byteBuffer.position(0);
-        final int value = byteBuffer.get();
-        return (value < 0 ? 0 : (value > Byte.MAX_VALUE ? Byte.MAX_VALUE : value));
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
+    }
+
+    @Override
+    public String toString() {
+        return Integer.toString(value);
     }
 }
