@@ -159,4 +159,21 @@ public class BLEAdvertParser {
         }
         return appleSegments;
     }
+
+    public static List<BLEAdvertServiceData> extractServiceUUID16Data(List<BLEAdvertSegment> segments) {
+        // find the serviceData code segment in the list
+        List<BLEAdvertServiceData> serviceData = new ArrayList<>();
+        for (BLEAdvertSegment segment : segments) {
+            if (segment.type == BLEAdvertSegmentType.serviceUUID16Data) {
+                // Ensure that the data area is long enough
+                if (segment.data.length < 2) {
+                    continue; // there may be a valid segment of same type... Happens for manufacturer data
+                }
+                // Create a service data segment
+                final byte[] serviceUUID16LittleEndian = subDataLittleEndian(segment.data,0,2);
+                serviceData.add(new BLEAdvertServiceData(serviceUUID16LittleEndian, subDataBigEndian(segment.data,2,segment.dataLength - 2), segment.raw));
+            }
+        }
+        return serviceData;
+    }
 }
