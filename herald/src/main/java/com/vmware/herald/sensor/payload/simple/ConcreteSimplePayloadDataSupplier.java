@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor.payload.simple;
 
+import com.vmware.herald.sensor.Device;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.Data;
@@ -91,7 +92,7 @@ public class ConcreteSimplePayloadDataSupplier implements SimplePayloadDataSuppl
     // MARK:- SimplePayloadDataSupplier
 
     @Override
-    public PayloadData payload(PayloadTimestamp timestamp) {
+    public PayloadData payload(PayloadTimestamp timestamp, Device device) {
         final PayloadData payloadData = new PayloadData();
         payloadData.append(commonPayload);
         final ContactIdentifier contactIdentifier = contactIdentifier(timestamp.value);

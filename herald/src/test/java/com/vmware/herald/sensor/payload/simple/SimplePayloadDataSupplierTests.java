@@ -181,31 +181,31 @@ public class SimplePayloadDataSupplierTests {
         final SimplePayloadDataSupplier pds1 = new ConcreteSimplePayloadDataSupplier(new UInt8(0), new UInt16(0), new UInt16(0), ks1);
 
         // Payload is 23 bytes long
-        assertNotNull(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))).value.length, ConcreteSimplePayloadDataSupplier.payloadLength);
+        assertNotNull(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null).value.length, ConcreteSimplePayloadDataSupplier.payloadLength);
 
         // Same payload in same period
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:05:59+0000"))));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:05:59+0000")), null));
         // Different payloads in different periods
-        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:06:00+0000"))));
+        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:06:00+0000")), null));
 
         // Same payload in different periods before epoch
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:06:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T23:54:00+0000"))));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:06:00+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T23:54:00+0000")), null));
         // Valid payload on first epoch period
-        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T23:54:01+0000"))));
+        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-23T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2020-09-23T23:54:01+0000")), null));
 
         // Same payload in same periods on epoch + 2000 days
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:05:59+0000"))));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:05:59+0000")), null));
         // Different payloads in different periods on epoch + 2000 days
-        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:06:00+0000"))));
+        assertNotEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-17T00:06:00+0000")), null));
 
         // Same payload in different periods after epoch + 2001 days
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:06:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:05:59+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:06:00+0000"))));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:06:00+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:05:59+0000")), null));
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:00:00+0000")), null), pds1.payload(new PayloadTimestamp(K.date("2026-03-18T00:06:00+0000")), null));
     }
 
     @Test
