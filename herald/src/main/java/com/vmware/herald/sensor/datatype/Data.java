@@ -6,6 +6,7 @@ package com.vmware.herald.sensor.datatype;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 /// Raw byte array data
@@ -283,4 +284,132 @@ public class Data {
                 ((long) (value[index + 7]) << 56);
         return new Int64(v);
     }
+
+    // MARK:- String to/from Data functions
+
+    /// Encoding option for string length data as prefix
+    public enum StringLengthEncodingOption {
+        UINT8, UINT16, UINT32, UINT64
+    }
+
+    /// Encode string as data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
+    public boolean append(final String value) {
+        return append(value, StringLengthEncodingOption.UINT8);
+    }
+
+    public boolean append(final String value, final StringLengthEncodingOption encoding) {
+        if (value == null) {
+            return false;
+        }
+        byte[] data = null;
+        try {
+            data = value.getBytes("UTF-8");
+        } catch (Throwable e) {
+            return false;
+        }
+        if (data == null) {
+            return false;
+        }
+        switch (encoding) {
+            case UINT8:
+            if (!(data.length <= UInt8.max.value)) {
+                return false;
+            }
+            append(new UInt8(data.length));
+            break;
+        case UINT16:
+            if (!(data.length <= UInt16.max.value))  {
+                return false;
+            }
+            append(new UInt16(data.length));
+            break;
+        case UINT32:
+            if (!(data.length <= UInt32.max.value)) {
+                return false;
+            }
+            append(new UInt32(data.length));
+            break;
+        case UINT64:
+            if (!(data.length <= UInt64.max.value)) {
+                return false;
+            }
+            append(new UInt64(data.length));
+            break;
+        }
+        append(data);
+        return true;
+    }
+
+    /// Decoded string and start/end indices in data byte array
+    public final static class DecodedString {
+        public final String value;
+        public final int start;
+        public final int end;
+
+        public DecodedString(final String value, final int start, final int end) {
+            this.value = value;
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    public DecodedString string(final int index) {
+        return string(index, StringLengthEncodingOption.UINT8);
+    }
+
+    public DecodedString string(final int index, final StringLengthEncodingOption encoding) {
+        long start = index;
+        long end = index;
+        switch (encoding) {
+            case UINT8: {
+                final UInt8 count = uint8(index);
+                if (count == null) {
+                    return null;
+                }
+                start = index + 1;
+                end = start + count.value;
+                break;
+            }
+            case UINT16: {
+                final UInt16 count = uint16(index);
+                if (count == null) {
+                    return null;
+                }
+                start = index + 2;
+                end = start + count.value;
+                break;
+            }
+            case UINT32: {
+                final UInt32 count = uint32(index);
+                if (count == null) {
+                    return null;
+                }
+                start = index + 4;
+                end = start + count.value;
+                break;
+            }
+            case UINT64: {
+                final UInt64 count = uint64(index);
+                if (count == null) {
+                    return null;
+                }
+                start = index + 8;
+                end = start + count.value;
+                break;
+            }
+        }
+        if (start > Integer.MAX_VALUE || end > Integer.MAX_VALUE) {
+            return null;
+        }
+        if (start == index || start > value.length || end > value.length) {
+            return null;
+        }
+        try {
+            final String string = new String(value, (int) start, (int) (end - start), Charset.forName("UTF-8"));
+            return new DecodedString(string, (int) start, (int) end);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
 }
