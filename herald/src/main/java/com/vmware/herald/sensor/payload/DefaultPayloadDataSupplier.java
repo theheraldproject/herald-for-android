@@ -18,7 +18,7 @@ public abstract class DefaultPayloadDataSupplier implements PayloadDataSupplier 
     @Override
     public List<PayloadData> payload(Data data) {
         // Get fixed length payload data
-        final PayloadData fixedLengthPayloadData = payload(new PayloadTimestamp());
+        final PayloadData fixedLengthPayloadData = payload(new PayloadTimestamp(), null);
         final int payloadDataLength = fixedLengthPayloadData.value.length;
         // Split raw data comprising of concatenated payloads into individual payloads
         final List<PayloadData> payloads = new ArrayList<>();

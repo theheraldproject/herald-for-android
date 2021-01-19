@@ -65,7 +65,7 @@ public class SensorArray implements Sensor {
         }
 
         // Loggers
-        payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
+        payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), null);
 		if (com.vmware.herald.BuildConfig.DEBUG) {
 	        add(new ContactLog(context, "contacts.csv"));
 	        add(new StatisticsLog(context, "statistics.csv", payloadData));

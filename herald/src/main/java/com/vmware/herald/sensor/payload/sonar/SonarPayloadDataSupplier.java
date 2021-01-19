@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor.payload.sonar;
 
+import com.vmware.herald.sensor.Device;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
@@ -27,7 +28,7 @@ public class SonarPayloadDataSupplier extends DefaultPayloadDataSupplier {
     }
 
     @Override
-    public PayloadData payload(PayloadTimestamp timestamp) {
+    public PayloadData payload(PayloadTimestamp timestamp, Device device) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(length);
         // First 3 bytes are reserved in SONAR
         byteBuffer.position(3);

@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanRecord;
 
+import com.vmware.herald.sensor.Device;
 import com.vmware.herald.sensor.datatype.Calibration;
 import com.vmware.herald.sensor.datatype.CalibrationMeasurementUnit;
 import com.vmware.herald.sensor.datatype.Data;
@@ -22,13 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Queue;
 
-public class BLEDevice {
-    /// Device registration timestamp
-    public final Date createdAt;
-    /// Last time anything changed, e.g. attribute update
-    public Date lastUpdatedAt = null;
-    /// Ephemeral device identifier, e.g. peripheral identifier UUID
-    public final TargetIdentifier identifier;
+public class BLEDevice extends Device {
     /// Pseudo device address for tracking Android devices that change address constantly.
     private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
@@ -110,17 +105,13 @@ public class BLEDevice {
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
-        this.createdAt = new Date();
-        this.identifier = identifier;
+        super(identifier);
         this.delegate = delegate;
-        this.lastUpdatedAt = createdAt;
     }
 
     /// Create a clone of an existing device
     public BLEDevice(BLEDevice device, BluetoothDevice bluetoothDevice) {
-        this.createdAt = device.createdAt;
-        this.lastUpdatedAt = new Date();
-        this.identifier = new TargetIdentifier(bluetoothDevice);
+        super(device, new TargetIdentifier(bluetoothDevice));
         this.pseudoDeviceAddress = device.pseudoDeviceAddress;
         this.delegate = device.delegate;
         this.state = device.state;

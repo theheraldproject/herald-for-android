@@ -4,6 +4,7 @@
 
 package com.vmware.herald.sensor.payload.c19x;
 
+import com.vmware.herald.sensor.Device;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.payload.DefaultPayloadDataSupplier;
@@ -20,7 +21,7 @@ public class C19XPayloadDataSupplier extends DefaultPayloadDataSupplier {
     }
 
     @Override
-    public PayloadData payload(PayloadTimestamp timestamp) {
+    public PayloadData payload(PayloadTimestamp timestamp, Device device) {
         final BeaconCode beaconCode = beaconCodes.get(new Timestamp(timestamp.value));
         if (beaconCode == null) {
             return emptyPayloadData;

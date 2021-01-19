@@ -323,7 +323,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public PayloadData payloadData() {
-        return payloadDataSupplier.payload(new PayloadTimestamp(new Date()));
+        return payloadDataSupplier.payload(new PayloadTimestamp(new Date()), null);
     }
 
     @Override
@@ -374,12 +374,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             private final Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
             private final Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
-            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device) {
-                final String key = device.getAddress();
+            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice bluetoothDevice) {
+                final BLEDevice device = database.device(bluetoothDevice);
+                final String key = bluetoothDevice.getAddress();
                 if (onCharacteristicReadPayloadData.containsKey(key)) {
                     return onCharacteristicReadPayloadData.get(key);
                 }
-                final PayloadData payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
+                final PayloadData payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), device);
                 onCharacteristicReadPayloadData.put(key, payloadData);
                 return payloadData;
             }
