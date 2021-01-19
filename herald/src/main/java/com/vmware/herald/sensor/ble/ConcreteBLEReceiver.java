@@ -24,13 +24,16 @@ import android.os.ParcelUuid;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
+import com.vmware.herald.sensor.ble.filter.BLEAdvertServiceData;
 import com.vmware.herald.sensor.ble.filter.BLEDeviceFilter;
+import com.vmware.herald.sensor.ble.filter.BLEScanResponseData;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
 import com.vmware.herald.sensor.datatype.Callback;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
+import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
 import com.vmware.herald.sensor.datatype.RSSI;
@@ -335,13 +338,22 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     // transient issues. This will be handled in taskConnect.
     private void scanForPeripherals(final BluetoothLeScanner bluetoothLeScanner) {
         logger.debug("scanForPeripherals");
-        final List<ScanFilter> filter = new ArrayList<>(2);
+        final List<ScanFilter> filter = new ArrayList<>(3);
+        // Scan for HERALD protocol service on iOS (background) devices
         filter.add(new ScanFilter.Builder().setManufacturerData(
                 BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
+        // Scan for HERALD protocol service on Android or iOS (foreground) devices
         filter.add(new ScanFilter.Builder().setServiceUuid(
                 new ParcelUuid(BLESensorConfiguration.serviceUUID),
                 new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                 .build());
+        // Scan for legacy advert only protocol service
+        if (BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID != null) {
+            filter.add(new ScanFilter.Builder().setServiceUuid(
+                    new ParcelUuid(BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID),
+                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                    .build());
+        }
         final ScanSettings settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)
@@ -405,6 +417,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         taskRemoveExpiredDevices();
         taskCorrectConnectionStatus();
         taskConnect(didDiscover);
+        taskLegacyAdvertOnlyProtocolService(didDiscover);
         final long t1 = System.currentTimeMillis();
         logger.debug("processScanResults (results={},devices={},elapsed={}ms)", scanResults.size(), didDiscover.size(), (t1 - t0));
     }
@@ -471,10 +484,17 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ios_tbc);
                 }
-            } else {
+            } else if (BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID == null) {
                 // Sensor service not found + Manufacturer not Apple should be impossible
                 // as we are scanning for devices with sensor service or Apple device.
                 logger.fault("didDiscover, invalid non-Apple device without sensor service (device={})", device);
+                if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
+                    device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
+            } else {
+                // hasLegacyAdvertOnlyProtocolServiceService implied
+                // Legacy advertising only protocol service found, set to ignore
+                // as this is handled by taskLegacyAdvertOnlyProtocolService without connection
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 }
@@ -510,6 +530,77 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
         return data != null;
     }
+
+    // MARK:- Legacy advertising only protocol service
+
+    private void taskLegacyAdvertOnlyProtocolService(final List<BLEDevice> discovered) {
+        if (BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID == null ||
+            BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUIDDataKey == null) {
+            // Not searching for legacy advertising only protocol service or service data
+            return;
+        }
+        final long timeStart = System.currentTimeMillis();
+        for (BLEDevice device : discovered) {
+            // Stop process if exceeded time limit
+            final long elapsedTime = System.currentTimeMillis() - timeStart;
+            if (elapsedTime >= scanProcessDurationMillis) {
+                logger.debug("taskLegacyAdvertOnlyProtocolService, reached time limit (elapsed={}ms,limit={}ms)", elapsedTime, scanProcessDurationMillis);
+                break;
+            }
+            processLegacyAdvertOnlyProtocolServiceData(device);
+        }
+    }
+
+    /// Extract messages from manufacturer specific data
+    private void processLegacyAdvertOnlyProtocolServiceData(final BLEDevice device) {
+        // Test if device has legacy advert only protocol service
+        if (!hasLegacyAdvertOnlyProtocolServiceService(device)) {
+            return;
+        }
+        try {
+            final BLEScanResponseData bleScanResponseData = BLEAdvertParser.parseScanResponse(device.scanRecord().getBytes(), 0);
+            final List<BLEAdvertServiceData> bleAdvertServiceDataList = BLEAdvertParser.extractServiceUUID16Data(bleScanResponseData.segments);
+            for (BLEAdvertServiceData bleAdvertServiceData : bleAdvertServiceDataList) {
+                try {
+                    // Test if service data area contains expected service data key
+                    if (!BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUIDDataKey.equals(new Data(bleAdvertServiceData.service))) {
+                        continue;
+                    }
+                    if (bleAdvertServiceData.data != null && bleAdvertServiceData.data.length > 0) {
+                        final LegacyPayloadData payloadData = new LegacyPayloadData(BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID, bleAdvertServiceData.data);
+                        device.payloadData(payloadData);
+                        logger.debug("processLegacyAdvertOnlyProtocolServiceData, found service (device={},payload={})", device, payloadData.shortName());
+                    }
+                } catch (Throwable e) {
+                    // Errors are expected due to corrupt data
+                }
+            }
+        } catch (Throwable e) {
+            // Errors are expected due to corrupt data
+        }
+    }
+
+    /// Does device include advert for legacy advertising only protocol service?
+    private static boolean hasLegacyAdvertOnlyProtocolServiceService(final BLEDevice device) {
+        if (device == null) {
+            return false;
+        }
+        final ScanRecord scanRecord = device.scanRecord();
+        if (scanRecord == null) {
+            return false;
+        }
+        final List<ParcelUuid> serviceUuids = scanRecord.getServiceUuids();
+        if (serviceUuids == null || serviceUuids.size() == 0) {
+            return false;
+        }
+        for (ParcelUuid serviceUuid : serviceUuids) {
+            if (serviceUuid.getUuid().equals(BLESensorConfiguration.legacyAdvertOnlyProtocolServiceUUID)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     // MARK:- House keeping tasks
 
@@ -1095,7 +1186,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
         logger.debug("onCharacteristicRead (device={},status={},characteristic={})", device, bleStatus(status), characteristic.getUuid().toString());
-        if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID) || characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+        if (characteristic.getUuid().equals(BLESensorConfiguration.payloadCharacteristicUUID)) {
             final PayloadData payloadData = (characteristic.getValue() != null ? new PayloadData(characteristic.getValue()) : null);
             if (success) {
                 if (payloadData != null) {
@@ -1107,6 +1198,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 }
             } else {
                 logger.fault("onCharacteristicRead, read payload data failed (device={})", device);
+            }
+        } if (characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+            final LegacyPayloadData payloadData = (characteristic.getValue() != null ? new LegacyPayloadData(BLESensorConfiguration.legacyPayloadCharacteristicUUID, characteristic.getValue()) : null);
+            if (success) {
+                if (payloadData != null) {
+                    logger.debug("onCharacteristicRead, read legacy payload data success (device={},payload={})", device, payloadData.shortName());
+                    device.payloadData(payloadData);
+                    // TODO incorporate Android non-auth security patch once license confirmed
+                } else {
+                    logger.fault("onCharacteristicRead, read legacy payload data failed, no data (device={})", device);
+                }
+            } else {
+                logger.fault("onCharacteristicRead, read legacy payload data failed (device={})", device);
             }
         } else if (characteristic.getUuid().equals(BLESensorConfiguration.bluetoothDeviceInformationServiceModelCharacteristicUUID)) {
             final String model = characteristic.getStringValue(0);

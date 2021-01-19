@@ -582,7 +582,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
-		if (null != BLESensorConfiguration.legacyPayloadCharacteristic) {
+		if (BLESensorConfiguration.legacyPayloadCharacteristic != null) {
 			final BluetoothGattCharacteristic legacyPayloadCharacteristic = 
 			BLESensorConfiguration.legacyPayloadCharacteristic;
         	service.addCharacteristic(legacyPayloadCharacteristic);

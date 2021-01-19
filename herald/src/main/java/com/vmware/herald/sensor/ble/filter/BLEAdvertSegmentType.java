@@ -24,6 +24,7 @@ public enum BLEAdvertSegmentType {
     simplePairingHash("simplePairingHash",0x0E),
     simplePairingRandomiser("simplePairingRandomiser",0x0F),
     deviceID("deviceID",0x10),
+    serviceUUID16Data("serviceUUID16Data", 0x16),
     meshMessage("meshMessage",0x2A),
     meshBeacon("meshBeacon",0x2B),
     bigInfo("bigInfo",0x2C),

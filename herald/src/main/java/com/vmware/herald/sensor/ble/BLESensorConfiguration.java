@@ -7,6 +7,7 @@ package com.vmware.herald.sensor.ble;
 import android.bluetooth.BluetoothGattCharacteristic;
 
 import com.vmware.herald.sensor.data.SensorLoggerLevel;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.RandomSource;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
@@ -32,11 +33,30 @@ public class BLESensorConfiguration {
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
+
+    // MARK:- Support for legacy BLE services
+
 	/// Legacy payload sharing characteristic
+    /// - Enable support for capturing of legacy read/write based protocol
+    /// - Set UUID to null to disable feature
+    /// - Example protocol is TT service that reads and writes payload via a GATT characteristic
+    /// ---- Herald will read from this characteristic to obtain legacy payload
+    /// ---- Data written to this characteristic by legacy protocol will be captured by Herald
 	public static UUID legacyPayloadCharacteristicUUID = null;
-	/// A full characteristic description itself for a legacy payload
 	public static BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
-	
+	/// Legacy advert only protocol service
+    /// - Enable support for capturing of legacy advert only protocols
+    /// - Assumes protocol advertises a service UUID and boardcasts token data in service data area
+    /// - Set UUID to null to disable feature
+    /// - Example protocol is EN service that uses a 16-bit UUID and data key 0xFD6F
+    /// --- Scan for 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
+    /// --- Read broadcasted token data from service data area associated with given data key "FD6F"
+    ///     legacyAdvertOnlyProtocolServiceUUID = UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
+    ///     legacyAdvertOnlyProtocolServiceUUIDDataKey = Data.fromHexEncodedString("FD6F");
+    public static UUID legacyAdvertOnlyProtocolServiceUUID = null;
+    public static Data legacyAdvertOnlyProtocolServiceUUIDDataKey = null;
+
+
     /// Standard Bluetooth service and characteristics
     /// These are all fixed UUID from the BLE standard.
     /// Standard Bluetooth Service UUID for Generic Access Service
