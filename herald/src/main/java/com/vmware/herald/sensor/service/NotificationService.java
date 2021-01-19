@@ -24,14 +24,12 @@ public class NotificationService {
     private static NotificationService shared = null;
     private static Application application = null;
     private final Context context;
-    private final static String notificationChannelName = "NotificationChannel";
-    private final int notificationChannelId = notificationChannelName.hashCode();
-    private Triple<String, String, Notification> notificationContent = new Triple<>(null, null, null);
+    private int notificationId;
+    private Notification notification;
 
     private NotificationService(final Application application) {
         this.application = application;
         this.context = application.getApplicationContext();
-        createNotificationChannel();
     }
 
     /// Get shared global instance of notification service
@@ -42,43 +40,32 @@ public class NotificationService {
         return shared;
     }
 
-    private void createNotificationChannel() {
+    /// Start foreground service to enable background scan
+    public void startForegroundService(Notification notification, int notificationId) {
+        this.notification = notification;
+        this.notificationId = notificationId;
+
+        final Intent intent = new Intent(context, ForegroundService.class);
+        intent.setAction(ForegroundService.ACTION_START);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            final int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            final NotificationChannel channel = new NotificationChannel(notificationChannelName, notificationChannelName, importance);
-            channel.setDescription(notificationChannelName);
-            final NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
+            context.startForegroundService(intent);
+        } else {
+            context.startService(intent);
         }
     }
 
-    public Tuple<Integer, Notification> notification(final String title, final String body) {
-        if (title != null && body != null) {
-            final String existingTitle = notificationContent.a;
-            final String existingBody = notificationContent.b;
-            if (!title.equals(existingTitle) || !body.equals(existingBody)) {
-                createNotificationChannel();
-                final Intent intent = new Intent(context, application.getClass());
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                final PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
-                final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, notificationChannelName)
-                        .setSmallIcon(com.vmware.herald.R.drawable.ic_notification)
-                        .setContentTitle(title)
-                        .setContentText(body)
-                        .setContentIntent(pendingIntent)
-                        .setAutoCancel(true)
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-                final Notification notification = builder.build();
-                final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-                notificationManager.notify(notificationChannelId, notification);
-                notificationContent = new Triple<>(title, body, notification);
-                return new Tuple<>(notificationChannelId, notification);
-            }
-        } else {
-            final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-            notificationManager.deleteNotificationChannel(notificationChannelName);
-            notificationContent = new Triple<>(null, null, null);
-        }
-        return new Tuple<>(notificationChannelId, null);
+    /// Stop current foreground service
+    public void stopForegroundService() {
+        final Intent intent = new Intent(context, ForegroundService.class);
+        intent.setAction(ForegroundService.ACTION_STOP);
+        context.startService(intent);
+    }
+
+    public Notification getForegroundServiceNotification() {
+        return this.notification;
+    }
+
+    public int getForegroundServiceNotificationId() {
+        return this.notificationId;
     }
 }

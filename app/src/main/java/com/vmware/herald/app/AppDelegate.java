@@ -5,8 +5,16 @@
 package com.vmware.herald.app;
 
 import android.app.Application;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
@@ -20,12 +28,15 @@ import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.payload.sonar.SonarPayloadDataSupplier;
+import com.vmware.herald.sensor.service.NotificationService;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private final static String tag = AppDelegate.class.getName();
+    private final static String NOTIFICATION_CHANNEL_ID = "HERALD_NOTIFICATION_CHANNEL_ID";
+    private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
     private static AppDelegate appDelegate = null;
 
     // Sensor for proximity detection
@@ -42,6 +53,9 @@ public class AppDelegate extends Application implements SensorDelegate {
         super.onCreate();
 
         appDelegate = this;
+        // Initialise foreground service to keep application running in background
+        this.createNotificationChannel();
+        NotificationService.shared(this).startForegroundService(this.getForegroundNotification(), NOTIFICATION_ID);
         // Initialise sensor array for given payload data supplier
         final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
@@ -111,5 +125,34 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, SensorState didUpdateState) {
         Log.i(tag, sensor.name() + ",didUpdateState=" + didUpdateState.name());
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            final NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    this.getString(R.string.notification_channel_name), importance);
+
+            channel.setDescription(this.getString(R.string.notification_channel_description));
+
+            final NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private Notification getForegroundNotification() {
+        final Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(com.vmware.herald.R.drawable.ic_notification)
+                .setContentTitle(this.getString(R.string.notification_content_title))
+                .setContentText(this.getString(R.string.notification_content_text))
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        final Notification notification = builder.build();
+        return notification;
     }
 }
