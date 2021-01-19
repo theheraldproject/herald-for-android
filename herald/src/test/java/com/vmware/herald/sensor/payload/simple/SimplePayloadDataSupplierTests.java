@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.payload.simple;
 
+import com.vmware.herald.sensor.TestUtil;
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.Float16;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TimeInterval;
@@ -12,6 +14,7 @@ import com.vmware.herald.sensor.datatype.UInt8;
 
 import org.junit.Test;
 
+import java.io.PrintWriter;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
@@ -179,7 +182,7 @@ public class SimplePayloadDataSupplierTests {
 
         // Payload is 23 bytes long
         assertNotNull(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
-        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))).value.length, 23);
+        assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))).value.length, ConcreteSimplePayloadDataSupplier.payloadLength);
 
         // Same payload in same period
         assertEquals(pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))), pds1.payload(new PayloadTimestamp(K.date("2020-09-24T00:00:00+0000"))));
@@ -216,25 +219,6 @@ public class SimplePayloadDataSupplierTests {
     }
 
     @Test
-    public void testCrossPlatformUInt8() {
-        System.out.println("value,uint8");
-        for (int i=0; i<256; i++) {
-            System.out.println(i + "," + new UInt8(i).bigEndian.base64EncodedString());
-        }
-    }
-
-    @Test
-    public void testCrossPlatformUInt16() {
-        System.out.println("value,uint16");
-        for (int i=0; i<128; i++) {
-            System.out.println(i + "," + new UInt16(i).bigEndian.base64EncodedString());
-        }
-        for (int i=65536-128; i<65536; i++) {
-            System.out.println(i + "," + new UInt16(i).bigEndian.base64EncodedString());
-        }
-    }
-
-    @Test
     public void testCrossPlatformFloat16() {
         System.out.println("value,float16");
         System.out.println("-65504," + new Float16(-65504).bigEndian.base64EncodedString());
@@ -245,8 +229,9 @@ public class SimplePayloadDataSupplierTests {
     }
 
     @Test
-    public void testContactIdentifierCrossPlatform() {
-        System.out.println("day,period,matchingKey,contactKey,contactIdentifier");
+    public void testContactIdentifierCrossPlatform() throws Exception {
+        final PrintWriter out = TestUtil.androidPrintWriter("contactIdentifier.csv");
+        out.println("day,period,matchingKey,contactKey,contactIdentifier");
         // Generate secret and matching keys
         final SecretKey ks1 = new SecretKey((byte) 0, 2048);
         final MatchingKey[] km1 = K.matchingKeys(ks1);
@@ -255,8 +240,11 @@ public class SimplePayloadDataSupplierTests {
             final ContactKey[] kc1 = K.contactKeys(km1[day]);
             for (int period=0; period<=240; period++) {
                 final ContactIdentifier Ic1 = K.contactIdentifier(kc1[period]);
-                System.out.println(day + "," + period + "," + km1[day].base64EncodedString() + "," + kc1[period].base64EncodedString() + "," + Ic1.base64EncodedString());
+                out.println(day + "," + period + "," + km1[day].base64EncodedString() + "," + kc1[period].base64EncodedString() + "," + Ic1.base64EncodedString());
             }
         }
+        out.flush();
+        out.close();
+        TestUtil.assertEqualsCrossPlatform("contactIdentifier.csv");
     }
 }
