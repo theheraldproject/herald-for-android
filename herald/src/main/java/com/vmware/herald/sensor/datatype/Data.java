@@ -285,6 +285,19 @@ public class Data {
         return new Int64(v);
     }
 
+    public void append(Float16 value) {
+        append(value.bigEndian);
+    }
+
+    public Float16 float16(int index) {
+        if (index < 0 || index + 1 >= value.length) {
+            return null;
+        }
+        return new Float16(new Data(new byte[] {
+                value[index], value[index + 1]
+        }));
+    }
+
     // MARK:- String to/from Data functions
 
     /// Encoding option for string length data as prefix
