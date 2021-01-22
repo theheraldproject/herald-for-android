@@ -110,11 +110,23 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         if (scanRecord == null) {
             return null;
         }
-        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor);
-        if (data == null || data.length != 6) {
-            return null;
+        // HERALD pseudo device address
+        if (scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor) != null) {
+            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor);
+            if (data != null && data.length == 6) {
+                return new PseudoDeviceAddress(data);
+            }
         }
-        return new PseudoDeviceAddress(data);
+        // OpenTrace device id
+        else if (BLESensorConfiguration.interopOpenTraceManufacturerId != null &&
+                scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId) != null) {
+            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId);
+            if (data != null && data.length > 0) {
+                return new PseudoDeviceAddress(data);
+            }
+        }
+        // Not found
+        return null;
     }
 
     /// Share information across devices with the same pseudo device address
