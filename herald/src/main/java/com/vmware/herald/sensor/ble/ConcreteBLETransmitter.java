@@ -443,7 +443,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     return;
                 }
                 final Data data = new Data(onCharacteristicWriteSignalData(device, value));
-				if (characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+				if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
 				    if (null == data.value) {
 				        return;
                     }
@@ -526,7 +526,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
                 final BLEDevice targetDevice = database.device(device);
-                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
                     final PayloadData payloadData = onCharacteristicReadPayloadData(device);
                     if (offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
@@ -583,9 +583,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
-		if (BLESensorConfiguration.legacyPayloadCharacteristic != null) {
-			final BluetoothGattCharacteristic legacyPayloadCharacteristic = 
-			BLESensorConfiguration.legacyPayloadCharacteristic;
+        // Interop with OpenTrace protocol
+		if (BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID != null) {
+			final BluetoothGattCharacteristic legacyPayloadCharacteristic = new BluetoothGattCharacteristic(
+                    BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID,
+                    BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                    BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE);
         	service.addCharacteristic(legacyPayloadCharacteristic);
 		}
         service.addCharacteristic(payloadCharacteristic);

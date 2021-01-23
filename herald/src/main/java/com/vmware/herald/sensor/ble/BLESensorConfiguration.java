@@ -21,7 +21,8 @@ public class BLESensorConfiguration {
     /// in background mode. Android devices will need to find Apple devices first using the manufacturer code
     /// then discover services to identify actual beacons.
     /// - Service and characteristic UUIDs are V4 UUIDs that have been randomly generated and tested
-    /// for uniqueness by conducting web searches to ensure it returns no results.
+    ///   for uniqueness by conducting web searches to ensure it returns no results.
+    ///   Default UUID for HERALD is 428132af-4746-42d3-801e-4572d65bfd9b
     /// - Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
     public static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
     /// Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
@@ -34,27 +35,30 @@ public class BLESensorConfiguration {
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
 
-    // MARK:- Support for legacy BLE services
+    // MARK:- Interoperability with OpenTrace
 
-	/// Legacy payload sharing characteristic
-    /// - Enable support for capturing of legacy read/write based protocol
-    /// - Set UUID to null to disable feature
-    /// - Example protocol is TT service that reads and writes payload via a GATT characteristic
-    /// ---- Herald will read from this characteristic to obtain legacy payload
-    /// ---- Data written to this characteristic by legacy protocol will be captured by Herald
-	public static UUID legacyPayloadCharacteristicUUID = null;
-	public static BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
-	/// Legacy advert only protocol service
-    /// - Enable support for capturing of legacy advert only protocols
-    /// - Assumes protocol advertises a service UUID and boardcasts token data in service data area
-    /// - Set UUID to null to disable feature
-    /// - Example protocol is EN service that uses a 16-bit UUID and data key 0xFD6F
-    /// --- Scan for 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
-    /// --- Read broadcasted token data from service data area associated with given data key "FD6F"
-    ///     legacyAdvertOnlyProtocolServiceUUID = UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
-    ///     legacyAdvertOnlyProtocolServiceUUIDDataKey = Data.fromHexEncodedString("FD6F");
-    public static UUID legacyAdvertOnlyProtocolServiceUUID = null;
-    public static Data legacyAdvertOnlyProtocolServiceUUIDDataKey = null;
+	/// OpenTrace service UUID, characteristic UUID, and manufacturer ID
+    /// - Enables capture of OpenTrace payloads, e.g. for transition to HERALD
+    /// - HERALD will discover devices advertising OpenTrace service UUID (can be the same as HERALD service UUID)
+    /// - HERALD will search for OpenTrace characteristic, write payload of self to target,
+    ///   read payload from target, and capture payload written to self by target.
+    /// - OpenTrace payloads will be reported via SensorDelegate:didRead where the payload
+    ///   has type LegacyPayloadData, and service will be the OpenTrace characteristic UUID.
+    /// - Set service UUID, characteristic UUID, and manufacturer ID to null to disable feature
+    public static UUID interopOpenTraceServiceUUID = null; // UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8");
+	public static UUID interopOpenTracePayloadCharacteristicUUID = null; // UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2");
+    public static Integer interopOpenTraceManufacturerId = null; // 1023;
+
+    /// Advert based protocol service UUID, service data key
+    /// - Enable capture of advert based protocol payloads, e.g. for transition to HERALD
+    /// - HERALD will discover devices advertising protocol service UUID (can be the same as HERALD service UUID)
+    /// - HERALD will parse service data to read payload from target
+    /// - Protocol payloads will be reported via SensorDelegate:didRead where the payload
+    ///   has type LegacyPayloadData, and service will be the protocol service UUID.
+    /// - Set service UUID, and service data key to null to disable feature
+    /// - Scan for 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
+    public static UUID interopAdvertBasedProtocolServiceUUID = null; // UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
+    public static Data interopAdvertBasedProtocolServiceDataKey = null; // Data.fromHexEncodedString("FD6F");
 
 
     /// Standard Bluetooth service and characteristics
