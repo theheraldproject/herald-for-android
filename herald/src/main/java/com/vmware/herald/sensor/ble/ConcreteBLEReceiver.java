@@ -473,8 +473,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             final boolean hasOpenTraceService = hasOpenTraceService(scanResult);
             final boolean isAppleDevice = isAppleDevice(scanResult);
             if (hasOpenTraceService) {
-                // OpenTrace iOS only works in foreground, so definitely iOS if Apple device
-                device.operatingSystem(isAppleDevice ? BLEDeviceOperatingSystem.ios : BLEDeviceOperatingSystem.android);
+                device.operatingSystem(isOpenTraceAndroidDevice(scanResult) ? BLEDeviceOperatingSystem.android : BLEDeviceOperatingSystem.ios);
             } else if (hasSensorService && isAppleDevice) {
                 // Definitely iOS device offering sensor service in foreground mode
                 device.operatingSystem(BLEDeviceOperatingSystem.ios);
@@ -540,6 +539,22 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return false;
         }
         final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForApple);
+        return data != null;
+    }
+
+    /// Does scan result indicate device is OpenTrace Android (true) or iOS (false) device?
+    private static boolean isOpenTraceAndroidDevice(final ScanResult scanResult) {
+        if (BLESensorConfiguration.interopOpenTraceManufacturerId == null) {
+            return false;
+        }
+        final ScanRecord scanRecord = scanResult.getScanRecord();
+        if (scanRecord == null) {
+            return false;
+        }
+        if (scanRecord.getManufacturerSpecificData().size() == 0) {
+            return false;
+        }
+        final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId);
         return data != null;
     }
 
@@ -1064,7 +1079,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
-                if (!gatt.readCharacteristic(payloadCharacteristic)) {
+                // OpenTrace interop requires MTU=512
+                if (device.getLegacyPayloadCharacteristic() != null) {
+                    gatt.requestMtu(512);
+                    // Request MTU -> readCharacteristic
+                    logger.debug("nextTask (task=readPayload|legacyMTU,device={})", device);
+                    return; // => onCharacteristicRead | timeout
+                }
+                // HERALD handles fragmentation internally
+                else if (!gatt.readCharacteristic(payloadCharacteristic)) {
                     logger.fault("nextTask failed (task=readPayload,device={},reason=readCharacteristicFailed)", device);
                     gatt.disconnect();
                     return; // => onConnectionStateChange
@@ -1215,6 +1238,22 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             fragments.add(fragment);
         }
         return fragments;
+    }
+
+    /// Interoperability with OpenTrace
+    /// If nextTask=readPayload, rather than calling readCharacteristic directly, OpenTrace requires
+    /// MTU to be set to 512, before reading the actual payload. While HERALD handles fragmentation
+    /// internally, OpenTrace relies on setting the MTU to support reading of large payloads.
+    @Override
+    public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+        final BLEDevice device = database.device(gatt.getDevice());
+        logger.debug("onMtuChanged (device={},status={})", device, bleStatus(status));
+        final BluetoothGattCharacteristic characteristic = device.getLegacyPayloadCharacteristic();
+        if (status == BluetoothGatt.GATT_SUCCESS && characteristic != null && gatt.readCharacteristic(characteristic)) {
+            logger.debug("nextTask (task=readPayload|legacy,device={})", device);
+            return; // => onCharacteristicRead | timeout
+        }
+        gatt.disconnect();
     }
 
     @Override
