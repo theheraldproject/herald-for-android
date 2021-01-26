@@ -44,10 +44,13 @@ public class BLESensorConfiguration {
     ///   read payload from target, and capture payload written to self by target.
     /// - OpenTrace payloads will be reported via SensorDelegate:didRead where the payload
     ///   has type LegacyPayloadData, and service will be the OpenTrace characteristic UUID.
-    /// - Set service UUID, characteristic UUID, and manufacturer ID to null to disable feature
-    public static UUID interopOpenTraceServiceUUID = null; // UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8");
-	public static UUID interopOpenTracePayloadCharacteristicUUID = null; // UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2");
-    public static Integer interopOpenTraceManufacturerId = null; // 1023;
+    /// - Set interopOpenTraceEnabled = false to disable feature
+    public static boolean interopOpenTraceEnabled = false;
+    public static UUID interopOpenTraceServiceUUID = (interopOpenTraceEnabled ? UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8") : null);
+	public static UUID interopOpenTracePayloadCharacteristicUUID = (interopOpenTraceEnabled ? UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2") : null);
+    public static Integer interopOpenTraceManufacturerId = (interopOpenTraceEnabled ? 1023 : null);
+
+    // MARK:- Interoperability with Advert based protocols
 
     /// Advert based protocol service UUID, service data key
     /// - Enable capture of advert based protocol payloads, e.g. for transition to HERALD
@@ -55,10 +58,11 @@ public class BLESensorConfiguration {
     /// - HERALD will parse service data to read payload from target
     /// - Protocol payloads will be reported via SensorDelegate:didRead where the payload
     ///   has type LegacyPayloadData, and service will be the protocol service UUID.
-    /// - Set service UUID, and service data key to null to disable feature
-    /// - Scan for 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
-    public static UUID interopAdvertBasedProtocolServiceUUID = null; // UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
-    public static Data interopAdvertBasedProtocolServiceDataKey = null; // Data.fromHexEncodedString("FD6F");
+    /// - Set interopAdvertBasedProtocolEnabled = false to disable feature
+    /// - Scan for 16-bit service UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
+    public static boolean interopAdvertBasedProtocolEnabled = false;
+    public static UUID interopAdvertBasedProtocolServiceUUID = (interopAdvertBasedProtocolEnabled ? UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB") : null);
+    public static Data interopAdvertBasedProtocolServiceDataKey = (interopAdvertBasedProtocolEnabled ? Data.fromHexEncodedString("FD6F") : null);
 
 
     /// Standard Bluetooth service and characteristics
@@ -112,7 +116,7 @@ public class BLESensorConfiguration {
     /// - Set to .never to disable this function.
     /// - Payload updates are reported to SensorDelegate as didRead.
     /// - Setting take immediate effect, no need to restart BLESensor, can also be applied while BLESensor is active.
-    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.never;
+    public static TimeInterval payloadDataUpdateTimeInterval = TimeInterval.minutes(2);
 
     /// Filter duplicate payload data and suppress sensor(didRead:fromTarget) delegate calls
     /// - Set to .never to disable this feature

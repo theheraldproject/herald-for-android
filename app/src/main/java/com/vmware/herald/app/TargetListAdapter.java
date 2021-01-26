@@ -15,6 +15,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.vmware.herald.sensor.datatype.LegacyPayloadData;
+
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -52,7 +54,8 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
             attributes.append(",Share");
         }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
-        textLabel.setText(target.payloadData().shortName() + " [" + attributes.toString() + "]");
+        final String protocolSuffix = (target.payloadData() instanceof LegacyPayloadData ? ":" + ((LegacyPayloadData) target.payloadData()).protocol().substring(0,1) : "");
+        textLabel.setText(target.payloadData().shortName() + protocolSuffix + " [" + attributes.toString() + "]");
         detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + didReceive);
         return convertView;
     }

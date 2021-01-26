@@ -558,6 +558,19 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return data != null;
     }
 
+    /// Is target device an OpenTrace Android or iOS device?
+    private static boolean isOpenTraceOnlyDevice(final BLEDevice device) {
+        if (device == null) {
+            return false;
+        }
+        // HERALD with OpenTrace support has signal characteristic
+        // OpenTrace only device will have legacy payload characteristic but not signal characteristic
+        if (device.signalCharacteristic() == null && device.getLegacyPayloadCharacteristic() != null) {
+            return true;
+        }
+        return false;
+    }
+
     /// Does scan result include advert for OpenTrace service?
     private static boolean hasOpenTraceService(final ScanResult scanResult) {
         if (BLESensorConfiguration.interopOpenTraceServiceUUID == null) {
@@ -1020,7 +1033,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
         }
         // Write payload sharing data to iOS
-        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios && !isOpenTraceOnlyDevice(device)) {
             // Write payload sharing data to iOS device if there is data to be shared
             final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
@@ -1079,8 +1092,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
-                // OpenTrace interop requires MTU=512
-                if (device.getLegacyPayloadCharacteristic() != null) {
+                // OpenTrace relies on MTU change to 512 to enable exchange of large payloads
+                if (isOpenTraceOnlyDevice(device)) {
                     gatt.requestMtu(512);
                     // Request MTU -> readCharacteristic
                     logger.debug("nextTask (task=readPayload|legacyMTU,device={})", device);
