@@ -19,7 +19,9 @@ import androidx.core.app.NotificationManagerCompat;
 import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
+import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -27,7 +29,7 @@ import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.PayloadDataSupplier;
-import com.vmware.herald.sensor.payload.sonar.SonarPayloadDataSupplier;
+import com.vmware.herald.sensor.payload.test.TestPayloadDataSupplier;
 import com.vmware.herald.sensor.service.NotificationService;
 
 import java.util.ArrayList;
@@ -57,7 +59,7 @@ public class AppDelegate extends Application implements SensorDelegate {
         this.createNotificationChannel();
         NotificationService.shared(this).startForegroundService(this.getForegroundNotification(), NOTIFICATION_ID);
         // Initialise sensor array for given payload data supplier
-        final PayloadDataSupplier payloadDataSupplier = new SonarPayloadDataSupplier(identifier());
+        final PayloadDataSupplier payloadDataSupplier = new TestPayloadDataSupplier(identifier());
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
         // Add appDelegate as listener for detection events for logging and start sensor
         sensor.add(this);
@@ -91,6 +93,7 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
         Log.i(tag, sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
+        parsePayload("didRead", sensor, didRead, fromTarget);
     }
 
     @Override
@@ -105,6 +108,9 @@ public class AppDelegate extends Application implements SensorDelegate {
             payloads.add(payloadData.shortName());
         }
         Log.i(tag, sensor.name() + ",didShare=" + payloads.toString() + ",fromTarget=" + fromTarget);
+        for (PayloadData payloadData : didShare) {
+            parsePayload("didShare", sensor, payloadData, fromTarget);
+        }
     }
 
     @Override
@@ -125,6 +131,28 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(SensorType sensor, SensorState didUpdateState) {
         Log.i(tag, sensor.name() + ",didUpdateState=" + didUpdateState.name());
+    }
+
+    private void parsePayload(String source, SensorType sensor, PayloadData payloadData, TargetIdentifier fromTarget) {
+        String service = "herald";
+        String parsedPayload = payloadData.shortName();
+        if (payloadData instanceof LegacyPayloadData) {
+            final LegacyPayloadData legacyPayloadData = (LegacyPayloadData) payloadData;
+            if (legacyPayloadData.service == null) {
+                service = "null";
+                parsedPayload = payloadData.hexEncodedString();
+            } else if (legacyPayloadData.service == BLESensorConfiguration.interopOpenTraceServiceUUID) {
+                service = "opentrace";
+                parsedPayload = new String(legacyPayloadData.value);
+            } else if (legacyPayloadData.service == BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID) {
+                service = "advert";
+                parsedPayload = payloadData.hexEncodedString();
+            } else {
+                service = "unknown|" + legacyPayloadData.service.toString();
+                parsedPayload = payloadData.hexEncodedString();
+            }
+        }
+        Log.i(tag, sensor.name() + ",didParse=" + service + ",fromTarget=" + fromTarget + ",payload=" + payloadData.shortName() + ",parsedPayload=" + parsedPayload);
     }
 
     private void createNotificationChannel() {

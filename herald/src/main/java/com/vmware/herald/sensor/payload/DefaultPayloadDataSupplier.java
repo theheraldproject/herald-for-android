@@ -4,10 +4,15 @@
 
 package com.vmware.herald.sensor.payload;
 
+import android.util.Log;
+
 import com.vmware.herald.sensor.PayloadDataSupplier;
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.datatype.Data;
+import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
+import com.vmware.herald.sensor.datatype.SensorType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,5 +35,4 @@ public abstract class DefaultPayloadDataSupplier implements PayloadDataSupplier 
         }
         return payloads;
     }
-
 }

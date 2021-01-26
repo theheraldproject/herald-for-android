@@ -284,6 +284,10 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
             if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.receiveOnly())) {
                 continue;
             }
+            // Device is HERALD
+            if (device.signalCharacteristic() == null) {
+                continue;
+            }
             // Payload is not the peer itself
             if (peer.payloadData() != null && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
                 continue;

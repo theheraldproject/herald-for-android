@@ -25,6 +25,7 @@ import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.SocialDistance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
+import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
