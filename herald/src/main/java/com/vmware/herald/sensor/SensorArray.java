@@ -52,19 +52,7 @@ public class SensorArray implements Sensor {
             sensorArray.add(new ConcreteInertiaSensor(context));
             add(new CalibrationLog(context, "calibration.csv"));
         }
-
-        // Loggers
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), null);
-		if (com.vmware.herald.BuildConfig.DEBUG) {
-	        add(new ContactLog(context, "contacts.csv"));
-	        add(new StatisticsLog(context, "statistics.csv", payloadData));
-	        add(new DetectionLog(context,"detection.csv", payloadData));
-	        new BatteryLog(context, "battery.csv");
-            if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never) {
-                add(new EventTimeIntervalLog(context, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
-            }
-		}
-        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
     }
 
     /// Immediate send data.

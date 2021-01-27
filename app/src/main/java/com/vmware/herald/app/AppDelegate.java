@@ -20,6 +20,13 @@ import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.ble.BLESensorConfiguration;
+import com.vmware.herald.sensor.data.BatteryLog;
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.ContactLog;
+import com.vmware.herald.sensor.data.DetectionLog;
+import com.vmware.herald.sensor.data.EventTimeIntervalLog;
+import com.vmware.herald.sensor.data.SensorLogger;
+import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.Location;
@@ -29,6 +36,7 @@ import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.PayloadDataSupplier;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.payload.test.TestPayloadDataSupplier;
 import com.vmware.herald.sensor.service.NotificationService;
 
@@ -36,13 +44,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
+    private final SensorLogger logger = new ConcreteSensorLogger("Herald", "AppDelegate");
     private final static String tag = AppDelegate.class.getName();
     private final static String NOTIFICATION_CHANNEL_ID = "HERALD_NOTIFICATION_CHANNEL_ID";
     private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
     private static AppDelegate appDelegate = null;
 
     // Sensor for proximity detection
-    private Sensor sensor = null;
+    private SensorArray sensor = null;
 
     /// Generate unique and consistent device identifier for testing detection and tracking
     private int identifier() {
@@ -63,6 +72,18 @@ public class AppDelegate extends Application implements SensorDelegate {
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
         // Add appDelegate as listener for detection events for logging and start sensor
         sensor.add(this);
+        // Efficacy Loggers
+        PayloadData payloadData = sensor.payloadData();
+        if (BuildConfig.DEBUG) {
+            sensor.add(new ContactLog(this, "contacts.csv"));
+            sensor.add(new StatisticsLog(this, "statistics.csv",payloadData));
+            sensor.add(new DetectionLog(this,"detection.csv", payloadData));
+            new BatteryLog(this, "battery.csv");
+            if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never) {
+                sensor.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+            }
+        }
+        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
         // Sensor will start and stop with Bluetooth power on / off events
         sensor.start();
     }
