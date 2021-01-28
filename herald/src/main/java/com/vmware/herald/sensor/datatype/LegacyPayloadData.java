@@ -13,21 +13,26 @@ import java.util.UUID;
 /// Legacy payload data received from target
 public class LegacyPayloadData extends PayloadData {
     public final UUID service;
+    public enum ProtocolName {
+        UNKNOWN, NOT_AVAILABLE, HERALD, OPENTRACE, ADVERT
+    }
 
     public LegacyPayloadData(final UUID service, final byte[] value) {
         super(value);
         this.service = service;
     }
 
-    public String protocol() {
+    public ProtocolName protocolName() {
         if (service == null) {
-            return "NotSet";
+            return ProtocolName.NOT_AVAILABLE;
         } else if (service == BLESensorConfiguration.interopOpenTraceServiceUUID) {
-            return "OpenTrace";
+            return ProtocolName.OPENTRACE;
         } else if (service == BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID) {
-            return "AdvertBased";
+            return ProtocolName.ADVERT;
+        } else if (service == BLESensorConfiguration.serviceUUID) {
+            return ProtocolName.HERALD;
         } else {
-            return "Unknown";
+            return ProtocolName.UNKNOWN;
         }
     }
 

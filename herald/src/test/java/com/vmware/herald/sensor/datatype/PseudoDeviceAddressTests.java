@@ -4,10 +4,12 @@
 
 package com.vmware.herald.sensor.datatype;
 
+import com.vmware.herald.sensor.TestUtil;
 import com.vmware.herald.sensor.analysis.Sample;
 
 import org.junit.Test;
 
+import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
@@ -46,13 +48,20 @@ public class PseudoDeviceAddressTests {
     @Test
     public void testEncodeDecode() {
         // Test encoding and decoding to ensure same data means same address
-        for (int i=0; i<1000; i++) {
-            final PseudoDeviceAddress expected = new PseudoDeviceAddress();
-            final PseudoDeviceAddress actual = new PseudoDeviceAddress(expected.data);
-            assertEquals(expected.address, actual.address);
-            assertEquals(expected, actual);
-            assertEquals(expected.hashCode(), actual.hashCode());
-            assertEquals(expected.toString(), actual.toString());
+        for (long i=1; i>0; i*=7) {
+            // Test positive
+            final PseudoDeviceAddress expectedPositive = new PseudoDeviceAddress(i);
+            final PseudoDeviceAddress expectedNegative = new PseudoDeviceAddress(-i);
+            final PseudoDeviceAddress actualPositive = new PseudoDeviceAddress(expectedPositive.data);
+            final PseudoDeviceAddress actualNegative = new PseudoDeviceAddress(expectedNegative.data);
+            assertEquals(expectedPositive.address, actualPositive.address);
+            assertEquals(expectedNegative.address, actualNegative.address);
+            assertEquals(expectedPositive, actualPositive);
+            assertEquals(expectedNegative, actualNegative);
+            assertEquals(expectedPositive.hashCode(), actualPositive.hashCode());
+            assertEquals(expectedNegative.hashCode(), actualNegative.hashCode());
+            assertEquals(expectedPositive.toString(), actualPositive.toString());
+            assertEquals(expectedNegative.toString(), actualNegative.toString());
         }
     }
 
@@ -77,6 +86,32 @@ public class PseudoDeviceAddressTests {
                 sample.add(t1 - t0);
             }
             System.err.println(method.name() + " : " + sample);
+        }
+    }
+
+    @Test
+    public void testCrossPlatform() throws Exception {
+        final PrintWriter out = TestUtil.androidPrintWriter("pseudoDeviceAddress.csv");
+        out.println("value,data");
+        long i = 1;
+        while (i <= (Int64.max.value / 7)) {
+            out.println(i + "," + new Data(new PseudoDeviceAddress(i).data).base64EncodedString());
+            out.println(-i + "," + new Data(new PseudoDeviceAddress(-i).data).base64EncodedString());
+            i *= 7;
+        }
+        out.flush();
+        out.close();
+        TestUtil.assertEqualsCrossPlatform("pseudoDeviceAddress.csv");
+    }
+
+    @Test
+    public void testDataRange() throws Exception {
+        // Variable data length shouldn't cause exception
+        // Address data should be 6 bytes regardless of original data
+        for (int i=0; i<512; i++) {
+            final PseudoDeviceAddress pseudoDeviceAddress = new PseudoDeviceAddress(new byte[i]);
+            assertEquals(0, pseudoDeviceAddress.address);
+            assertEquals(6, pseudoDeviceAddress.data.length);
         }
     }
 }

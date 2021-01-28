@@ -118,7 +118,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
             }
         }
         // OpenTrace device id
-        else if (BLESensorConfiguration.interopOpenTraceManufacturerId != null &&
+        else if (BLESensorConfiguration.interopOpenTraceEnabled &&
                 scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId) != null) {
             final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId);
             if (data != null && data.length > 0) {

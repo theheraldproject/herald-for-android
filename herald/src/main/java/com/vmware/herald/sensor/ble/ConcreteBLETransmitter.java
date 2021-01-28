@@ -584,7 +584,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
         // Interop with OpenTrace protocol
-		if (BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID != null) {
+		if (BLESensorConfiguration.interopOpenTraceEnabled) {
 			final BluetoothGattCharacteristic legacyPayloadCharacteristic = new BluetoothGattCharacteristic(
                     BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID,
                     BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,

@@ -46,9 +46,9 @@ public class BLESensorConfiguration {
     ///   has type LegacyPayloadData, and service will be the OpenTrace characteristic UUID.
     /// - Set interopOpenTraceEnabled = false to disable feature
     public static boolean interopOpenTraceEnabled = false;
-    public static UUID interopOpenTraceServiceUUID = (interopOpenTraceEnabled ? UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8") : null);
-	public static UUID interopOpenTracePayloadCharacteristicUUID = (interopOpenTraceEnabled ? UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2") : null);
-    public static Integer interopOpenTraceManufacturerId = (interopOpenTraceEnabled ? 1023 : null);
+    public static UUID interopOpenTraceServiceUUID = UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8");
+	public static UUID interopOpenTracePayloadCharacteristicUUID = UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2");
+    public static int interopOpenTraceManufacturerId = 1023;
 
     // MARK:- Interoperability with Advert based protocols
 
@@ -61,8 +61,8 @@ public class BLESensorConfiguration {
     /// - Set interopAdvertBasedProtocolEnabled = false to disable feature
     /// - Scan for 16-bit service UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
     public static boolean interopAdvertBasedProtocolEnabled = false;
-    public static UUID interopAdvertBasedProtocolServiceUUID = (interopAdvertBasedProtocolEnabled ? UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB") : null);
-    public static Data interopAdvertBasedProtocolServiceDataKey = (interopAdvertBasedProtocolEnabled ? Data.fromHexEncodedString("FD6F") : null);
+    public static UUID interopAdvertBasedProtocolServiceUUID = UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
+    public static Data interopAdvertBasedProtocolServiceDataKey = Data.fromHexEncodedString("FD6F");
 
 
     /// Standard Bluetooth service and characteristics

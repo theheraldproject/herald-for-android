@@ -74,24 +74,29 @@ public class PseudoDeviceAddress {
     }
 
     public PseudoDeviceAddress(final byte[] data) {
-        this.data = data;
+        this.address = decode(data);
+        this.data = encode(this.address);
+    }
+
+    public PseudoDeviceAddress(final long value) {
+        this.data = encode(value);
         this.address = decode(data);
     }
 
     protected final static byte[] encode(final long value) {
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
-        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        byteBuffer.putLong(0, value);
-        final byte[] data = new byte[6];
-        System.arraycopy(byteBuffer.array(), 0, data, 0, data.length);
-        return data;
+        final Data encoded = new Data();
+        encoded.append(new Int64(value));
+        return encoded.subdata(2, 6).value;
     }
 
     protected final static long decode(final byte[] data) {
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
-        byteBuffer.put(data);
-        byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        return byteBuffer.getLong(0);
+        final Data decoded = new Data((byte) 0, 2);
+        decoded.append(new Data(data));
+        if (decoded.value.length < 8) {
+            decoded.append(new Data((byte) 0, 8 - decoded.value.length));
+        }
+        final Int64 int64 = decoded.int64(0);
+        return (int64 == null ? 0 : decoded.int64(0).value);
     }
 
     @Override
