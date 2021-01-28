@@ -21,11 +21,9 @@ import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.data.BatteryLog;
-import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.ContactLog;
 import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.EventTimeIntervalLog;
-import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.LegacyPayloadData;
@@ -44,7 +42,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppDelegate extends Application implements SensorDelegate {
-    private final SensorLogger logger = new ConcreteSensorLogger("Herald", "AppDelegate");
     private final static String tag = AppDelegate.class.getName();
     private final static String NOTIFICATION_CHANNEL_ID = "HERALD_NOTIFICATION_CHANNEL_ID";
     private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
@@ -83,7 +80,6 @@ public class AppDelegate extends Application implements SensorDelegate {
                 sensor.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
             }
         }
-        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
         // Sensor will start and stop with Bluetooth power on / off events
         sensor.start();
     }

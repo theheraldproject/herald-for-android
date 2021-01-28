@@ -8,19 +8,13 @@ import android.content.Context;
 
 import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
-import com.vmware.herald.sensor.data.BatteryLog;
 import com.vmware.herald.sensor.data.CalibrationLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
-import com.vmware.herald.sensor.data.ContactLog;
-import com.vmware.herald.sensor.data.DetectionLog;
-import com.vmware.herald.sensor.data.EventTimeIntervalLog;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
-import com.vmware.herald.sensor.datatype.TimeInterval;
 import com.vmware.herald.sensor.motion.ConcreteInertiaSensor;
 
 import java.util.ArrayList;
@@ -53,6 +47,7 @@ public class SensorArray implements Sensor {
             add(new CalibrationLog(context, "calibration.csv"));
         }
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), null);
+        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
     }
 
     /// Immediate send data.
