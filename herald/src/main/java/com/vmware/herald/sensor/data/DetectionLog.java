@@ -25,11 +25,17 @@ public class DetectionLog extends DefaultSensorDelegate {
     private final String deviceName = android.os.Build.MODEL;
     private final String deviceOS = Integer.toString(android.os.Build.VERSION.SDK_INT);
     private final Map<String, String> payloads = new ConcurrentHashMap<>();
+    private final PayloadDataFormatter payloadDataFormatter;
 
-    public DetectionLog(final Context context, final String filename, final PayloadData payloadData) {
+    public DetectionLog(final Context context, final String filename, final PayloadData payloadData, PayloadDataFormatter payloadDataFormatter) {
         textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
+        this.payloadDataFormatter = payloadDataFormatter;
         write();
+    }
+
+    public DetectionLog(final Context context, final String filename, final PayloadData payloadData) {
+        this(context, filename, payloadData, new ConcretePayloadDataFormatter());
     }
 
     private String csv(String value) {
@@ -44,10 +50,10 @@ public class DetectionLog extends DefaultSensorDelegate {
         content.append(',');
         content.append(csv(deviceOS));
         content.append(',');
-        content.append(csv(payloadData.shortName()));
+        content.append(csv(payloadDataFormatter.shortFormat(payloadData)));
         final List<String> payloadList = new ArrayList<>(payloads.size());
         for (String payload : payloads.keySet()) {
-            if (payload.equals(payloadData.shortName())) {
+            if (payload.equals(payloadDataFormatter.shortFormat(payloadData))) {
                 continue;
             }
             payloadList.add(payload);
@@ -67,8 +73,8 @@ public class DetectionLog extends DefaultSensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        if (payloads.put(didRead.shortName(), fromTarget.value) == null) {
-            logger.debug("didRead (payload={})", payloadData.shortName());
+        if (payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value) == null) {
+            logger.debug("didRead (payload={})", payloadDataFormatter.shortFormat(payloadData));
             write();
         }
     }
@@ -76,8 +82,8 @@ public class DetectionLog extends DefaultSensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         for (PayloadData payloadData : didShare) {
-            if (payloads.put(payloadData.shortName(), fromTarget.value) == null) {
-                logger.debug("didShare (payload={})", payloadData.shortName());
+            if (payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value) == null) {
+                logger.debug("didShare (payload={})", payloadDataFormatter.shortFormat(payloadData));
                 write();
             }
         }
