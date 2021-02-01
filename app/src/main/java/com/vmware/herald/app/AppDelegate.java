@@ -12,6 +12,7 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
+import android.widget.Switch;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -80,8 +81,7 @@ public class AppDelegate extends Application implements SensorDelegate {
                 sensor.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
             }
         }
-        // Sensor will start and stop with Bluetooth power on / off events
-        sensor.start();
+        // Sensor will start and stop with UI switch (default ON) and bluetooth state
     }
 
     @Override

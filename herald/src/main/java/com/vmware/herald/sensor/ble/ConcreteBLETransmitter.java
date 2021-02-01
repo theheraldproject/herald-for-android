@@ -20,6 +20,7 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 
+import com.vmware.herald.BuildConfig;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
@@ -47,6 +48,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED;
@@ -63,6 +65,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean transmitterEnabled = new AtomicBoolean(false);
 
     // Referenced by startAdvert and stopExistingGattServer ONLY
     private BluetoothGattServer bluetoothGattServer = null;
@@ -87,14 +90,20 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public void start() {
-        logger.debug("start (supported={})", isSupported());
-        // advertLoop is started by Bluetooth state
+        if (transmitterEnabled.compareAndSet(false, true)) {
+            logger.debug("start, transmitter enabled to follow bluetooth state");
+        } else {
+            logger.fault("start, transmitter already enabled to follow bluetooth state");
+        }
     }
 
     @Override
     public void stop() {
-        logger.debug("stop");
-        // advertLoop is stopped by Bluetooth state
+        if (transmitterEnabled.compareAndSet(true, false)) {
+            logger.debug("stop, transmitter disabled");
+        } else {
+            logger.fault("stop, transmitter already disabled");
+        }
     }
 
     // MARK:- Advert loop
@@ -118,7 +127,9 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 return null;
             }
             // log this, as this will allow us to identify handsets with a different API implementation
-            logger.debug("bluetoothLeAdvertiser, LE advertiser present (multiSupported={})", supported);
+            // Disabling this log message as it is called once every second and no longer relevant as
+            // result of isMultipleAdvertisementSupported() is not used in the logic
+            // logger.debug("bluetoothLeAdvertiser, LE advertiser present (multiSupported={})", supported);
             return bluetoothLeAdvertiser;
         } catch (Exception e) {
             // log it, as this will allow us to identify handsets with the expected API implementation (from Android API source code)
@@ -146,7 +157,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
         @Override
         public void bleTimer(final long now) {
-            if (!isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
+            if (!transmitterEnabled.get() || !isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
                 if (advertLoopState != AdvertLoopState.stopped) {
                     logger.debug("advertLoopTask, stopping advert following bluetooth state change (isSupported={},bluetoothPowerOff={})", isSupported(), bluetoothStateManager.state() == BluetoothState.poweredOff);
                     stopAdvert(bluetoothLeAdvertiser(), advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {

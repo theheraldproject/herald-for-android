@@ -53,6 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
@@ -72,6 +73,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BLEDeviceFilter deviceFilter;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean receiverEnabled = new AtomicBoolean(false);
 
     private enum NextTask {
         nothing, readPayload, writePayload, writeRSSI, writePayloadSharing, immediateSend,
@@ -141,14 +143,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     @Override
     public void start() {
-        logger.debug("start");
-        // scanLoop is started by Bluetooth state
+        if (receiverEnabled.compareAndSet(false, true)) {
+            logger.debug("start, receiver enabled to follow bluetooth state");
+        } else {
+            logger.fault("start, receiver already enabled to follow bluetooth state");
+        }
     }
 
     @Override
     public void stop() {
-        logger.debug("stop");
-        // scanLoop is stopped by Bluetooth state
+        if (receiverEnabled.compareAndSet(true, false)) {
+            logger.debug("stop, receiver disabled");
+        } else {
+            logger.fault("stop, receiver already disabled");
+        }
     }
 
     @Override
@@ -246,7 +254,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         public void bleTimer(final long now) {
             switch (scanLoopState) {
                 case processed: {
-                    if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
+                    if (receiverEnabled.get() && bluetoothStateManager.state() == BluetoothState.poweredOn) {
                         final long period = timeSincelastStateChange(now);
                         if (period >= scanOffDurationMillis) {
                             logger.debug("scanLoopTask, start scan (process={}ms)", period);
@@ -295,6 +303,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                                 @Override
                                 public void accept(Boolean value) {
                                     state(now, ScanLoopState.processed);
+                                    if (!receiverEnabled.get()) {
+                                        logger.debug("scanLoopTask, stopped because receiver is disabled");
+                                    }
                                 }
                             });
                         }

@@ -104,6 +104,8 @@ public class ConcreteInertiaSensor implements InertiaSensor {
             logger.fault("stop, sensor manager unavailable");
             return;
         }
+        // Unregister listener
+        logger.debug("stop");
         sensorManager.unregisterListener(sensorEventListener);
     }
 }

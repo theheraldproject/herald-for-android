@@ -58,7 +58,6 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     @Override
     public void start() {
         logger.debug("start");
-        // BLE transmitter and receivers start on powerOn event
         transmitter.start();
         receiver.start();
     }
@@ -66,7 +65,6 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     @Override
     public void stop() {
         logger.debug("stop");
-        // BLE transmitter and receivers stops on powerOff event
         transmitter.stop();
         receiver.stop();
     }
