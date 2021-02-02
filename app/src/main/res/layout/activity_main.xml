@@ -14,7 +14,7 @@
         android:id="@+id/sensorOnOffSwitch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toTopOf="@id/device"
         app:layout_constraintRight_toRightOf="parent"
         android:padding="10dp"
         android:checked="true"/>

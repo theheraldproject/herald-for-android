@@ -23,6 +23,7 @@ public class Target {
     private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
     private Sample didReadTimeInterval = new Sample();
     private Sample didMeasureTimeInterval = new Sample();
+    private Sample didShareTimeInterval = new Sample();
 
     public Target(TargetIdentifier targetIdentifier, PayloadData payloadData) {
         this.targetIdentifier = targetIdentifier;
@@ -105,7 +106,15 @@ public class Target {
     }
 
     public void didShare(Date date) {
+        if (didShare != null && date != null) {
+            final TimeInterval timeInterval = new TimeInterval(didShare, date);
+            didShareTimeInterval.add(timeInterval.value);
+        }
         didShare = date;
         lastUpdatedAt = didShare;
+    }
+
+    public Sample didShareTimeInterval() {
+        return didShareTimeInterval;
     }
 }
