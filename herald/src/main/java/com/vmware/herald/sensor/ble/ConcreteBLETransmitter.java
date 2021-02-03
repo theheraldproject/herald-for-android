@@ -344,12 +344,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public void bluetoothStateManager(BluetoothState didUpdateState) {
-        logger.debug("didUpdateState (state={})", didUpdateState);
-        if (didUpdateState == BluetoothState.poweredOn) {
-            start();
-        } else if (didUpdateState == BluetoothState.poweredOff) {
-            stop();
-        }
+        logger.debug("didUpdateState (state={},transmitterEnabled={})", didUpdateState, transmitterEnabled.get());
     }
 
     private void startAdvertising(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final AdvertiseCallback advertiseCallback) {
