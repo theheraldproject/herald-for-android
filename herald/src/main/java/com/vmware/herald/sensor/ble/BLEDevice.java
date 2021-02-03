@@ -256,8 +256,8 @@ public class BLEDevice extends Device {
         lastPayloadDataUpdate = new Date();
     }
 
-    public BluetoothGattCharacteristic getLegacyPayloadCharacteristic() {
-        return  legacyPayloadCharacteristic;
+    public BluetoothGattCharacteristic legacyPayloadCharacteristic() {
+        return legacyPayloadCharacteristic;
     }
 
     public BLE_TxPower txPower() {
@@ -393,6 +393,14 @@ public class BLEDevice extends Device {
             return TimeInterval.never;
         }
         return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
+    }
+
+    public boolean protocolIsOpenTrace() {
+        return legacyPayloadCharacteristic != null && signalCharacteristic == null;
+    }
+
+    public boolean protocolIsHerald() {
+        return signalCharacteristic != null && payloadCharacteristic != null;
     }
 
     public void scanRecord(ScanRecord scanRecord) {

@@ -34,7 +34,7 @@ public interface BLEDatabase {
     List<BLEDevice> devices();
 
     /// Delete
-    void delete(TargetIdentifier identifier);
+    void delete(BLEDevice device);
 
     /// Get payload sharing data for a peer
     PayloadSharingData payloadSharingData(BLEDevice peer);

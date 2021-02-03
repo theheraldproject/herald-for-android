@@ -44,7 +44,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         final BLETimer timer = new BLETimer(context);
         bluetoothStateManager.delegates.add(this);
         transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database);
-        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter);
+        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter, payloadDataSupplier);
         database.add(this);
     }
 
