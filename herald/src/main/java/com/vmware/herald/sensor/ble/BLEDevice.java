@@ -109,38 +109,6 @@ public class BLEDevice extends Device {
         this.delegate = delegate;
     }
 
-    /// Create a clone of an existing device
-    public BLEDevice(BLEDevice device, BluetoothDevice bluetoothDevice) {
-        super(device, new TargetIdentifier(bluetoothDevice));
-        this.pseudoDeviceAddress = device.pseudoDeviceAddress;
-        this.delegate = device.delegate;
-        this.state = device.state;
-        this.operatingSystem = device.operatingSystem;
-        this.payloadData = device.payloadData;
-        this.lastPayloadDataUpdate = device.lastPayloadDataUpdate;
-        this.rssi = device.rssi;
-        this.txPower = device.txPower;
-        this.receiveOnly = device.receiveOnly;
-        this.ignoreForDuration = device.ignoreForDuration;
-        this.ignoreUntil = device.ignoreUntil;
-        this.scanRecord = device.scanRecord;
-        this.signalCharacteristic = device.signalCharacteristic;
-        this.payloadCharacteristic = device.payloadCharacteristic;
-        this.modelCharacteristic = device.modelCharacteristic;
-        this.deviceNameCharacteristic = device.deviceNameCharacteristic;
-        this.model = device.model;
-        this.deviceName = device.deviceName;
-        this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
-        this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
-        this.legacyPayloadCharacteristic = device.legacyPayloadCharacteristic;
-        this.lastDiscoveredAt = device.lastDiscoveredAt;
-        this.lastConnectedAt = device.lastConnectedAt;
-        this.payloadSharingData.addAll(device.payloadSharingData);
-        this.lastWritePayloadAt = device.lastWritePayloadAt;
-        this.lastWriteRssiAt = device.lastWriteRssiAt;
-        this.lastWritePayloadSharingAt = device.lastWritePayloadSharingAt;
-    }
-
     public PseudoDeviceAddress pseudoDeviceAddress() {
         return pseudoDeviceAddress;
     }
@@ -253,7 +221,6 @@ public class BLEDevice extends Device {
 
     public void legacyPayloadCharacteristic(BluetoothGattCharacteristic characteristic) {
         this.legacyPayloadCharacteristic = characteristic;
-        lastPayloadDataUpdate = new Date();
     }
 
     public BluetoothGattCharacteristic legacyPayloadCharacteristic() {

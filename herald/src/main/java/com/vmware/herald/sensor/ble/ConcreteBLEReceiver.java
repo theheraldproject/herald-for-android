@@ -86,8 +86,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            logger.debug("onScanResult (result={}, data={})", scanResult,
-                    BLEAdvertParser.hex(scanResult.getScanRecord().getBytes()));
+            logger.debug("onScanResult (result={}, data={})", scanResult, BLEAdvertParser.hex(scanResult.getScanRecord().getBytes()));
 
             scanResults.add(scanResult);
             // Create or update device in database
@@ -1001,11 +1000,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // Get payload update if required
         if (device.timeIntervalSinceLastPayloadDataUpdate().value > BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
-            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate)", device);
+            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate,timeIntervalSinceLastUpdate={})", device, device.timeIntervalSinceLastPayloadDataUpdate());
             return NextTask.readPayload;
         }
         if (device.protocolIsOpenTrace() && device.timeIntervalSinceLastPayloadDataUpdate().value > BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval.value) {
-            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate|OpenTrace)", device);
+            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate|OpenTrace,timeIntervalSinceLastUpdate={})", device, device.timeIntervalSinceLastPayloadDataUpdate());
             return NextTask.readPayload;
         }
         // Write payload, rssi and payload sharing data if this device cannot transmit
