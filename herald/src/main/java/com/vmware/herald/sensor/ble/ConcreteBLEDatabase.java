@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,68 +39,78 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     private final ExecutorService queue = Executors.newSingleThreadExecutor();
 
     @Override
-    public void add(BLEDatabaseDelegate delegate) {
+    public void add(final BLEDatabaseDelegate delegate) {
         delegates.add(delegate);
     }
 
     @Override
-    public BLEDevice device(ScanResult scanResult) {
+    public BLEDevice device(final TargetIdentifier targetIdentifier) {
+        return database.get(targetIdentifier);
+    }
+
+    @Override
+    public BLEDevice device(final BluetoothDevice bluetoothDevice) {
+        final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
+        BLEDevice device = database.get(identifier);
+        if (device == null) {
+            final BLEDevice newDevice = new BLEDevice(identifier, this);
+            device = newDevice;
+            database.put(identifier, newDevice);
+            queue.execute(new Runnable() {
+                @Override
+                public void run() {
+                    logger.debug("create (device={})", identifier);
+                    for (BLEDatabaseDelegate delegate : delegates) {
+                        delegate.bleDatabaseDidCreate(newDevice);
+                    }
+                }
+            });
+        }
+        device.peripheral(bluetoothDevice);
+        return device;
+    }
+
+    @Override
+    public BLEDevice device(final ScanResult scanResult) {
+        // Get device by target identifier
         final BluetoothDevice bluetoothDevice = scanResult.getDevice();
-        // Get pseudo device address
-        final PseudoDeviceAddress pseudoDeviceAddress = pseudoDeviceAddress(scanResult);
-        if (pseudoDeviceAddress == null) {
-            // Get device based on peripheral only
-            return device(bluetoothDevice);
-        }
-        // Identify all existing devices with the same pseudo device address
-        final List<BLEDevice> candidates = new ArrayList<>();
-        for (final BLEDevice device : database.values()) {
-            if (device.pseudoDeviceAddress() == null) {
-                continue;
-            }
-            if (device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
-                candidates.add(device);
-            }
-        }
-        // No existing device matching pseudo device address, create new device
-        if (candidates.size() == 0) {
-            final BLEDevice device = device(bluetoothDevice);
-            device.pseudoDeviceAddress(pseudoDeviceAddress);
-            return device;
-        }
-        // Find device with the same target identifier
         final TargetIdentifier targetIdentifier = new TargetIdentifier(bluetoothDevice);
         final BLEDevice existingDevice = database.get(targetIdentifier);
         if (existingDevice != null) {
-            existingDevice.pseudoDeviceAddress(pseudoDeviceAddress);
-            shareDataAcrossDevices(pseudoDeviceAddress);
             return existingDevice;
         }
-        // Get most recent version of the device and clone to enable attachment to new peripheral
-        Collections.sort(candidates, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
-            }
-        });
-        final BLEDevice cloneSource = candidates.get(0);
-        final BLEDevice newDevice = new BLEDevice(cloneSource, scanResult.getDevice());
-        database.put(newDevice.identifier, newDevice);
-        queue.execute(new Runnable() {
-            @Override
-            public void run() {
-                logger.debug("create (device={},pseudoAddress={})", newDevice.identifier, pseudoDeviceAddress);
-                for (BLEDatabaseDelegate delegate : delegates) {
-                    delegate.bleDatabaseDidCreate(newDevice);
+        // Get device by pseudo device address
+        final PseudoDeviceAddress pseudoDeviceAddress = pseudoDeviceAddress(scanResult);
+        if (pseudoDeviceAddress != null) {
+            // Reuse existing Android device
+            BLEDevice deviceWithSamePseudoDeviceAddress = null;
+            for (final BLEDevice device : database.values()) {
+                if (device.pseudoDeviceAddress() != null && device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
+                    deviceWithSamePseudoDeviceAddress = device;
+                    break;
                 }
             }
-        });
-        newDevice.peripheral(scanResult.getDevice());
-        final PayloadData payloadData = shareDataAcrossDevices(pseudoDeviceAddress);
-        if (payloadData != null) {
-            newDevice.payloadData(payloadData);
+            if (deviceWithSamePseudoDeviceAddress != null) {
+                database.put(targetIdentifier, deviceWithSamePseudoDeviceAddress);
+                if (deviceWithSamePseudoDeviceAddress.peripheral() != bluetoothDevice) {
+                    deviceWithSamePseudoDeviceAddress.peripheral(bluetoothDevice);
+                }
+                if (deviceWithSamePseudoDeviceAddress.operatingSystem() != BLEDeviceOperatingSystem.android) {
+                    deviceWithSamePseudoDeviceAddress.operatingSystem(BLEDeviceOperatingSystem.android);
+                }
+                logger.debug("updateAddress (device={})", deviceWithSamePseudoDeviceAddress);
+                return deviceWithSamePseudoDeviceAddress;
+            }
+            // Create new Android device
+            else {
+                final BLEDevice newDevice = device(bluetoothDevice);
+                newDevice.pseudoDeviceAddress(pseudoDeviceAddress);
+                newDevice.operatingSystem(BLEDeviceOperatingSystem.android);
+                return newDevice;
+            }
         }
-        return newDevice;
+        // Create new device
+        return device(bluetoothDevice);
     }
 
     /// Get pseudo device address for Android devices
@@ -127,90 +136,6 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         }
         // Not found
         return null;
-    }
-
-    /// Share information across devices with the same pseudo device address
-    private PayloadData shareDataAcrossDevices(final PseudoDeviceAddress pseudoDeviceAddress) {
-        // Get all devices with the same pseudo device address
-        final List<BLEDevice> devices = new ArrayList<>();
-        for (final BLEDevice device : database.values()) {
-            if (device.pseudoDeviceAddress() == null) {
-                continue;
-            }
-            if (device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
-                devices.add(device);
-            }
-        }
-        // Get most recent version of payload data
-        Collections.sort(devices, new Comparator<BLEDevice>() {
-            @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
-                return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
-            }
-        });
-        PayloadData payloadData = null;
-        for (BLEDevice device : devices) {
-            if (device.payloadData() != null) {
-                payloadData = device.payloadData();
-                break;
-            }
-        }
-        // Distribute payload to all devices with the same pseudo address
-        if (payloadData != null) {
-            // Share it amongst devices within advert refresh time limit
-            final long timeLimit = new Date().getTime() - BLESensorConfiguration.advertRefreshTimeInterval.millis();
-            for (BLEDevice device : devices) {
-                if (device.payloadData() == null && device.createdAt.getTime() >= timeLimit) {
-                    device.payloadData(payloadData);
-                }
-            }
-        }
-        // Get the most complete operating system
-        BLEDeviceOperatingSystem operatingSystem = null;
-        for (BLEDevice device : devices) {
-            if (device.operatingSystem() == BLEDeviceOperatingSystem.android || device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
-                operatingSystem = device.operatingSystem();
-                break;
-            }
-        }
-        // Distribute operating system to all devices with the same pseudo address
-        if (operatingSystem != null) {
-            for (BLEDevice device : devices) {
-                if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown
-                        || device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc
-                        || device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
-                    device.operatingSystem(operatingSystem);
-                }
-            }
-        }
-        return payloadData;
-    }
-
-    @Override
-    public BLEDevice device(TargetIdentifier targetIdentifier) {
-        return database.get(targetIdentifier);
-    }
-
-    @Override
-    public BLEDevice device(BluetoothDevice bluetoothDevice) {
-        final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
-        BLEDevice device = database.get(identifier);
-        if (device == null) {
-            final BLEDevice newDevice = new BLEDevice(identifier, this);
-            device = newDevice;
-            database.put(identifier, newDevice);
-            queue.execute(new Runnable() {
-                @Override
-                public void run() {
-                    logger.debug("create (device={})", identifier);
-                    for (BLEDatabaseDelegate delegate : delegates) {
-                        delegate.bleDatabaseDidCreate(newDevice);
-                    }
-                }
-            });
-        }
-        device.peripheral(bluetoothDevice);
-        return device;
     }
 
     @Override
@@ -247,19 +172,31 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     }
 
     @Override
-    public void delete(final TargetIdentifier identifier) {
-        final BLEDevice device = database.remove(identifier);
-        if (device != null) {
-            queue.execute(new Runnable() {
-                @Override
-                public void run() {
-                    logger.debug("delete (device={})", identifier);
-                    for (final BLEDatabaseDelegate delegate : delegates) {
-                        delegate.bleDatabaseDidDelete(device);
-                    }
-                }
-            });
+    public void delete(final BLEDevice device) {
+        if (device == null) {
+            return;
         }
+        final List<TargetIdentifier> identifiers = new ArrayList<>();
+        for (final Map.Entry<TargetIdentifier,BLEDevice> entry : database.entrySet()) {
+            if (entry.getValue() == device) {
+                identifiers.add(entry.getKey());
+            }
+        }
+        if (identifiers.isEmpty()) {
+            return;
+        }
+        for (final TargetIdentifier identifier : identifiers) {
+            database.remove(identifier);
+        }
+        queue.execute(new Runnable() {
+            @Override
+            public void run() {
+            logger.debug("delete (device={},identifiers={})", device, identifiers);
+            for (final BLEDatabaseDelegate delegate : delegates) {
+                delegate.bleDatabaseDidDelete(device);
+            }
+            }
+        });
     }
 
     @Override

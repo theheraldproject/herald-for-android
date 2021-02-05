@@ -39,23 +39,30 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
         }
         final TextView textLabel = (TextView) convertView.findViewById(R.id.targetTextLabel);
         final TextView detailedTextLabel = (TextView) convertView.findViewById(R.id.targetDetailedTextLabel);
-        final StringBuilder attributes = new StringBuilder();
-        attributes.append("Read");
-        if (target.didReadTimeInterval().count() != 0) {
-            attributes.append("=");
-            attributes.append(decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
+        // Event time interval statistics
+        final StringBuilder statistics = new StringBuilder();
+        statistics.append("R");
+        if (target.didReadTimeInterval().mean() != null) {
+            statistics.append("=");
+            statistics.append(decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
         }
-        if (target.didMeasureTimeInterval().count() != 0) {
-            attributes.append(",Measure=");
-            attributes.append(decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
+        if (target.didMeasureTimeInterval().mean() != null) {
+            statistics.append(",M=");
+            statistics.append(decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
         }
-        if (target.didShare() != null) {
-            attributes.append(",Share");
+        if (target.didShareTimeInterval().mean() != null) {
+            statistics.append(",S=");
+            statistics.append(decimalFormat.format(target.didShareTimeInterval().mean()) + "s");
+        }
+        final StringBuilder labelText = new StringBuilder(target.payloadData().shortName());
+        if (target.payloadData() instanceof LegacyPayloadData) {
+            labelText.append(':');
+            labelText.append(((LegacyPayloadData) target.payloadData()).protocolName().name().charAt(0));
         }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
         final String protocolSuffix = (target.payloadData() instanceof LegacyPayloadData ? ":" + ((LegacyPayloadData) target.payloadData()).protocolName().name().substring(0,1) : "");
-        textLabel.setText(target.payloadData().shortName() + protocolSuffix + " [" + attributes.toString() + "]");
-        detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + didReceive);
+        textLabel.setText(labelText.toString() + didReceive);
+        detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + " [" + statistics.toString() + "]");
         return convertView;
     }
 }

@@ -13,13 +13,14 @@ import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.UInt16;
 import com.vmware.herald.sensor.datatype.UInt8;
+import com.vmware.herald.sensor.payload.DefaultPayloadDataSupplier;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 /// Simple payload data supplier.
-public class ConcreteSimplePayloadDataSupplier implements SimplePayloadDataSupplier {
+public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplier implements SimplePayloadDataSupplier {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
     public final static int payloadLength = 21;
     private final Data commonPayload = new Data();

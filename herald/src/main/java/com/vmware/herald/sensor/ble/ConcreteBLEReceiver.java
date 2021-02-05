@@ -21,6 +21,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.ParcelUuid;
 
+import com.vmware.herald.sensor.PayloadDataSupplier;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.Sample;
 import com.vmware.herald.sensor.ble.filter.BLEAdvertParser;
@@ -36,6 +37,7 @@ import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.LegacyPayloadData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadSharingData;
+import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicData;
 import com.vmware.herald.sensor.datatype.SignalCharacteristicDataType;
@@ -53,6 +55,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLEReceiver {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLEReceiver");
@@ -69,9 +72,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final BluetoothStateManager bluetoothStateManager;
     private final BLEDatabase database;
     private final BLETransmitter transmitter;
+    private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDeviceFilter deviceFilter;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final Queue<ScanResult> scanResults = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean receiverEnabled = new AtomicBoolean(false);
 
     private enum NextTask {
         nothing, readPayload, writePayload, writeRSSI, writePayloadSharing, immediateSend,
@@ -81,8 +86,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final ScanCallback scanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult scanResult) {
-            logger.debug("onScanResult (result={}, data={})", scanResult,
-                    BLEAdvertParser.hex(scanResult.getScanRecord().getBytes()));
+            logger.debug("onScanResult (result={}, data={})", scanResult, BLEAdvertParser.hex(scanResult.getScanRecord().getBytes()));
 
             scanResults.add(scanResult);
             // Create or update device in database
@@ -109,11 +113,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     /**
      * Receiver starts automatically when Bluetooth is enabled.
      */
-    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, BLEDatabase database, BLETransmitter transmitter) {
+    public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, BLEDatabase database, BLETransmitter transmitter, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
         this.bluetoothStateManager = bluetoothStateManager;
         this.database = database;
         this.transmitter = transmitter;
+        this.payloadDataSupplier = payloadDataSupplier;
         timer.add(new ScanLoopTask());
 
         // Enable device introspection if device filter training is enabled
@@ -141,14 +146,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     @Override
     public void start() {
-        logger.debug("start");
-        // scanLoop is started by Bluetooth state
+        if (receiverEnabled.compareAndSet(false, true)) {
+            logger.debug("start, receiver enabled to follow bluetooth state");
+        } else {
+            logger.fault("start, receiver already enabled to follow bluetooth state");
+        }
     }
 
     @Override
     public void stop() {
-        logger.debug("stop");
-        // scanLoop is stopped by Bluetooth state
+        if (receiverEnabled.compareAndSet(true, false)) {
+            logger.debug("stop, receiver disabled");
+        } else {
+            logger.fault("stop, receiver already disabled");
+        }
     }
 
     @Override
@@ -246,7 +257,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         public void bleTimer(final long now) {
             switch (scanLoopState) {
                 case processed: {
-                    if (bluetoothStateManager.state() == BluetoothState.poweredOn) {
+                    if (receiverEnabled.get() && bluetoothStateManager.state() == BluetoothState.poweredOn) {
                         final long period = timeSincelastStateChange(now);
                         if (period >= scanOffDurationMillis) {
                             logger.debug("scanLoopTask, start scan (process={}ms)", period);
@@ -295,6 +306,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                                 @Override
                                 public void accept(Boolean value) {
                                     state(now, ScanLoopState.processed);
+                                    if (!receiverEnabled.get()) {
+                                        logger.debug("scanLoopTask, stopped because receiver is disabled");
+                                    }
                                 }
                             });
                         }
@@ -558,19 +572,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return data != null;
     }
 
-    /// Is target device an OpenTrace Android or iOS device?
-    private static boolean isOpenTraceOnlyDevice(final BLEDevice device) {
-        if (device == null) {
-            return false;
-        }
-        // HERALD with OpenTrace support has signal characteristic
-        // OpenTrace only device will have legacy payload characteristic but not signal characteristic
-        if (device.signalCharacteristic() == null && device.getLegacyPayloadCharacteristic() != null) {
-            return true;
-        }
-        return false;
-    }
-
     /// Does scan result include advert for OpenTrace service?
     private static boolean hasOpenTraceService(final ScanResult scanResult) {
         if (!BLESensorConfiguration.interopOpenTraceEnabled) {
@@ -676,7 +677,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         for (BLEDevice device : devicesToRemove) {
             logger.debug("taskRemoveExpiredDevices (remove={})", device);
-            database.delete(device.identifier);
+            database.delete(device);
         }
     }
 
@@ -904,8 +905,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 				}
             }
             // Copy legacy payload characteristic to payload characteristic if null
-            if (device.payloadCharacteristic() == null && device.getLegacyPayloadCharacteristic() != null) {
-                device.payloadCharacteristic(device.getLegacyPayloadCharacteristic());
+            if (device.payloadCharacteristic() == null && device.legacyPayloadCharacteristic() != null) {
+                device.payloadCharacteristic(device.legacyPayloadCharacteristic());
             }
         }
 
@@ -999,7 +1000,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // Get payload update if required
         if (device.timeIntervalSinceLastPayloadDataUpdate().value > BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
-            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate)", device);
+            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate,timeIntervalSinceLastUpdate={})", device, device.timeIntervalSinceLastPayloadDataUpdate());
+            return NextTask.readPayload;
+        }
+        if (device.protocolIsOpenTrace() && device.timeIntervalSinceLastPayloadDataUpdate().value > BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval.value) {
+            logger.debug("nextTaskForDevice (device={},task=readPayloadUpdate|OpenTrace,timeIntervalSinceLastUpdate={})", device, device.timeIntervalSinceLastPayloadDataUpdate());
             return NextTask.readPayload;
         }
         // Write payload, rssi and payload sharing data if this device cannot transmit
@@ -1033,7 +1038,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
         }
         // Write payload sharing data to iOS
-        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios && !isOpenTraceOnlyDevice(device)) {
+        if (device.operatingSystem() == BLEDeviceOperatingSystem.ios && !device.protocolIsOpenTrace()) {
             // Write payload sharing data to iOS device if there is data to be shared
             final PayloadSharingData payloadSharingData = database.payloadSharingData(device);
             if (device.operatingSystem() == BLEDeviceOperatingSystem.ios
@@ -1093,10 +1098,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     return; // => onConnectionStateChange
                 }
                 // OpenTrace relies on MTU change to 512 to enable exchange of large payloads
-                if (isOpenTraceOnlyDevice(device)) {
+                if (device.protocolIsOpenTrace()) {
                     gatt.requestMtu(512);
                     // Request MTU -> readCharacteristic
-                    logger.debug("nextTask (task=readPayload|legacyMTU,device={})", device);
+                    logger.debug("nextTask (task=readPayload|openTrace|requestMTU,device={})", device);
                     return; // => onCharacteristicRead | timeout
                 }
                 // HERALD handles fragmentation internally
@@ -1261,10 +1266,32 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onMtuChanged (device={},status={})", device, bleStatus(status));
-        final BluetoothGattCharacteristic characteristic = device.getLegacyPayloadCharacteristic();
+        final BluetoothGattCharacteristic characteristic = device.legacyPayloadCharacteristic();
         if (status == BluetoothGatt.GATT_SUCCESS && characteristic != null && gatt.readCharacteristic(characteristic)) {
             logger.debug("nextTask (task=readPayload|legacy,device={})", device);
             return; // => onCharacteristicRead | timeout
+        }
+        gatt.disconnect();
+    }
+
+    /// Write payload to legacy OpenTrace device
+    /// OpenTrace protocol : read payload -> write payload -> disconnect
+    private void writeLegacyPayload(BluetoothGatt gatt) {
+        final BLEDevice device = database.device(gatt.getDevice());
+        if (device.protocolIsOpenTrace()) {
+            final BluetoothGattCharacteristic characteristic = device.legacyPayloadCharacteristic();
+            final LegacyPayloadData legacyPayloadData = payloadDataSupplier.legacyPayload(new PayloadTimestamp(), device);
+            if (characteristic != null && legacyPayloadData != null) {
+                characteristic.setValue(legacyPayloadData.value);
+                characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                if (gatt.writeCharacteristic(characteristic)) {
+                    // onCharacteristicWrite
+                    logger.debug("writeLegacyPayload requested (device={})", device);
+                    return;
+                } else {
+                    logger.fault("writeLegacyPayload failed (device={},reason=writeCharacteristicFailed)", device);
+                }
+            }
         }
         gatt.disconnect();
     }
@@ -1294,6 +1321,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.debug("onCharacteristicRead, read legacy payload data success (device={},payload={})", device, payloadData.shortName());
                     device.payloadData(payloadData);
                     // TODO incorporate Android non-auth security patch once license confirmed
+                    // Write legacy payload data after read
+                    writeLegacyPayload(gatt);
+                    return;
                 } else {
                     logger.fault("onCharacteristicRead, read legacy payload data failed, no data (device={})", device);
                 }
@@ -1334,8 +1364,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onCharacteristicWrite (device={},status={})", device, bleStatus(status));
-        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
+        // OpenTrace payload characteristic write support
+        if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
+            if (success) {
+                logger.debug("onCharacteristicWrite, write OpenTrace payload success (device={})", device);
+                device.registerWritePayload();
+            } else {
+                logger.fault("onCharacteristicWrite, write OpenTrace payload failed (device={})", device);
+            }
+            gatt.disconnect();
+            return;
+        }
+        // Herald signal characteristic write support
+        final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
         if (signalCharacteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID)) {
             if (success && writeAndroidSignalCharacteristic(gatt) == WriteAndroidSignalCharacteristicResult.moreToWrite) {
                 return;
