@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanRecord;
 
+import com.vmware.herald.sensor.Device;
 import com.vmware.herald.sensor.datatype.Calibration;
 import com.vmware.herald.sensor.datatype.CalibrationMeasurementUnit;
 import com.vmware.herald.sensor.datatype.Data;
@@ -22,13 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Queue;
 
-public class BLEDevice {
-    /// Device registration timestamp
-    public final Date createdAt;
-    /// Last time anything changed, e.g. attribute update
-    public Date lastUpdatedAt = null;
-    /// Ephemeral device identifier, e.g. peripheral identifier UUID
-    public final TargetIdentifier identifier;
+public class BLEDevice extends Device {
     /// Pseudo device address for tracking Android devices that change address constantly.
     private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
@@ -90,7 +85,11 @@ public class BLEDevice {
     }
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
+    /// This is also used by immediateSendAll to choose targets
     public TimeInterval timeIntervalSinceLastUpdate() {
+        if (lastUpdatedAt == null) {
+            return TimeInterval.never;
+        }
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
     }
 
@@ -106,44 +105,8 @@ public class BLEDevice {
     }
 
     public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
-        this.createdAt = new Date();
-        this.identifier = identifier;
+        super(identifier);
         this.delegate = delegate;
-        this.lastUpdatedAt = createdAt;
-    }
-
-    /// Create a clone of an existing device
-    public BLEDevice(BLEDevice device, BluetoothDevice bluetoothDevice) {
-        this.createdAt = device.createdAt;
-        this.lastUpdatedAt = new Date();
-        this.identifier = new TargetIdentifier(bluetoothDevice);
-        this.pseudoDeviceAddress = device.pseudoDeviceAddress;
-        this.delegate = device.delegate;
-        this.state = device.state;
-        this.operatingSystem = device.operatingSystem;
-        this.payloadData = device.payloadData;
-        this.lastPayloadDataUpdate = device.lastPayloadDataUpdate;
-        this.rssi = device.rssi;
-        this.txPower = device.txPower;
-        this.receiveOnly = device.receiveOnly;
-        this.ignoreForDuration = device.ignoreForDuration;
-        this.ignoreUntil = device.ignoreUntil;
-        this.scanRecord = device.scanRecord;
-        this.signalCharacteristic = device.signalCharacteristic;
-        this.payloadCharacteristic = device.payloadCharacteristic;
-        this.modelCharacteristic = device.modelCharacteristic;
-        this.deviceNameCharacteristic = device.deviceNameCharacteristic;
-        this.model = device.model;
-        this.deviceName = device.deviceName;
-        this.signalCharacteristicWriteValue = device.signalCharacteristicWriteValue;
-        this.signalCharacteristicWriteQueue = device.signalCharacteristicWriteQueue;
-        this.legacyPayloadCharacteristic = device.legacyPayloadCharacteristic;
-        this.lastDiscoveredAt = device.lastDiscoveredAt;
-        this.lastConnectedAt = device.lastConnectedAt;
-        this.payloadSharingData.addAll(device.payloadSharingData);
-        this.lastWritePayloadAt = device.lastWritePayloadAt;
-        this.lastWriteRssiAt = device.lastWriteRssiAt;
-        this.lastWritePayloadSharingAt = device.lastWritePayloadSharingAt;
     }
 
     public PseudoDeviceAddress pseudoDeviceAddress() {
@@ -258,11 +221,10 @@ public class BLEDevice {
 
     public void legacyPayloadCharacteristic(BluetoothGattCharacteristic characteristic) {
         this.legacyPayloadCharacteristic = characteristic;
-        lastPayloadDataUpdate = new Date();
     }
 
-    public BluetoothGattCharacteristic getLegacyPayloadCharacteristic() {
-        return  legacyPayloadCharacteristic;
+    public BluetoothGattCharacteristic legacyPayloadCharacteristic() {
+        return legacyPayloadCharacteristic;
     }
 
     public BLE_TxPower txPower() {
@@ -398,6 +360,14 @@ public class BLEDevice {
             return TimeInterval.never;
         }
         return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
+    }
+
+    public boolean protocolIsOpenTrace() {
+        return legacyPayloadCharacteristic != null && signalCharacteristic == null;
+    }
+
+    public boolean protocolIsHerald() {
+        return signalCharacteristic != null && payloadCharacteristic != null;
     }
 
     public void scanRecord(ScanRecord scanRecord) {

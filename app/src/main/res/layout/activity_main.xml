@@ -10,6 +10,15 @@
     android:layout_height="match_parent"
     tools:context="com.vmware.herald.app.MainActivity">
 
+    <Switch
+        android:id="@+id/sensorOnOffSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="@id/device"
+        app:layout_constraintRight_toRightOf="parent"
+        android:padding="10dp"
+        android:checked="true"/>
+
     <TextView
         android:id="@+id/device"
         android:layout_width="match_parent"

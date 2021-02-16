@@ -7,6 +7,8 @@ package com.vmware.herald.sensor.ble;
 import android.bluetooth.BluetoothGattCharacteristic;
 
 import com.vmware.herald.sensor.data.SensorLoggerLevel;
+import com.vmware.herald.sensor.datatype.Data;
+import com.vmware.herald.sensor.datatype.RandomSource;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import java.util.UUID;
@@ -19,7 +21,8 @@ public class BLESensorConfiguration {
     /// in background mode. Android devices will need to find Apple devices first using the manufacturer code
     /// then discover services to identify actual beacons.
     /// - Service and characteristic UUIDs are V4 UUIDs that have been randomly generated and tested
-    /// for uniqueness by conducting web searches to ensure it returns no results.
+    ///   for uniqueness by conducting web searches to ensure it returns no results.
+    ///   Default UUID for HERALD is 428132af-4746-42d3-801e-4572d65bfd9b
     /// - Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
     public static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
     /// Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
@@ -31,11 +34,42 @@ public class BLESensorConfiguration {
     /// Primary payload characteristic (read) for distributing payload data from peripheral to central, e.g. identity data
     /// - Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
-	/// Legacy payload sharing characteristic
-	public static UUID legacyPayloadCharacteristicUUID = null;
-	/// A full characteristic description itself for a legacy payload
-	public static BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
-	
+
+    // MARK:- Interoperability with OpenTrace
+
+	/// OpenTrace service UUID, characteristic UUID, and manufacturer ID
+    /// - Enables capture of OpenTrace payloads, e.g. for transition to HERALD
+    /// - HERALD will discover devices advertising OpenTrace service UUID (can be the same as HERALD service UUID)
+    /// - HERALD will search for OpenTrace characteristic, write payload of self to target,
+    ///   read payload from target, and capture payload written to self by target.
+    /// - HERALD will read/write payload from/to OpenTrace at regular intervals if update time
+    ///   interval is not .never. Tests have confirmed that using this feature, instead of relying
+    ///   solely on OpenTrace advert updates on idle Android and iOS devices offers more
+    ///   regular measurements for OpenTrace.
+    /// - OpenTrace payloads will be reported via SensorDelegate:didRead where the payload
+    ///   has type LegacyPayloadData, and service will be the OpenTrace characteristic UUID.
+    /// - Set interopOpenTraceEnabled = false to disable feature
+    public static boolean interopOpenTraceEnabled = false;
+    public static UUID interopOpenTraceServiceUUID = UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8");
+	public static UUID interopOpenTracePayloadCharacteristicUUID = UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2");
+    public static int interopOpenTraceManufacturerId = 1023;
+    public static TimeInterval interopOpenTracePayloadDataUpdateTimeInterval = TimeInterval.minutes(5);
+
+    // MARK:- Interoperability with Advert based protocols
+
+    /// Advert based protocol service UUID, service data key
+    /// - Enable capture of advert based protocol payloads, e.g. for transition to HERALD
+    /// - HERALD will discover devices advertising protocol service UUID (can be the same as HERALD service UUID)
+    /// - HERALD will parse service data to read payload from target
+    /// - Protocol payloads will be reported via SensorDelegate:didRead where the payload
+    ///   has type LegacyPayloadData, and service will be the protocol service UUID.
+    /// - Set interopAdvertBasedProtocolEnabled = false to disable feature
+    /// - Scan for 16-bit service UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
+    public static boolean interopAdvertBasedProtocolEnabled = false;
+    public static UUID interopAdvertBasedProtocolServiceUUID = UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
+    public static Data interopAdvertBasedProtocolServiceDataKey = Data.fromHexEncodedString("FD6F");
+
+
     /// Standard Bluetooth service and characteristics
     /// These are all fixed UUID from the BLE standard.
     /// Standard Bluetooth Service UUID for Generic Access Service
@@ -102,6 +136,12 @@ public class BLESensorConfiguration {
     /// Advert refresh time interval
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 
+    /// Randomisation method for generating the pseudo device addresses, see PseudoDeviceAddress and RandomSource for details.
+    /// - Set to Random for reliable continuous operation, validated
+    /// - Other methods will cause blocking after 4-8 hours and interrupt operation on idle devices
+    /// - Blocking can also occur at app initialisation, advert refresh, and also impact system services
+    public static RandomSource.Method pseudoDeviceAddressRandomisation = RandomSource.Method.Random;
+
     /// Interrogate standard Bluetooth services to obtain device make/model data
     public static boolean deviceIntrospectionEnabled = false;
 
@@ -127,6 +167,13 @@ public class BLESensorConfiguration {
             "^05","^07","^09",
             "^00","^1002","^06","^08","^03","^0C","^0D","^0F","^0E","^0B"
     };
+
+    /// Enable inertia sensor
+    /// - Inertia sensor (accelerometer) measures acceleration in meters per second (m/s) along device X, Y and Z axis
+    /// - Generates SensorDelegate:didVisit callbacks with InertiaLocationReference data
+    /// - Set to false to disable sensor, and true value to enable sensor
+    /// - This is used for automated capture of RSSI at different distances, where the didVisit data is used as markers
+    public static boolean inertiaSensorEnabled = false;
 }
 
 

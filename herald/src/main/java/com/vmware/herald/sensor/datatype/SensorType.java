@@ -18,6 +18,8 @@ public enum SensorType {
     BEACON,
     /// Ultrasound audio beacon.
     ULTRASOUND,
+    /// Accelerometer motion sensor
+    ACCELEROMETER,
     /// Other - in case of new sensor types in use between major versions
     OTHER
 }

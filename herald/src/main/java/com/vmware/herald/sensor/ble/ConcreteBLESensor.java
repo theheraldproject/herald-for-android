@@ -44,7 +44,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         final BLETimer timer = new BLETimer(context);
         bluetoothStateManager.delegates.add(this);
         transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database);
-        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter);
+        receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter, payloadDataSupplier);
         database.add(this);
     }
 
@@ -58,7 +58,6 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     @Override
     public void start() {
         logger.debug("start");
-        // BLE transmitter and receivers start on powerOn event
         transmitter.start();
         receiver.start();
     }
@@ -66,13 +65,16 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     @Override
     public void stop() {
         logger.debug("stop");
-        // BLE transmitter and receivers stops on powerOff event
         transmitter.stop();
         receiver.stop();
     }
 
     public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
         return receiver.immediateSend(data, targetIdentifier);
+    }
+
+    public boolean immediateSendAll(Data data) {
+        return receiver.immediateSendAll(data);
     }
 
     // MARK:- BLEDatabaseDelegate

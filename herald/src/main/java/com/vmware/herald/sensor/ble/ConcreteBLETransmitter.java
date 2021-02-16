@@ -20,6 +20,7 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 
+import com.vmware.herald.BuildConfig;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.BluetoothState;
@@ -47,6 +48,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED;
@@ -63,6 +65,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private final PayloadDataSupplier payloadDataSupplier;
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean transmitterEnabled = new AtomicBoolean(false);
+
+    // Referenced by startAdvert and stopExistingGattServer ONLY
+    private BluetoothGattServer bluetoothGattServer = null;
 
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
@@ -84,14 +90,20 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public void start() {
-        logger.debug("start (supported={})", isSupported());
-        // advertLoop is started by Bluetooth state
+        if (transmitterEnabled.compareAndSet(false, true)) {
+            logger.debug("start, transmitter enabled to follow bluetooth state");
+        } else {
+            logger.fault("start, transmitter already enabled to follow bluetooth state");
+        }
     }
 
     @Override
     public void stop() {
-        logger.debug("stop");
-        // advertLoop is stopped by Bluetooth state
+        if (transmitterEnabled.compareAndSet(true, false)) {
+            logger.debug("stop, transmitter disabled");
+        } else {
+            logger.fault("stop, transmitter already disabled");
+        }
     }
 
     // MARK:- Advert loop
@@ -104,19 +116,26 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
-            //logger.fault("Bluetooth adapter unavailable");
+            logger.debug("bluetoothLeAdvertiser, no Bluetooth Adapter available");
             return null;
         }
-        if (!bluetoothAdapter.isMultipleAdvertisementSupported()) {
-            //logger.fault("Bluetooth advertisement unsupported");
+        boolean supported = bluetoothAdapter.isMultipleAdvertisementSupported();
+        try {
+            final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+            if (bluetoothLeAdvertiser == null) {
+                logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception=no)", supported);
+                return null;
+            }
+            // log this, as this will allow us to identify handsets with a different API implementation
+            // Disabling this log message as it is called once every second and no longer relevant as
+            // result of isMultipleAdvertisementSupported() is not used in the logic
+            // logger.debug("bluetoothLeAdvertiser, LE advertiser present (multiSupported={})", supported);
+            return bluetoothLeAdvertiser;
+        } catch (Exception e) {
+            // log it, as this will allow us to identify handsets with the expected API implementation (from Android API source code)
+            logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception={})", supported, e.getMessage());
             return null;
         }
-        final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-        if (bluetoothLeAdvertiser == null) {
-            //logger.fault("Bluetooth advertisement unavailable");
-            return null;
-        }
-        return bluetoothLeAdvertiser;
     }
 
     private class AdvertLoopTask implements BLETimerDelegate {
@@ -138,12 +157,18 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
         @Override
         public void bleTimer(final long now) {
-            if (!isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
+            if (!transmitterEnabled.get() || !isSupported() || bluetoothStateManager.state() == BluetoothState.poweredOff) {
                 if (advertLoopState != AdvertLoopState.stopped) {
-                    advertiseCallback = null;
-                    bluetoothGattServer = null;
-                    state(now, AdvertLoopState.stopped);
-                    logger.debug("advertLoopTask, stop advert (advert={}ms)", timeSincelastStateChange(now));
+                    logger.debug("advertLoopTask, stopping advert following bluetooth state change (isSupported={},bluetoothPowerOff={})", isSupported(), bluetoothStateManager.state() == BluetoothState.poweredOff);
+                    stopAdvert(bluetoothLeAdvertiser(), advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {
+                        @Override
+                        public void accept(Boolean value) {
+                            advertiseCallback = null;
+                            bluetoothGattServer = null;
+                            state(now, AdvertLoopState.stopped);
+                            logger.debug("advertLoopTask, stop advert (advert={}ms)", timeSincelastStateChange(now));
+                        }
+                    });
                 }
                 return;
             }
@@ -204,7 +229,22 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             @Override
             public void run() {
                 boolean result = true;
-                BluetoothGattServer bluetoothGattServer = null;
+                // Stop existing advert if there is already a proxy reference.
+                // This should never happen because only the AdvertLoopTask calls
+                // startAdvert and it should only call startAdvert after stopAdvert
+                // has been called previously. Logging this condition to verify if
+                // this condition can ever occur to support investigation.
+                if (bluetoothGattServer != null) {
+                    logger.fault("startAdvert found existing GATT server");
+                    try {
+                        bluetoothGattServer.clearServices();
+                        bluetoothGattServer.close();
+                    } catch (Throwable e) {
+                        logger.fault("startAdvert found existing GATT server but failed to stop the server", e);
+                    }
+                    bluetoothGattServer = null;
+                }
+                // Start new GATT server
                 try {
                     bluetoothGattServer = startGattServer(logger, context, payloadDataSupplier, database);
                 } catch (Throwable e) {
@@ -265,7 +305,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             public void run() {
                 boolean result = true;
                 try {
-                    if (advertiseCallback != null) {
+                    if (bluetoothLeAdvertiser != null && advertiseCallback != null) {
                         bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
                     }
                 } catch (Throwable e) {
@@ -294,7 +334,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public PayloadData payloadData() {
-        return payloadDataSupplier.payload(new PayloadTimestamp(new Date()));
+        return payloadDataSupplier.payload(new PayloadTimestamp(new Date()), null);
     }
 
     @Override
@@ -304,12 +344,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public void bluetoothStateManager(BluetoothState didUpdateState) {
-        logger.debug("didUpdateState (state={})", didUpdateState);
-        if (didUpdateState == BluetoothState.poweredOn) {
-            start();
-        } else if (didUpdateState == BluetoothState.poweredOff) {
-            stop();
-        }
+        logger.debug("didUpdateState (state={},transmitterEnabled={})", didUpdateState, transmitterEnabled.get());
     }
 
     private void startAdvertising(final BluetoothLeAdvertiser bluetoothLeAdvertiser, final AdvertiseCallback advertiseCallback) {
@@ -345,12 +380,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             private final Map<String, PayloadData> onCharacteristicReadPayloadData = new ConcurrentHashMap<>();
             private final Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
-            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice device) {
-                final String key = device.getAddress();
+            private PayloadData onCharacteristicReadPayloadData(BluetoothDevice bluetoothDevice) {
+                final BLEDevice device = database.device(bluetoothDevice);
+                final String key = bluetoothDevice.getAddress();
                 if (onCharacteristicReadPayloadData.containsKey(key)) {
                     return onCharacteristicReadPayloadData.get(key);
                 }
-                final PayloadData payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
+                final PayloadData payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), device);
                 onCharacteristicReadPayloadData.put(key, payloadData);
                 return payloadData;
             }
@@ -413,7 +449,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     return;
                 }
                 final Data data = new Data(onCharacteristicWriteSignalData(device, value));
-				if (characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+				if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
 				    if (null == data.value) {
 				        return;
                     }
@@ -496,7 +532,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             @Override
             public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
                 final BLEDevice targetDevice = database.device(device);
-                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.legacyPayloadCharacteristicUUID)) {
+                if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
                     final PayloadData payloadData = onCharacteristicReadPayloadData(device);
                     if (offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
@@ -535,6 +571,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             bluetoothGattServer.cancelConnection(device);
         }
         bluetoothGattServer.clearServices();
+
+        // Logic check - ensure there are now no Gatt Services
+        List<BluetoothGattService> services = bluetoothGattServer.getServices();
+        for (BluetoothGattService svc : services) {
+            logger.fault("setGattService device clearServices() call did not correctly clear service (service={})",svc.getUuid());
+        }
+
         final BluetoothGattService service = new BluetoothGattService(BLESensorConfiguration.serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
         final BluetoothGattCharacteristic signalCharacteristic = new BluetoothGattCharacteristic(
                 BLESensorConfiguration.androidSignalCharacteristicUUID,
@@ -546,13 +589,29 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 BluetoothGattCharacteristic.PROPERTY_READ,
                 BluetoothGattCharacteristic.PERMISSION_READ);
         service.addCharacteristic(signalCharacteristic);
-		if (null != BLESensorConfiguration.legacyPayloadCharacteristic) {
-			final BluetoothGattCharacteristic legacyPayloadCharacteristic = 
-			BLESensorConfiguration.legacyPayloadCharacteristic;
+        // Interop with OpenTrace protocol
+		if (BLESensorConfiguration.interopOpenTraceEnabled) {
+			final BluetoothGattCharacteristic legacyPayloadCharacteristic = new BluetoothGattCharacteristic(
+                    BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID,
+                    BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                    BluetoothGattCharacteristic.PERMISSION_READ | BluetoothGattCharacteristic.PERMISSION_WRITE);
         	service.addCharacteristic(legacyPayloadCharacteristic);
 		}
         service.addCharacteristic(payloadCharacteristic);
         bluetoothGattServer.addService(service);
+
+        // Logic check - ensure there can be only one Herald service
+        services = bluetoothGattServer.getServices();
+        int count = 0;
+        for (BluetoothGattService svc : services) {
+            if (svc.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+                count++;
+            }
+        }
+        if (count > 1) {
+            logger.fault("setGattService device incorrectly sharing multiple Herald services (count={})", count);
+        }
+
         logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",
                 service.getUuid(), signalCharacteristic.getUuid(), payloadCharacteristic.getUuid());
     }

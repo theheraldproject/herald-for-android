@@ -6,6 +6,7 @@ package com.vmware.herald.sensor.datatype;
 
 import android.bluetooth.BluetoothDevice;
 
+import java.lang.annotation.Target;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -14,14 +15,19 @@ import java.util.UUID;
 public class TargetIdentifier {
     public final String value;
 
-    /// Create target identifier based on bluetooth device address
-    public TargetIdentifier(BluetoothDevice bluetoothDevice) {
-        this.value = bluetoothDevice.getAddress();
+    protected TargetIdentifier(final String value) {
+        this.value = value;
     }
 
     /// Create random target identifier
     public TargetIdentifier() {
-        this.value = UUID.randomUUID().toString(); // generated securely, see https://docs.oracle.com/javase/7/docs/api/java/util/UUID.html#randomUUID()
+        // generated securely, see https://docs.oracle.com/javase/7/docs/api/java/util/UUID.html#randomUUID()
+        this(UUID.randomUUID().toString());
+    }
+
+    /// Create target identifier based on bluetooth device address
+    public TargetIdentifier(BluetoothDevice bluetoothDevice) {
+        this(bluetoothDevice.getAddress());
     }
 
     @Override

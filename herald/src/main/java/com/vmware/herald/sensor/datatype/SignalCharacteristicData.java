@@ -26,6 +26,9 @@ public class SignalCharacteristicData {
 
     /// Decode write RSSI data bundle
     public static RSSI decodeWriteRSSI(final Data data) {
+        if (data == null || data.value == null) {
+            return null;
+        }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteRSSI) {
             return null;
         }
@@ -56,6 +59,9 @@ public class SignalCharacteristicData {
 
     /// Decode write payload data bundle
     public static PayloadData decodeWritePayload(final Data data) {
+        if (data == null || data.value == null) {
+            return null;
+        }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayload) {
             return null;
         }
@@ -65,6 +71,9 @@ public class SignalCharacteristicData {
         final Short payloadDataCount = int16(data.value, 1);
         if (payloadDataCount == null) {
             return null;
+        }
+        if (payloadDataCount == 0) {
+            return new PayloadData();
         }
         if (data.value.length != (3 + payloadDataCount.intValue())) {
             return null;
@@ -95,6 +104,9 @@ public class SignalCharacteristicData {
 
     /// Decode write payload data bundle
     public static PayloadSharingData decodeWritePayloadSharing(final Data data) {
+        if (data == null || data.value == null) {
+            return null;
+        }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing) {
             return null;
         }
@@ -108,6 +120,9 @@ public class SignalCharacteristicData {
         final Short payloadSharingDataCount = int16(data.value, 3);
         if (payloadSharingDataCount == null) {
             return null;
+        }
+        if (payloadSharingDataCount == 0) {
+            return new PayloadSharingData(new RSSI(rssiValue.intValue()), new Data());
         }
         if (data.value.length != (5 + payloadSharingDataCount.intValue())) {
             return null;
@@ -136,6 +151,9 @@ public class SignalCharacteristicData {
 
     /// Decode immediate send data bundle
     public static ImmediateSendData decodeImmediateSend(final Data data) {
+        if (data == null || data.value == null) {
+            return null;
+        }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteImmediate) {
             return null;
         }
@@ -145,6 +163,9 @@ public class SignalCharacteristicData {
         final Short immediateSendDataCount = int16(data.value, 1);
         if (immediateSendDataCount == null) {
             return null;
+        }
+        if (immediateSendDataCount == 0) {
+            return new ImmediateSendData(new Data());
         }
         if (data.value.length != (3 + immediateSendDataCount.intValue())) {
             return null;

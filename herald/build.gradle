@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.vmware.herald'
-version = '1.1.1'
+version = '1.2.0'
 
 apply plugin: 'com.android.library'
 
@@ -15,7 +15,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 1
-        versionName "1.1.1"
+        versionName "1.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -37,6 +37,7 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'androidx.appcompat:appcompat:1.2.0'
     testImplementation 'junit:junit:4.12'
+    testImplementation "org.json:json:20201115"
 }
 
 afterEvaluate {
@@ -113,4 +114,29 @@ afterEvaluate {
             }
         }
     }
+}
+
+task javadoc(type: Javadoc) {
+
+    doFirst {
+        configurations.implementation
+                .filter { it.name.endsWith('.aar') }
+        .each { aar ->
+            copy {
+                from zipTree(aar)
+                include "**/classes.jar"
+                into "$buildDir/tmp/aarsToJars/${aar.name.replace('.aar', '')}/"
+            }
+        }
+    }
+
+    configurations.implementation.setCanBeResolved(true)
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += configurations.implementation
+    classpath += fileTree(dir: "$buildDir/tmp/aarsToJars/")
+    destinationDir = file("${project.buildDir}/outputs/javadoc/")
+    failOnError false
+    exclude '**/BuildConfig.java'
+    exclude '**/R.java'
 }

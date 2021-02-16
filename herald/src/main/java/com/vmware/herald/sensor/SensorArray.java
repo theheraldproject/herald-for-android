@@ -5,23 +5,17 @@
 package com.vmware.herald.sensor;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Build;
 
-import com.vmware.herald.BuildConfig;
+import com.vmware.herald.sensor.ble.BLESensorConfiguration;
 import com.vmware.herald.sensor.ble.ConcreteBLESensor;
-import com.vmware.herald.sensor.data.BatteryLog;
+import com.vmware.herald.sensor.data.CalibrationLog;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
-import com.vmware.herald.sensor.data.ContactLog;
-import com.vmware.herald.sensor.data.DetectionLog;
 import com.vmware.herald.sensor.data.SensorLogger;
-import com.vmware.herald.sensor.data.StatisticsDidReadLog;
-import com.vmware.herald.sensor.data.StatisticsLog;
 import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.PayloadTimestamp;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
-import com.vmware.herald.sensor.service.ForegroundService;
+import com.vmware.herald.sensor.motion.ConcreteInertiaSensor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,39 +31,33 @@ public class SensorArray implements Sensor {
 
     private final ConcreteBLESensor concreteBleSensor;
 
-    public SensorArray(Context context, PayloadDataSupplier payloadDataSupplier) {
+    public SensorArray(final Context context, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);
         logger.debug("init");
 
-        // Start foreground service to enable background scan
-        final Intent intent = new Intent(context, ForegroundService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
-
         // Define sensor array
         concreteBleSensor = new ConcreteBLESensor(context, payloadDataSupplier);
         sensorArray.add(concreteBleSensor);
-
-        // Loggers
-        payloadData = payloadDataSupplier.payload(new PayloadTimestamp());
-		if (BuildConfig.DEBUG) {
-	        add(new ContactLog(context, "contacts.csv"));
-	        add(new StatisticsLog(context, "statistics.csv", payloadData));
-	        add(new StatisticsDidReadLog(context, "statistics_didRead.csv", payloadData));
-	        add(new DetectionLog(context,"detection.csv", payloadData));
-	        new BatteryLog(context, "battery.csv");
-		}
-        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), deviceDescription);
+        // Inertia sensor configured for automated RSSI-distance calibration data capture
+        if (BLESensorConfiguration.inertiaSensorEnabled) {
+            logger.debug("Inertia sensor enabled");
+            sensorArray.add(new ConcreteInertiaSensor(context));
+            add(new CalibrationLog(context, "calibration.csv"));
+        }
+        payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), null);
+        logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
     }
 
     /// Immediate send data.
     public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
         return concreteBleSensor.immediateSend(data,targetIdentifier);
+    }
+
+    /// Immediate send to all (connected / recent / nearby)
+    public boolean immediateSendAll(Data data) {
+        return concreteBleSensor.immediateSendAll(data);
     }
 
     public final PayloadData payloadData() {

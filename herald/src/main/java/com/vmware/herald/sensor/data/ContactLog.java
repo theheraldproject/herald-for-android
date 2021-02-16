@@ -21,12 +21,18 @@ import java.util.List;
 public class ContactLog extends DefaultSensorDelegate {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final TextFile textFile;
+    private final PayloadDataFormatter payloadDataFormatter;
 
-    public ContactLog(final Context context, final String filename) {
+    public ContactLog(final Context context, final String filename, PayloadDataFormatter payloadDataFormatter) {
         textFile = new TextFile(context, filename);
+        this.payloadDataFormatter = payloadDataFormatter;
         if (textFile.empty()) {
             textFile.write("time,sensor,id,detect,read,measure,share,visit,data");
         }
+    }
+
+    public ContactLog(final Context context, final String filename) {
+        this(context, filename, new ConcretePayloadDataFormatter());
     }
 
     private String timestamp() {
@@ -46,14 +52,14 @@ public class ContactLog extends DefaultSensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(didRead.shortName()));
+        textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(payloadDataFormatter.shortFormat(didRead)));
     }
 
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         final String prefix = timestamp() + "," + sensor.name() + "," + csv(fromTarget.value);
         for (PayloadData payloadData : didShare) {
-            textFile.write(prefix + ",,,,4,," + csv(payloadData.shortName()));
+            textFile.write(prefix + ",,,,4,," + csv(payloadDataFormatter.shortFormat(payloadData)));
         }
     }
 

@@ -5,14 +5,14 @@
 package com.vmware.herald.app;
 
 import android.Manifest;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.CompoundButton;
 import android.widget.ListView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -33,8 +33,6 @@ import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
-import org.w3c.dom.Text;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final static int permissionRequestCode = 1249951875;
     /// Test UI specific data, not required for production solution.
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+    private boolean foreground = false;
 
     // MARK:- Events
     private long didDetect = 0, didRead = 0, didMeasure = 0, didShare = 0, didReceive = 0;
@@ -87,6 +86,21 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         final ListView targetsListView = ((ListView) findViewById(R.id.targets));
         targetsListView.setAdapter(targetListAdapter);
         targetsListView.setOnItemClickListener(this);
+
+        // Test programmatic control of sensor on/off (default is on)
+        final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
+        sensor.start();
+        onOffSwitch.setChecked(true);
+        onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    sensor.start();
+                } else {
+                    sensor.stop();
+                }
+            }
+        });
     }
 
     /// REQUIRED : Request application permissions for sensor operation.
@@ -219,19 +233,46 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         updateSocialDistance(socialMixingScoreUnit);
     }
 
+    private void updateCounts() {
+        ((TextView) findViewById(R.id.didDetectCount)).setText(Long.toString(this.didDetect));
+        ((TextView) findViewById(R.id.didReadCount)).setText(Long.toString(this.didRead));
+        ((TextView) findViewById(R.id.didMeasureCount)).setText(Long.toString(this.didMeasure));
+        ((TextView) findViewById(R.id.didShareCount)).setText(Long.toString(this.didShare));
+        ((TextView) findViewById(R.id.didReceiveCount)).setText(Long.toString(this.didReceive));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        foreground = true;
+        Log.d(tag, "app (state=foreground)");
+        updateCounts();
+        updateTargets();
+        updateSocialDistance(socialMixingScoreUnit);
+    }
+
+    @Override
+    protected void onPause() {
+        foreground = false;
+        Log.d(tag, "app (state=background)");
+        super.onPause();
+    }
+
     // MARK:- SensorDelegate
 
     @Override
     public void sensor(SensorType sensor, TargetIdentifier didDetect) {
         this.didDetect++;
-        final String text = Long.toString(this.didDetect);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.didDetectCount);
-                textView.setText(text);
-            }
-        });
+        if (foreground) {
+            final String text = Long.toString(this.didDetect);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didDetectCount);
+                    textView.setText(text);
+                }
+            });
+        }
     }
 
     @Override
@@ -244,15 +285,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         } else {
             payloads.put(didRead, new Target(fromTarget, didRead));
         }
-        final String text = Long.toString(this.didRead);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.didReadCount);
-                textView.setText(text);
-                updateTargets();
-            }
-        });
+        if (foreground) {
+            final String text = Long.toString(this.didRead);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didReadCount);
+                    textView.setText(text);
+                    updateTargets();
+                }
+            });
+        }
     }
 
     @Override
@@ -268,15 +311,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 payloads.put(didRead, new Target(fromTarget, didRead));
             }
         }
-        final String text = Long.toString(this.didShare);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.didShareCount);
-                textView.setText(text);
-                updateTargets();
-            }
-        });
+        if (foreground) {
+            final String text = Long.toString(this.didShare);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didShareCount);
+                    textView.setText(text);
+                    updateTargets();
+                }
+            });
+        }
     }
 
     @Override
@@ -290,16 +335,18 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 target.proximity(didMeasure);
             }
         }
-        final String text = Long.toString(this.didMeasure);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.didMeasureCount);
-                textView.setText(text);
-                updateTargets();
-                updateSocialDistance(socialMixingScoreUnit);
-            }
-        });
+        if (foreground) {
+            final String text = Long.toString(this.didMeasure);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didMeasureCount);
+                    textView.setText(text);
+                    updateTargets();
+                    updateSocialDistance(socialMixingScoreUnit);
+                }
+            });
+        }
     }
 
     @Override
@@ -314,15 +361,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 target.received(didReceive);
             }
         }
-        final String text = Long.toString(this.didReceive);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                final TextView textView = findViewById(R.id.didReceiveCount);
-                textView.setText(text);
-                updateTargets();
-            }
-        });
+        if (foreground) {
+            final String text = Long.toString(this.didReceive);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didReceiveCount);
+                    textView.setText(text);
+                    updateTargets();
+                }
+            });
+        }
     }
 
     @Override
