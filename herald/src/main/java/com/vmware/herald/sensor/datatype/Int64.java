@@ -7,7 +7,7 @@ package com.vmware.herald.sensor.datatype;
 import java.util.Objects;
 
 /// Signed integer (64 bits)
-public class Int64 {
+public class Int64 implements DoubleValue {
     public final static int bitWidth = 64;
     public final static Int64 min = new Int64(Long.MIN_VALUE);
     public final static Int64 max = new Int64(Long.MAX_VALUE);
@@ -33,5 +33,10 @@ public class Int64 {
     @Override
     public String toString() {
         return Long.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }
