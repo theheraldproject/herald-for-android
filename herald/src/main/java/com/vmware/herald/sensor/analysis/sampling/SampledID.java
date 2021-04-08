@@ -6,7 +6,7 @@ package com.vmware.herald.sensor.analysis.sampling;
 
 import java.util.Objects;
 
-public class SampledID {
+public class SampledID implements Comparable<SampledID> {
     public final long value;
 
     public SampledID(long value) {
@@ -31,5 +31,10 @@ public class SampledID {
         return "SampledID{" +
                 "value=" + value +
                 '}';
+    }
+
+    @Override
+    public int compareTo(SampledID o) {
+        return Long.compare(value, o.value);
     }
 }
