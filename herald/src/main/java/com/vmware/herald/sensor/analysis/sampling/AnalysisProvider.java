@@ -9,5 +9,9 @@ import com.vmware.herald.sensor.datatype.DoubleValue;
 
 public interface AnalysisProvider<T extends DoubleValue, U extends DoubleValue> {
 
-    boolean analyse(final Date timeNow, final SampledID sampled, final SampleList<T> src, final CallableForNewSample<U> callable);
+    Class<T> inputType();
+
+    Class<U> outputType();
+
+    boolean analyse(final Date timeNow, final SampledID sampled, final SampleList<T> input, final SampleList<U> output, final CallableForNewSample<U> callable);
 }

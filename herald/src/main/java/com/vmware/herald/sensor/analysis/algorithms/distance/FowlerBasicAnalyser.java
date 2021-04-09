@@ -36,7 +36,17 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
     }
 
     @Override
-    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> src, CallableForNewSample<Distance> callable) {
+    public Class<RSSI> inputType() {
+        return RSSI.class;
+    }
+
+    @Override
+    public Class<Distance> outputType() {
+        return Distance.class;
+    }
+
+    @Override
+    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> src, final SampleList<Distance> output, CallableForNewSample<Distance> callable) {
         // Interval guard
         if (lastRan.secondsSinceUnixEpoch() + interval.value >= timeNow.secondsSinceUnixEpoch()) {
             return false;
@@ -52,6 +62,7 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
         final Date latestTime = values.latest();
         lastRan = latestTime;
         final Sample<Distance> newSample = new Sample<>(latestTime, new Distance(distance));
+        output.push(newSample);
         callable.newSample(sampled, newSample);
         return true;
     }

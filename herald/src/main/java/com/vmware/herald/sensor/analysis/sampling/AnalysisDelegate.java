@@ -8,6 +8,8 @@ import com.vmware.herald.sensor.datatype.DoubleValue;
 
 public interface AnalysisDelegate<T extends DoubleValue> extends CallableForNewSample<T> {
 
+    Class<T> inputType();
+
     void reset();
 
     SampleList<T> samples();

@@ -7,15 +7,57 @@ package com.vmware.herald.sensor.analysis.sampling;
 import com.vmware.herald.sensor.analysis.algorithms.distance.FowlerBasicAnalyser;
 import com.vmware.herald.sensor.datatype.Date;
 import com.vmware.herald.sensor.datatype.Distance;
+import com.vmware.herald.sensor.datatype.Int8;
 import com.vmware.herald.sensor.datatype.RSSI;
 
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AnalysisRunnerTests {
+
+    @Test
+    public void listmanager() {
+        final ListManager<RSSI> listManager = new ListManager<>(10);
+        final SampleList<RSSI> sampleList1 = listManager.list(new SampledID(1));
+        final SampleList<RSSI> sampleList2 = listManager.list(new SampledID(2));
+        final SampleList<RSSI> sampleList2b = listManager.list(new SampledID(2));
+        assertEquals(listManager.sampledIDs().size(), 2);
+        listManager.remove(new SampledID(1));
+        assertEquals(listManager.sampledIDs().size(), 1);
+        assertEquals(listManager.sampledIDs().iterator().next().value, 2);
+        listManager.clear();
+        assertEquals(listManager.sampledIDs().size(), 0);
+    }
+
+    @Test
+    public void variantset_listmanager() {
+        final VariantSet variantSet = new VariantSet(15);
+        final ListManager<RSSI> listManagerRSSI = variantSet.listManager(RSSI.class);
+        final ListManager<Int8> listManagerInt8 = variantSet.listManager(Int8.class);
+        assertEquals(variantSet.size(), 2);
+        assertEquals(listManagerRSSI.size(), 0);
+        assertEquals(listManagerInt8.size(), 0);
+
+        final SampleList<RSSI> sampleListRSSI = listManagerRSSI.list(new SampledID(1234));
+        final SampleList<Int8> sampleListInt8 = listManagerInt8.list(new SampledID(5678));
+        assertEquals(sampleListRSSI.size(), 0);
+        assertEquals(sampleListInt8.size(), 0);
+
+        sampleListRSSI.push(new Sample<RSSI>(0, new RSSI(12)));
+        sampleListInt8.push(new Sample<Int8>(10, new Int8(14)));
+        variantSet.push(new SampledID(5678), new Sample<Int8>(20, new Int8(15)));
+        assertEquals(variantSet.listManager(RSSI.class, new SampledID(1234)).size(), 1);
+        assertEquals(variantSet.listManager(Int8.class, new SampledID(5678)).size(), 2);
+
+        variantSet.remove(new SampledID(1234));
+        assertEquals(listManagerRSSI.size(), 0);
+        assertEquals(listManagerInt8.size(), 1);
+
+        variantSet.remove(RSSI.class);
+        assertEquals(variantSet.size(), 1);
+    }
 
     /// [Who]   As a DCT app developer
     /// [What]  I want to link my live application data to an analysis runner easily
@@ -42,10 +84,10 @@ public class AnalysisRunnerTests {
         final AnalysisProvider<RSSI, Distance> distanceAnalyser = new FowlerBasicAnalyser(30, -50, -24);
         final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
 
-        final AnalysisDelegateManager<Distance> adm = new AnalysisDelegateManager<>(myDelegate);
-        final AnalysisProviderManager<RSSI, Distance> apm = new AnalysisProviderManager<>(distanceAnalyser);
+        final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
+        final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
 
-        final AnalysisRunner<RSSI, Distance> runner = new AnalysisRunner<>(apm, adm, 25);
+        final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
 
         // run at different times and ensure that it only actually runs three times (sample size == 3)
         src.run(20, runner);
@@ -75,7 +117,7 @@ public class AnalysisRunnerTests {
             this.data = data;
         }
 
-        public void run(final long timeTo, final AnalysisRunner<RSSI, Distance> runner) {
+        public void run(final long timeTo, final AnalysisRunner runner) {
             for (final Sample<RSSI> v : data) {
                 if (v.taken().secondsSinceUnixEpoch() <= timeTo) {
                     runner.newSample(sampledID, v);
@@ -93,6 +135,11 @@ public class AnalysisRunnerTests {
         public void newSample(SampledID sampled, Sample<Distance> item) {
             this.lastSampledID = sampled;
             distances.push(item);
+        }
+
+        @Override
+        public Class<Distance> inputType() {
+            return Distance.class;
         }
 
         @Override

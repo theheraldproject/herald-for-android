@@ -7,26 +7,28 @@ package com.vmware.herald.sensor.analysis.sampling;
 import com.vmware.herald.sensor.datatype.Date;
 import com.vmware.herald.sensor.datatype.DoubleValue;
 
-public class AnalysisRunner<T extends DoubleValue, U extends DoubleValue> implements CallableForNewSample<T> {
-    private final AnalysisProviderManager<T, U> analysisProviderManager;
-    private final AnalysisDelegateManager<U> analysisDelegateManager;
-    private final ListManager<T> buffer;
+public class AnalysisRunner {
+    private final AnalysisProviderManager analysisProviderManager;
+    private final AnalysisDelegateManager analysisDelegateManager;
+    private final VariantSet variantSet;
 
-    public AnalysisRunner(final AnalysisProviderManager<T, U> analysisProviderManager, final AnalysisDelegateManager<U> analysisDelegateManager, final int bufferCapacity) {
+    public AnalysisRunner(final AnalysisProviderManager analysisProviderManager, final AnalysisDelegateManager analysisDelegateManager, final int defaultListSize) {
         this.analysisDelegateManager = analysisDelegateManager;
         this.analysisProviderManager = analysisProviderManager;
-        this.buffer = new ListManager<>(bufferCapacity);
+        this.variantSet = new VariantSet(defaultListSize);
     }
 
-    @Override
-    public void newSample(SampledID sampled, Sample<T> item) {
-        buffer.list(sampled).push(item);
+    public VariantSet variantSet() {
+        return variantSet;
+    }
+
+    public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> item) {
+        variantSet.push(sampled, item);
     }
 
     public void run(Date timeNow) {
-        for (final SampledID sampled : buffer.lists()) {
-            final SampleList<T> list = buffer.list(sampled);
-            analysisProviderManager.analyse(timeNow, sampled, list, analysisDelegateManager);
+        for (final SampledID sampled : variantSet.sampledIDs()) {
+            analysisProviderManager.analyse(timeNow, sampled, variantSet, analysisDelegateManager);
         }
     }
 }
