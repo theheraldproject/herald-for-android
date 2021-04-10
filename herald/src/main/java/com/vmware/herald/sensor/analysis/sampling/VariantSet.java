@@ -33,7 +33,7 @@ public class VariantSet {
         return sampledIDs;
     }
 
-    public <T extends DoubleValue> ListManager<T>  add(final Class<T> variant, final int listSize) {
+    public <T extends DoubleValue> ListManager<T> add(final Class<T> variant, final int listSize) {
         final ListManager<T> listManager = new ListManager<>(listSize);
         map.put(variant, listManager);
         return listManager;

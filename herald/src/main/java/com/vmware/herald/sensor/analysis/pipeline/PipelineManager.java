@@ -25,7 +25,7 @@ public class PipelineManager {
     public synchronized void add(final DataConsumer<? extends DoubleValue> dataConsumer) {
         final Class<? extends DoubleValue> inputType = dataConsumer.inputType();
         List<DataConsumer<? extends DoubleValue>> list = dataConsumers.get(inputType);
-        if (list == null) {
+        if (null == list) {
             list = new ArrayList<>();
             dataConsumers.put(inputType, list);
         }
@@ -36,7 +36,7 @@ public class PipelineManager {
     public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> item) {
         final Class<? extends DoubleValue> inputType = item.value().getClass();
         final List<DataConsumer<? extends DoubleValue>> list = dataConsumers.get(inputType);
-        if (list == null) {
+        if (null == list) {
             logger.debug("newSample, no consumer (inputType={})", inputType);
             return;
         }

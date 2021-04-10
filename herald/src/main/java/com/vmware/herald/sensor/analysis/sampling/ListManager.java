@@ -22,7 +22,7 @@ public class ListManager<T extends DoubleValue> {
 
     public synchronized SampleList<T> list(final SampledID listFor) {
         SampleList<T> list = map.get(listFor);
-        if (list == null) {
+        if (null == list) {
             list = new SampleList<>(listSize);
             map.put(listFor, list);
         }

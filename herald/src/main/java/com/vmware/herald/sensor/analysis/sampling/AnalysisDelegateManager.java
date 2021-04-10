@@ -34,7 +34,7 @@ public class AnalysisDelegateManager {
 
     private synchronized List<AnalysisDelegate<? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
         List<AnalysisDelegate<? extends DoubleValue>> list = lists.get(inputType);
-        if (list == null) {
+        if (null == list) {
             list = new ArrayList<>(1);
             lists.put(inputType, list);
         }
@@ -44,7 +44,7 @@ public class AnalysisDelegateManager {
     public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> sample) {
         final Class<? extends DoubleValue> inputType = sample.value().getClass();
         final List<AnalysisDelegate<? extends DoubleValue>> list = lists.get(inputType);
-        if (list == null) {
+        if (null == list) {
             return;
         }
         for (final AnalysisDelegate<? extends DoubleValue> delegate : list) {

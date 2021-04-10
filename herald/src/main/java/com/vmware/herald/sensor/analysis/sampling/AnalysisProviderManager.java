@@ -19,6 +19,7 @@ public class AnalysisProviderManager {
     private final Set<Class<? extends DoubleValue>> outputTypes = new HashSet<>();
     private final Map<Class<? extends DoubleValue>, List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>>> lists = new ConcurrentHashMap<>();
     private final List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> providers = new ArrayList<>();
+    private final Map<Class<? extends DoubleValue>, CallableForNewSample<? extends DoubleValue>> callables = new ConcurrentHashMap<>();
 
     public AnalysisProviderManager(final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> ... providers) {
         for (final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider : providers) {
@@ -45,11 +46,25 @@ public class AnalysisProviderManager {
 
     private synchronized List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
         List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list = lists.get(inputType);
-        if (list == null) {
+        if (null == list) {
             list = new ArrayList<>(1);
             lists.put(inputType, list);
         }
         return list;
+    }
+
+    private synchronized <U extends DoubleValue> CallableForNewSample<U> callable(final Class<U> type, final AnalysisDelegateManager delegates) {
+        CallableForNewSample<? extends DoubleValue> callable = callables.get(type);
+        if (null == callable) {
+            callable = new CallableForNewSample<U>() {
+                @Override
+                public void newSample(SampledID sampled, Sample<U> item) {
+                    delegates.newSample(sampled, item);
+                }
+            };
+            callables.put(type, callable);
+        }
+        return (CallableForNewSample<U>) callable;
     }
 
     public <T extends DoubleValue, U extends DoubleValue> void analyse(final Date timeNow, final SampledID sampled, final VariantSet variantSet, final AnalysisDelegateManager delegates) {
@@ -57,36 +72,7 @@ public class AnalysisProviderManager {
             final SampleList<T> input = (SampleList<T>) variantSet.listManager(provider.inputType(), sampled);
             final SampleList<U> output = (SampleList<U>) variantSet.listManager(provider.outputType(), sampled);
             final AnalysisProvider<T,U> typedProvider = (AnalysisProvider<T,U>) provider;
-            typedProvider.analyse(timeNow, sampled, input, output, new CallableForNewSample<U>() {
-                @Override
-                public void newSample(SampledID sampled, Sample<U> item) {
-                    delegates.newSample(sampled, item);
-                }
-            });
+            typedProvider.analyse(timeNow, sampled, input, output, callable(typedProvider.outputType(), delegates));
         }
     }
-
-
-//
-//    public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> sample) {
-//        final Class<? extends DoubleValue> inputType = sample.value().getClass();
-//        final List<AnalysisDelegate<? extends DoubleValue>> list = lists.get(inputType);
-//        if (list == null) {
-//            return;
-//        }
-//        for (final AnalysisDelegate<? extends DoubleValue> delegate : list) {
-//            ((AnalysisDelegate<T>) delegate).newSample(sampled, sample);
-//        }
-//    }
-//
-//
-//
-//    @Override
-//    public boolean analyse(Date timeNow, SampledID sampled, SampleList<T> src, CallableForNewSample<U> callable) {
-//        boolean generated = false;
-//        for (final AnalysisProvider<T, U> provider : providers) {
-//            generated = generated || provider.analyse(timeNow, sampled, src, callable);
-//        }
-//        return generated;
-//    }
 }
