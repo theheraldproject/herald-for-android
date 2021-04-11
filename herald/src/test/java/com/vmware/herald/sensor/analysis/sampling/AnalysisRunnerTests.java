@@ -5,10 +5,12 @@
 package com.vmware.herald.sensor.analysis.sampling;
 
 import com.vmware.herald.sensor.analysis.algorithms.distance.FowlerBasicAnalyser;
+import com.vmware.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
 import com.vmware.herald.sensor.datatype.Date;
 import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.Int8;
 import com.vmware.herald.sensor.datatype.RSSI;
+import com.vmware.herald.sensor.datatype.TimeInterval;
 
 import org.junit.Test;
 
@@ -108,6 +110,40 @@ public class AnalysisRunnerTests {
         System.err.println(samples);
     }
 
+    @Test
+    public void analysisrunner_smoothedLinearModel() {
+        final SampleList<RSSI> srcData = new SampleList<>(25);
+        srcData.push(0, new RSSI(-68));
+        srcData.push(10, new RSSI(-68));
+        srcData.push(20, new RSSI(-68));
+        srcData.push(30, new RSSI(-68));
+        srcData.push(40, new RSSI(-68));
+        srcData.push(50, new RSSI(-68));
+        srcData.push(60, new RSSI(-68));
+        final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
+
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new SmoothedLinearModelAnalyser(10, TimeInterval.minute, -17.7275, -0.2754);
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
+
+        final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
+        final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
+        final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
+
+        // run at different times and ensure that it only actually runs three times (sample size == 3)
+        src.run(60, 10, runner);
+        src.run(60, 20, runner);
+        src.run(60, 30, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
+        src.run(60, 40, runner);
+
+
+        assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
+        final SampleList<Distance> samples = myDelegate.samples();
+        // didn't reach 4x30 seconds, so no tenth sample, and didn't run at 60 because previous run was at time 40
+        assertEquals(samples.size(), 1);
+        assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
+        assertEquals(samples.get(0).value().value, 1.0, 0.001);
+    }
+
     private final static class DummyRSSISource {
         private final SampledID sampledID;
         private final SampleList<RSSI> data;
@@ -124,6 +160,15 @@ public class AnalysisRunnerTests {
                 }
             }
             runner.run(new Date(timeTo));
+        }
+
+        public void run(final long sampleTimeTo, final long analysisTimeTo, final AnalysisRunner runner) {
+            for (final Sample<RSSI> v : data) {
+                if (v.taken().secondsSinceUnixEpoch() <= sampleTimeTo) {
+                    runner.newSample(sampledID, v);
+                }
+            }
+            runner.run(new Date(analysisTimeTo));
         }
     }
 
