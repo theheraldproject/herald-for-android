@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /// IEE 754 binary16 format 16-bit float
-public class Float16 {
+public class Float16 implements DoubleValue {
     public final float value;
     public final Data bigEndian;
 
@@ -71,5 +71,10 @@ public class Float16 {
             mant &= 0x3ff;
         }
         return Float.intBitsToFloat((hbits & 0x8000) << 16 | (exp | mant) << 13);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

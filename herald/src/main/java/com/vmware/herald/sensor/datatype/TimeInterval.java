@@ -8,7 +8,7 @@ import java.util.Date;
 import java.util.Objects;
 
 /// Time interval in seconds.
-public class TimeInterval {
+public class TimeInterval implements DoubleValue {
     public final long value;
     public static final TimeInterval minute = new TimeInterval(60);
     public static final TimeInterval zero = new TimeInterval(0);
@@ -57,5 +57,10 @@ public class TimeInterval {
             return "never";
         }
         return Long.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

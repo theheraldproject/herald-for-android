@@ -5,7 +5,7 @@
 package com.vmware.herald.sensor.datatype;
 
 /// RSSI in dBm.
-public class RSSI {
+public class RSSI implements DoubleValue {
     public final int value;
 
     public RSSI(int value) {
@@ -30,5 +30,10 @@ public class RSSI {
         return "RSSI{" +
                 "value=" + value +
                 '}';
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }
