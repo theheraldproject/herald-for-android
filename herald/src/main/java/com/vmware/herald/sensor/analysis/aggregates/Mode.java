@@ -40,7 +40,10 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public double reduce() {
+    public Double reduce() {
+        if (counts.isEmpty()) {
+            return null;
+        }
         double largest = 0;
         long largestCount = 0;
         for (Map.Entry<Double,Counter> entry : counts.entrySet()) {

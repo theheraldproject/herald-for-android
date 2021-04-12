@@ -35,7 +35,7 @@ public class Median<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public double reduce() {
+    public Double reduce() {
         return median();
     }
 
@@ -55,13 +55,16 @@ public class Median<T extends DoubleValue> implements Aggregate<T> {
         }
     }
 
-    private double median() {
-        double median;
+    private Double median() {
         if (minHeap.size() > maxHeap.size()) {
-            median = minHeap.peek();
+            return minHeap.peek();
         } else {
-            median = (minHeap.peek() + maxHeap.peek()) / 2;
+            final Double min = minHeap.peek();
+            final Double max = maxHeap.peek();
+            if (min != null && max != null) {
+                return (min + max) / 2;
+            }
+            return null;
         }
-        return median;
     }
 }

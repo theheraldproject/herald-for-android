@@ -44,9 +44,9 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public double reduce() {
+    public Double reduce() {
         if (count < 1) {
-            return 0; // div by zero check
+            return 0d;
         }
         return sum / (count - 1); // Sample variance
     }

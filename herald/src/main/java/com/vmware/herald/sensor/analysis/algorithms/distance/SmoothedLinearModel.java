@@ -7,6 +7,8 @@ package com.vmware.herald.sensor.analysis.algorithms.distance;
 import com.vmware.herald.sensor.analysis.aggregates.Median;
 import com.vmware.herald.sensor.analysis.sampling.Aggregate;
 import com.vmware.herald.sensor.analysis.sampling.Sample;
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.DoubleValue;
 
 /// Distance model based on cable car experiment data collected on test rig 2
@@ -22,19 +24,20 @@ import com.vmware.herald.sensor.datatype.DoubleValue;
 /// - A range of modelling and smoothing algorithms were investigated to counter the impact
 ///   of reflections and channel mixing. Test results have shown the most widely applicable
 ///   method that is effective irrespective of environment is running a sliding window of
-///   fixed duration (e.g. +/- 30 seconds) over the raw RSSI samples to calculate the median
+///   fixed duration (last 60 seconds) over the raw RSSI samples to calculate the median
 ///   RSSI value. Assuming the phones are not perfectly static (i.e. resting on a desk), the
 ///   small movements between two phones when carried on a person should be sufficient to
 ///   produce a wide range of interference patterns that on average offer a reasonably stable
 ///   estimate of the actual measurement.
-/// - Experiment were conducted using many pairs of different iOS and Android phones using
+/// - Experiment were conducted using different pairs of iOS and Android phones using
 ///   test rig 2, to capture raw RSSI measurements from 0 - 3.4 metres at 1cm resolution. On
 ///   average at least 60 RSSI measurements were taken at every 1cm. The data from all the
 ///   test runs were combined using dynamic time warping to align the RSSI data at each
 ///   distance. The result was then smoothed using median of a sliding window, then linear
 ///   regression was applied to estimate the intercept and coefficient for translating RSSI
 ///   to distance. Linear regression offered the following equation:
-///      DistanceInMetres = -17.7275 + -0.2754 x MedianOfRssi
+///      DistanceInMetres = -10.6522 + -0.181 x MedianOfRssi
+///      Adjusted R-squared error = 0.8848cm
 /// - Physical models for electromagnetic wave signal propagation are typically based on
 ///   log or squared distance, i.e. signal strength degrades logarithmically over distance.
 ///   The test rig 2 results confirm this, but also shows logarithmic degradation is only
@@ -44,13 +47,14 @@ import com.vmware.herald.sensor.datatype.DoubleValue;
 ///   avoids being skewed by the 0 - 20cm range, and offer simplicity for fitting the data
 ///   range of interest (1 - 8m).
 public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> {
+    private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModel");
     private int run = 1;
     private final Median<T> median = new Median<>();
     private final double intercept;
     private final double coefficient;
 
     public SmoothedLinearModel() {
-        this(-17.7275, -0.2754);
+        this(-10.6522, -0.181);
     }
 
     public SmoothedLinearModel(final double intercept, final double coefficient) {
@@ -75,14 +79,38 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
    }
 
     @Override
-    public double reduce() {
-        final double medianOfRssi = median.reduce();
-        final double distanceInMetres = intercept + coefficient * medianOfRssi;
-        return (distanceInMetres > 0 ? distanceInMetres : 0);
+    public Double reduce() {
+        final Double medianOfRssi = medianOfRssi();
+        if (medianOfRssi == null) {
+            logger.debug("reduce, medianOfRssi is null");
+            return null;
+        }
+        final Double distanceInMetres = intercept + coefficient * medianOfRssi;
+        if (distanceInMetres <= 0) {
+            logger.debug("reduce, out of range (medianOfRssi={},distanceInMetres={})", medianOfRssi, distanceInMetres);
+            return null;
+        }
+        return distanceInMetres;
     }
 
     @Override
     public void reset() {
         median.reset();
+    }
+
+    public Double medianOfRssi() {
+        return median.reduce();
+    }
+
+    public double intercept() {
+        return intercept;
+    }
+
+    public double coefficient() {
+        return coefficient;
+    }
+
+    public double maximumRssi() {
+        return - intercept / coefficient;
     }
 }

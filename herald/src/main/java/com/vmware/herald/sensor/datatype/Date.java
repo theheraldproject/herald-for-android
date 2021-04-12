@@ -15,6 +15,7 @@ public class Date extends java.util.Date {
     }
 
     public Date() {
+        super();
     }
 
     public Date(final java.util.Date date) {

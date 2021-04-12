@@ -45,4 +45,8 @@ public class ListManager<T extends DoubleValue> {
     public synchronized void clear() {
         map.clear();
     }
+
+    public synchronized void push(final SampledID sampledID, final Sample<T> sample) {
+        list(sampledID).push(sample);
+    }
 }

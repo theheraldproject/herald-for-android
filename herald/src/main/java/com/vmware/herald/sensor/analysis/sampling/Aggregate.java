@@ -13,7 +13,7 @@ public interface Aggregate<T extends DoubleValue> {
 
     void map(Sample<T> value);
 
-    double reduce();
+    Double reduce();
 
     void reset();
 }

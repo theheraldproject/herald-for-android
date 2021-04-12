@@ -27,6 +27,11 @@ public class Sample<T> {
         this.value = other.value;
     }
 
+    public Sample(final T value) {
+        this.taken = new Date();
+        this.value = value;
+    }
+
     public Date taken() {
         return taken;
     }

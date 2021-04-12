@@ -4,10 +4,13 @@
 
 package com.vmware.herald.sensor.analysis.sampling;
 
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.Date;
 import com.vmware.herald.sensor.datatype.DoubleValue;
 
 public class AnalysisRunner {
+    private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "AnalysisRunner");
     private final AnalysisProviderManager analysisProviderManager;
     private final AnalysisDelegateManager analysisDelegateManager;
     private final VariantSet variantSet;
@@ -24,6 +27,10 @@ public class AnalysisRunner {
 
     public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> item) {
         variantSet.push(sampled, item);
+    }
+
+    public void run() {
+        run(new Date());
     }
 
     public void run(Date timeNow) {

@@ -22,6 +22,10 @@ public class Since<T extends DoubleValue> implements Filter<T> {
         this.afterTime = after.getTime();
     }
 
+    public final static <T extends DoubleValue> Since<T> recent(final long inLastSeconds) {
+        return new Since(new Date().secondsSinceUnixEpoch() - inLastSeconds);
+    }
+
     @Override
     public boolean test(Sample<T> item) {
         return item.taken().getTime() >= afterTime;

@@ -54,13 +54,21 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
             statistics.append(",S=");
             statistics.append(decimalFormat.format(target.didShareTimeInterval().mean()) + "s");
         }
+        // Distance
+        final StringBuilder distance = new StringBuilder();
+        if (target.distance() != null) {
+            distance.append(String.format("%.2fm", target.distance().value));
+        }
         final StringBuilder labelText = new StringBuilder(target.payloadData().shortName());
         if (target.payloadData() instanceof LegacyPayloadData) {
             labelText.append(':');
             labelText.append(((LegacyPayloadData) target.payloadData()).protocolName().name().charAt(0));
         }
+        if (!distance.toString().isEmpty()) {
+            labelText.append(" - ");
+            labelText.append(distance.toString());
+        }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
-        final String protocolSuffix = (target.payloadData() instanceof LegacyPayloadData ? ":" + ((LegacyPayloadData) target.payloadData()).protocolName().name().substring(0,1) : "");
         textLabel.setText(labelText.toString() + didReceive);
         detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + " [" + statistics.toString() + "]");
         return convertView;

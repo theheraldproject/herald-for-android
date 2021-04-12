@@ -67,6 +67,6 @@ public class VariantSet {
     }
 
     public <T extends DoubleValue> void push(final SampledID sampledID, final Sample<T> sample) {
-        ((SampleList<T>) listManager(sample.value().getClass(), sampledID)).push(sample);
+        ((ListManager<T>) listManager(sample.value().getClass())).push(sampledID, sample);
     }
 }
