@@ -119,6 +119,12 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         return data[newestPosition].taken();
     }
 
+    public T latestValue() {
+        if (newestPosition == data.length) {
+            return null;
+        }
+        return (T) data[newestPosition].value();
+    }
 
     private void incrementNewest() {
         if (newestPosition == data.length) {

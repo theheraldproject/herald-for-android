@@ -4,6 +4,8 @@
 
 package com.vmware.herald.sensor.analysis.sampling;
 
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.Date;
 import com.vmware.herald.sensor.datatype.DoubleValue;
 
@@ -16,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AnalysisProviderManager {
+    private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "AnalysisProviderManager");
     private final Set<Class<? extends DoubleValue>> outputTypes = new HashSet<>();
     private final Map<Class<? extends DoubleValue>, List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>>> lists = new ConcurrentHashMap<>();
     private final List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> providers = new ArrayList<>();
@@ -67,12 +70,15 @@ public class AnalysisProviderManager {
         return (CallableForNewSample<U>) callable;
     }
 
-    public <T extends DoubleValue, U extends DoubleValue> void analyse(final Date timeNow, final SampledID sampled, final VariantSet variantSet, final AnalysisDelegateManager delegates) {
+    public <T extends DoubleValue, U extends DoubleValue> boolean analyse(final Date timeNow, final SampledID sampled, final VariantSet variantSet, final AnalysisDelegateManager delegates) {
+        boolean update = false;
         for (final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider : providers) {
             final SampleList<T> input = (SampleList<T>) variantSet.listManager(provider.inputType(), sampled);
             final SampleList<U> output = (SampleList<U>) variantSet.listManager(provider.outputType(), sampled);
             final AnalysisProvider<T,U> typedProvider = (AnalysisProvider<T,U>) provider;
-            typedProvider.analyse(timeNow, sampled, input, output, callable(typedProvider.outputType(), delegates));
+            final boolean hasUpdate = typedProvider.analyse(timeNow, sampled, input, output, callable(typedProvider.outputType(), delegates));
+            update = update || hasUpdate;
         }
+        return update;
     }
 }

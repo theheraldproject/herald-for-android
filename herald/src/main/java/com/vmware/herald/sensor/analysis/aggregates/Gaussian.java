@@ -29,7 +29,7 @@ public class Gaussian<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public double reduce() {
+    public Double reduce() {
         return model.mean();
     }
 

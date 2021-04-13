@@ -13,19 +13,19 @@ public class Summary<T extends DoubleValue> {
         this.aggregates = aggregates;
     }
 
-    public double get(final Class<? extends Aggregate> byClass) {
+    public Double get(final Class<? extends Aggregate> byClass) {
         for (int i=0; i<aggregates.length; i++) {
             if (byClass.isInstance(aggregates[i])) {
                 return aggregates[i].reduce();
             }
         }
-        return 0;
+        return null;
     }
 
-    public double get(final int index) {
+    public Double get(final int index) {
         if (index < 0 || index >= aggregates.length) {
             // Index out of bounds
-            return 0;
+            return null;
         }
         return aggregates[index].reduce();
     }

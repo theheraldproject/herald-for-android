@@ -68,7 +68,7 @@ public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T>
    }
 
     @Override
-    public double reduce() {
+    public Double reduce() {
         if (-1.0 != nMinusOne) {
             // we have two values with which to calculate
             // using nMinusOne and n, and calculate interim risk score addition
