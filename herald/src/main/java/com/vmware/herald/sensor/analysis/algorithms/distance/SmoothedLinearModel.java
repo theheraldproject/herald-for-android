@@ -36,8 +36,7 @@ import com.vmware.herald.sensor.datatype.DoubleValue;
 ///   distance. The result was then smoothed using median of a sliding window, then linear
 ///   regression was applied to estimate the intercept and coefficient for translating RSSI
 ///   to distance. Linear regression offered the following equation:
-///      DistanceInMetres = -10.6522 + -0.181 x MedianOfRssi
-///      Adjusted R-squared error = 0.8848cm
+///      DistanceInMetres = Intercept + Coefficient x MedianOfRssi
 /// - Physical models for electromagnetic wave signal propagation are typically based on
 ///   log or squared distance, i.e. signal strength degrades logarithmically over distance.
 ///   The test rig 2 results confirm this, but also shows logarithmic degradation is only
@@ -54,7 +53,14 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     private final double coefficient;
 
     public SmoothedLinearModel() {
-        this(-10.6522, -0.181);
+        // Model parameters derived by DataAnalysis.R using data from experiments:
+        //  "20210311-0901",
+        //  "20210312-1049",
+        //  "20210313-1005",
+        //  "20210314-1021",
+        //  "20210315-1040"
+        // Adjusted R-squared:  0.9743
+        this(-17.102080, -0.266793);
     }
 
     public SmoothedLinearModel(final double intercept, final double coefficient) {
