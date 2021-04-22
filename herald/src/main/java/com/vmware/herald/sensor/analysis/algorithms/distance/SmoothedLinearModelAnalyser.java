@@ -28,7 +28,9 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
     private final Filter<RSSI> valid = new InRange<>(-99, -10);
 
     public SmoothedLinearModelAnalyser() {
-        this(1, TimeInterval.seconds(60), -10.6522, -0.181);
+        this.interval = new TimeInterval(4);
+        this.smoothingWindow = new TimeInterval(60);
+        this.model = new SmoothedLinearModel();
     }
 
     public SmoothedLinearModelAnalyser(final long interval, final TimeInterval smoothingWindow, final double intercept, final double coefficient) {
@@ -85,7 +87,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         final Date timeEnd = window.latest();
         final Date timeMiddle = new Date(timeEnd.secondsSinceUnixEpoch() - ((timeEnd.secondsSinceUnixEpoch() - timeStart.secondsSinceUnixEpoch()) / 2));
         logger.debug("analyse (timeStart={},timeEnd={},timeMiddle={},samples={},medianOfRssi={},distance={})", timeStart, timeEnd, timeMiddle, window.size(), model.medianOfRssi(), distance);
-        final Sample<Distance> newSample = new Sample<>(timeEnd, new Distance(distance));
+        final Sample<Distance> newSample = new Sample<>(timeMiddle, new Distance(distance));
         output.push(newSample);
         callable.newSample(sampled, newSample);
         return true;

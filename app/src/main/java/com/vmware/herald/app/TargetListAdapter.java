@@ -65,7 +65,7 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
             labelText.append(((LegacyPayloadData) target.payloadData()).protocolName().name().charAt(0));
         }
         if (!distance.toString().isEmpty()) {
-            labelText.append(" - ");
+            labelText.append(" ~ ");
             labelText.append(distance.toString());
         }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
