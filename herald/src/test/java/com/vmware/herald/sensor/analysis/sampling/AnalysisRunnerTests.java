@@ -91,7 +91,7 @@ public class AnalysisRunnerTests {
 
         final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
 
-        // run at different times and ensure that it only actually runs three times (sample size == 3)
+        // run at different times
         src.run(20, runner);
         src.run(40, runner); // Runs here, because we have data for 10,20,>>30<<,40 <- next run time based on this 'latest' data time
         src.run(60, runner);
@@ -101,7 +101,6 @@ public class AnalysisRunnerTests {
 
         assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
         final SampleList<Distance> samples = myDelegate.samples();
-        // didn't reach 4x30 seconds, so no tenth sample, and didn't run at 60 because previous run was at time 40
         assertEquals(samples.size(), 2);
         assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 40);
         assertTrue(samples.get(0).value().value != 0.0);
@@ -129,19 +128,21 @@ public class AnalysisRunnerTests {
         final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
         final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
 
-        // run at different times and ensure that it only actually runs three times (sample size == 3)
+        // run at different times and ensure that it only actually runs once
         src.run(60, 10, runner);
         src.run(60, 20, runner);
-        src.run(60, 30, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
+        src.run(60, 30, runner);
         src.run(60, 40, runner);
+        src.run(60, 50, runner);
+        src.run(60, 60, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
 
 
         assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
         final SampleList<Distance> samples = myDelegate.samples();
-        // didn't reach 4x30 seconds, so no tenth sample, and didn't run at 60 because previous run was at time 40
         assertEquals(samples.size(), 1);
         assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
         assertEquals(samples.get(0).value().value, 1.0, 0.001);
+        System.err.println(samples);
     }
 
     private final static class DummyRSSISource {
@@ -154,6 +155,7 @@ public class AnalysisRunnerTests {
         }
 
         public void run(final long timeTo, final AnalysisRunner runner) {
+            runner.variantSet().clear();
             for (final Sample<RSSI> v : data) {
                 if (v.taken().secondsSinceUnixEpoch() <= timeTo) {
                     runner.newSample(sampledID, v);
@@ -163,6 +165,7 @@ public class AnalysisRunnerTests {
         }
 
         public void run(final long sampleTimeTo, final long analysisTimeTo, final AnalysisRunner runner) {
+            runner.variantSet().clear();
             for (final Sample<RSSI> v : data) {
                 if (v.taken().secondsSinceUnixEpoch() <= sampleTimeTo) {
                     runner.newSample(sampledID, v);
