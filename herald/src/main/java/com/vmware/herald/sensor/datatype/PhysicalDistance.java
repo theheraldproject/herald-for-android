@@ -7,10 +7,10 @@ package com.vmware.herald.sensor.datatype;
 import java.util.Objects;
 
 /// Distance in metres.
-public class Distance implements DoubleValue {
+public class PhysicalDistance implements DoubleValue {
     public final double value;
 
-    public Distance(double value) {
+    public PhysicalDistance(double value) {
         this.value = value;
     }
 
@@ -18,7 +18,7 @@ public class Distance implements DoubleValue {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Distance distance = (Distance) o;
+        PhysicalDistance distance = (PhysicalDistance) o;
         return Double.compare(distance.value, value) == 0;
     }
 

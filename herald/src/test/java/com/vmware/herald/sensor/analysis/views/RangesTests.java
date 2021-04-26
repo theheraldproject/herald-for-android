@@ -16,7 +16,7 @@ import com.vmware.herald.sensor.analysis.sampling.IteratorProxy;
 import com.vmware.herald.sensor.analysis.sampling.Sample;
 import com.vmware.herald.sensor.analysis.sampling.SampleList;
 import com.vmware.herald.sensor.analysis.sampling.Summary;
-import com.vmware.herald.sensor.datatype.Distance;
+import com.vmware.herald.sensor.datatype.PhysicalDistance;
 import com.vmware.herald.sensor.datatype.Int32;
 import com.vmware.herald.sensor.datatype.RSSI;
 
@@ -260,20 +260,20 @@ public class RangesTests {
     @Test
     public void ranges_risk_aggregate() {
         // First we simulate a list of actual distance samples over time, using a vector of pairs
-        final List<Sample<Distance>> sourceDistances = new ArrayList<>();
-        sourceDistances.add(new Sample<>(1235, new Distance(5.5)));
-        sourceDistances.add(new Sample<>(1240, new Distance(4.7)));
-        sourceDistances.add(new Sample<>(1245, new Distance(3.9)));
-        sourceDistances.add(new Sample<>(1250, new Distance(3.2)));
-        sourceDistances.add(new Sample<>(1255, new Distance(2.2)));
-        sourceDistances.add(new Sample<>(1260, new Distance(1.9)));
-        sourceDistances.add(new Sample<>(1265, new Distance(1.0)));
-        sourceDistances.add(new Sample<>(1270, new Distance(1.3)));
-        sourceDistances.add(new Sample<>(1275, new Distance(2.0)));
-        sourceDistances.add(new Sample<>(1280, new Distance(2.2)));
+        final List<Sample<PhysicalDistance>> sourceDistances = new ArrayList<>();
+        sourceDistances.add(new Sample<>(1235, new PhysicalDistance(5.5)));
+        sourceDistances.add(new Sample<>(1240, new PhysicalDistance(4.7)));
+        sourceDistances.add(new Sample<>(1245, new PhysicalDistance(3.9)));
+        sourceDistances.add(new Sample<>(1250, new PhysicalDistance(3.2)));
+        sourceDistances.add(new Sample<>(1255, new PhysicalDistance(2.2)));
+        sourceDistances.add(new Sample<>(1260, new PhysicalDistance(1.9)));
+        sourceDistances.add(new Sample<>(1265, new PhysicalDistance(1.0)));
+        sourceDistances.add(new Sample<>(1270, new PhysicalDistance(1.3)));
+        sourceDistances.add(new Sample<>(1275, new PhysicalDistance(2.0)));
+        sourceDistances.add(new Sample<>(1280, new PhysicalDistance(2.2)));
 
         // The below would be in your aggregate handling code...
-        final SampleList<Distance> distanceList = new SampleList<>(2);
+        final SampleList<PhysicalDistance> distanceList = new SampleList<>(2);
 
         // For n distances we maintain n-1 distance-risks in a list, and continuously add to it
         // (i.e. we don't recalculate risk over all previous time - too much data)
@@ -291,11 +291,11 @@ public class RangesTests {
         // Now generate a sequence of Risk Scores over time
         double interScore = 0.0;
         double firstNonZeroInterScore = 0.0;
-        for (final Sample<Distance> sourceDistance : sourceDistances) {
+        for (final Sample<PhysicalDistance> sourceDistance : sourceDistances) {
             // A new distance has been calculated!
             distanceList.push(sourceDistance.taken(), sourceDistance.value());
             // Let's see if we have a new risk score!
-            final Summary<Distance> riskSlice = distanceList.aggregate(riskScorer);
+            final Summary<PhysicalDistance> riskSlice = distanceList.aggregate(riskScorer);
             // Add to our exposure risk for THIS contact
             // Note: We're NOT resetting over time, as the riskScorer will hold our total risk exposure from us.
             //       We could instead extract this slice, store it in a counter, and reset the risk Scorer if

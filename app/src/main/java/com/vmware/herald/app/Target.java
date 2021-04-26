@@ -5,8 +5,7 @@
 package com.vmware.herald.app;
 
 import com.vmware.herald.sensor.analysis.Sample;
-import com.vmware.herald.sensor.datatype.Data;
-import com.vmware.herald.sensor.datatype.Distance;
+import com.vmware.herald.sensor.datatype.PhysicalDistance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
@@ -20,7 +19,7 @@ public class Target {
     private PayloadData payloadData = null;
     private Date lastUpdatedAt = null;
     private Proximity proximity = null;
-    private Distance distance = null;
+    private PhysicalDistance distance = null;
     private ImmediateSendData received = null;
     private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
     private Sample didReadTimeInterval = new Sample();
@@ -66,9 +65,9 @@ public class Target {
         this.proximity = proximity;
     }
 
-    public Distance distance() { return distance; }
+    public PhysicalDistance distance() { return distance; }
 
-    public void distance(Distance distance) {
+    public void distance(PhysicalDistance distance) {
         this.distance = distance;
     }
 

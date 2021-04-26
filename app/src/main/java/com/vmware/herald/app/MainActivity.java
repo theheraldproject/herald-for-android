@@ -25,7 +25,6 @@ import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.SocialDistance;
 import com.vmware.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
-import com.vmware.herald.sensor.analysis.sampling.AnalysisDelegate;
 import com.vmware.herald.sensor.analysis.sampling.AnalysisDelegateManager;
 import com.vmware.herald.sensor.analysis.sampling.AnalysisProviderManager;
 import com.vmware.herald.sensor.analysis.sampling.AnalysisRunner;
@@ -34,8 +33,7 @@ import com.vmware.herald.sensor.analysis.sampling.Sample;
 import com.vmware.herald.sensor.analysis.sampling.SampleList;
 import com.vmware.herald.sensor.analysis.sampling.SampledID;
 import com.vmware.herald.sensor.analysis.views.Since;
-import com.vmware.herald.sensor.datatype.Distance;
-import com.vmware.herald.sensor.datatype.DoubleValue;
+import com.vmware.herald.sensor.datatype.PhysicalDistance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
@@ -83,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     // MARK:- Distance estimation
     private final AnalysisProviderManager analysisProviderManager = new AnalysisProviderManager(new SmoothedLinearModelAnalyser());
-    private final ConcreteAnalysisDelegate<Distance> analysisDelegate = new ConcreteAnalysisDelegate<>(Distance.class, 5);
+    private final ConcreteAnalysisDelegate<PhysicalDistance> analysisDelegate = new ConcreteAnalysisDelegate<>(PhysicalDistance.class, 5);
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
     private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 120);
 
@@ -193,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 continue;
             }
             final SampledID sampledID = new SampledID(target.payloadData());
-            final SampleList<Distance> sampleList = analysisDelegate.samples(sampledID);
+            final SampleList<PhysicalDistance> sampleList = analysisDelegate.samples(sampledID);
             target.distance(sampleList.filter(Since.recent(90)).toView().latestValue());
         }
         // Update UI

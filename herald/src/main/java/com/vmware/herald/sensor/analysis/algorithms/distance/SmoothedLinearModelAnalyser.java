@@ -15,11 +15,11 @@ import com.vmware.herald.sensor.analysis.views.Since;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.Date;
-import com.vmware.herald.sensor.datatype.Distance;
+import com.vmware.herald.sensor.datatype.PhysicalDistance;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
-public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Distance> {
+public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, PhysicalDistance> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModelAnalyser");
     private final TimeInterval interval;
     private final TimeInterval smoothingWindow;
@@ -45,12 +45,12 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
     }
 
     @Override
-    public Class<Distance> outputType() {
-        return Distance.class;
+    public Class<PhysicalDistance> outputType() {
+        return PhysicalDistance.class;
     }
 
     @Override
-    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> input, final SampleList<Distance> output, CallableForNewSample<Distance> callable) {
+    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> input, final SampleList<PhysicalDistance> output, CallableForNewSample<PhysicalDistance> callable) {
         // Interval guard
         final TimeInterval secondsSinceLastRan = new TimeInterval(timeNow.secondsSinceUnixEpoch() - lastRan.secondsSinceUnixEpoch());
         if (secondsSinceLastRan.value < interval.value) {
@@ -87,7 +87,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         final Date timeEnd = window.latest();
         final Date timeMiddle = new Date(timeEnd.secondsSinceUnixEpoch() - ((timeEnd.secondsSinceUnixEpoch() - timeStart.secondsSinceUnixEpoch()) / 2));
         logger.debug("analyse (timeStart={},timeEnd={},timeMiddle={},samples={},medianOfRssi={},distance={})", timeStart, timeEnd, timeMiddle, window.size(), model.medianOfRssi(), distance);
-        final Sample<Distance> newSample = new Sample<>(timeMiddle, new Distance(distance));
+        final Sample<PhysicalDistance> newSample = new Sample<>(timeMiddle, new PhysicalDistance(distance));
         output.push(newSample);
         callable.newSample(sampled, newSample);
         return true;
