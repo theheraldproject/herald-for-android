@@ -5,9 +5,11 @@
 package com.vmware.herald.sensor.analysis.sampling;
 
 import com.vmware.herald.sensor.analysis.algorithms.distance.FowlerBasicAnalyser;
+import com.vmware.herald.sensor.analysis.algorithms.distance.SmoothedLinearModel;
 import com.vmware.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
+import com.vmware.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;
 import com.vmware.herald.sensor.datatype.Date;
-import com.vmware.herald.sensor.datatype.PhysicalDistance;
+import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.Int8;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.TimeInterval;
@@ -83,8 +85,8 @@ public class AnalysisRunnerTests {
         srcData.push(100, new RSSI(-55));
         final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
 
-        final AnalysisProvider<RSSI, PhysicalDistance> distanceAnalyser = new FowlerBasicAnalyser(30, -50, -24);
-        final AnalysisDelegate<PhysicalDistance> myDelegate = new DummyDistanceDelegate();
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new FowlerBasicAnalyser(30, -50, -24);
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
 
         final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
         final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
@@ -100,13 +102,12 @@ public class AnalysisRunnerTests {
 
 
         assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
-        final SampleList<PhysicalDistance> samples = myDelegate.samples();
+        final SampleList<Distance> samples = myDelegate.samples();
         assertEquals(samples.size(), 2);
         assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 40);
         assertTrue(samples.get(0).value().value != 0.0);
         assertEquals(samples.get(1).taken().secondsSinceUnixEpoch(), 80);
         assertTrue(samples.get(1).value().value != 0.0);
-        System.err.println(samples);
     }
 
     @Test
@@ -121,8 +122,8 @@ public class AnalysisRunnerTests {
         srcData.push(60, new RSSI(-68));
         final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
 
-        final AnalysisProvider<RSSI, PhysicalDistance> distanceAnalyser = new SmoothedLinearModelAnalyser(10, TimeInterval.minute, -17.7275, -0.2754);
-        final AnalysisDelegate<PhysicalDistance> myDelegate = new DummyDistanceDelegate();
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(10), TimeInterval.minute, new SmoothedLinearModel<RSSI>(-17.7275, -0.2754));
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
 
         final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
         final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
@@ -138,11 +139,137 @@ public class AnalysisRunnerTests {
 
 
         assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
-        final SampleList<PhysicalDistance> samples = myDelegate.samples();
+        final SampleList<Distance> samples = myDelegate.samples();
         assertEquals(samples.size(), 1);
         assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
         assertEquals(samples.get(0).value().value, 1.0, 0.001);
-        System.err.println(samples);
+    }
+
+    @Test
+    public void analysisrunner_smoothedLinearSelfCalibratedModel_uncalibrated() {
+        final SampleList<RSSI> srcData = new SampleList<>(25);
+        srcData.push(0, new RSSI(-55));
+        srcData.push(10, new RSSI(-55));
+        srcData.push(20, new RSSI(-55));
+        srcData.push(30, new RSSI(-55));
+        srcData.push(40, new RSSI(-55));
+        srcData.push(50, new RSSI(-55));
+        srcData.push(60, new RSSI(-55));
+        final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
+
+        final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
+                new Distance(0.2), new Distance(1),
+                TimeInterval.zero, TimeInterval.hours(12), null);
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(10), TimeInterval.minute, smoothedLinearModel);
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
+
+        final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
+        final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
+        final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
+
+        // run at different times and ensure that it only actually runs once
+        src.run(60, 10, runner);
+        src.run(60, 20, runner);
+        src.run(60, 30, runner);
+        src.run(60, 40, runner);
+        src.run(60, 50, runner);
+        src.run(60, 60, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
+
+
+        assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
+        final SampleList<Distance> samples = myDelegate.samples();
+        assertEquals(samples.size(), 1);
+        assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
+        assertEquals(samples.get(0).value().value, 0.2, 0.001);
+    }
+
+    @Test
+    public void analysisrunner_smoothedLinearSelfCalibratedModel_lower_range() {
+        final SampleList<RSSI> srcData = new SampleList<>(25);
+        srcData.push(0, new RSSI(-72));
+        srcData.push(10, new RSSI(-72));
+        srcData.push(20, new RSSI(-72));
+        srcData.push(30, new RSSI(-72));
+        srcData.push(40, new RSSI(-72));
+        srcData.push(50, new RSSI(-72));
+        srcData.push(60, new RSSI(-72));
+        final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
+
+        final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
+                new Distance(0.2), new Distance(1),
+                TimeInterval.zero, TimeInterval.hours(12), null);
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(10), TimeInterval.minute, smoothedLinearModel);
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
+
+        final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
+        final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
+        final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
+
+        // Self-calibration for lower range
+        for (int rssi=-98; rssi<=-45; rssi++) {
+            smoothedLinearModel.histogram.add(rssi);
+        }
+        smoothedLinearModel.update();
+
+        // run at different times and ensure that it only actually runs once
+        src.run(60, 10, runner);
+        src.run(60, 20, runner);
+        src.run(60, 30, runner);
+        src.run(60, 40, runner);
+        src.run(60, 50, runner);
+        src.run(60, 60, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
+
+
+        assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
+        final SampleList<Distance> samples = myDelegate.samples();
+        assertEquals(samples.size(), 1);
+        assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
+        assertEquals(samples.get(0).value().value, 1.0, 0.001);
+    }
+
+
+    @Test
+    public void analysisrunner_smoothedLinearSelfCalibratedModel_upper_range() {
+        final SampleList<RSSI> srcData = new SampleList<>(25);
+        srcData.push(0, new RSSI(-27));
+        srcData.push(10, new RSSI(-27));
+        srcData.push(20, new RSSI(-27));
+        srcData.push(30, new RSSI(-27));
+        srcData.push(40, new RSSI(-27));
+        srcData.push(50, new RSSI(-27));
+        srcData.push(60, new RSSI(-27));
+        final DummyRSSISource src = new DummyRSSISource(new SampledID(1234), srcData);
+
+        final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
+                new Distance(0.2), new Distance(1),
+                TimeInterval.zero, TimeInterval.hours(12), null);
+        final AnalysisProvider<RSSI, Distance> distanceAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(10), TimeInterval.minute, smoothedLinearModel);
+        final AnalysisDelegate<Distance> myDelegate = new DummyDistanceDelegate();
+
+        final AnalysisDelegateManager adm = new AnalysisDelegateManager(myDelegate);
+        final AnalysisProviderManager apm = new AnalysisProviderManager(distanceAnalyser);
+        final AnalysisRunner runner = new AnalysisRunner(apm, adm, 25);
+
+        // Self-calibration for upper range
+        for (int rssi=-44; rssi<=-10; rssi++) {
+            smoothedLinearModel.histogram.add(rssi);
+        }
+        smoothedLinearModel.update();
+
+        // run at different times and ensure that it only actually runs once
+        src.run(60, 10, runner);
+        src.run(60, 20, runner);
+        src.run(60, 30, runner);
+        src.run(60, 40, runner);
+        src.run(60, 50, runner);
+        src.run(60, 60, runner); // Runs here, because we have data for 0,10,20,>>30<<,40,50,60 <- next run time based on this 'latest' data time
+
+
+        assertEquals(((DummyDistanceDelegate) myDelegate).lastSampledID.value, 1234);
+        final SampleList<Distance> samples = myDelegate.samples();
+        assertEquals(samples.size(), 1);
+        assertEquals(samples.get(0).taken().secondsSinceUnixEpoch(), 30);
+        assertEquals(samples.get(0).value().value, 1.0, 0.001);
     }
 
     private final static class DummyRSSISource {
@@ -175,19 +302,19 @@ public class AnalysisRunnerTests {
         }
     }
 
-    private final static class DummyDistanceDelegate implements AnalysisDelegate<PhysicalDistance> {
+    private final static class DummyDistanceDelegate implements AnalysisDelegate<Distance> {
         private SampledID lastSampledID = new SampledID(0);
-        private SampleList<PhysicalDistance> distances = new SampleList<>(25);
+        private SampleList<Distance> distances = new SampleList<>(25);
 
         @Override
-        public void newSample(SampledID sampled, Sample<PhysicalDistance> item) {
+        public void newSample(SampledID sampled, Sample<Distance> item) {
             this.lastSampledID = sampled;
             distances.push(item);
         }
 
         @Override
-        public Class<PhysicalDistance> inputType() {
-            return PhysicalDistance.class;
+        public Class<Distance> inputType() {
+            return Distance.class;
         }
 
         @Override
@@ -197,7 +324,7 @@ public class AnalysisRunnerTests {
         }
 
         @Override
-        public SampleList<PhysicalDistance> samples() {
+        public SampleList<Distance> samples() {
             return distances;
         }
 

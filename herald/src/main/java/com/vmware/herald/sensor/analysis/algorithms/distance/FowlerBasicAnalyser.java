@@ -15,11 +15,11 @@ import com.vmware.herald.sensor.analysis.sampling.SampledID;
 import com.vmware.herald.sensor.analysis.sampling.Summary;
 import com.vmware.herald.sensor.analysis.views.InRange;
 import com.vmware.herald.sensor.datatype.Date;
-import com.vmware.herald.sensor.datatype.PhysicalDistance;
+import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
-public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, PhysicalDistance> {
+public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
     private final TimeInterval interval;
     private final FowlerBasic basic;
     private Date lastRan = new Date(0);
@@ -41,12 +41,12 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, PhysicalDista
     }
 
     @Override
-    public Class<PhysicalDistance> outputType() {
-        return PhysicalDistance.class;
+    public Class<Distance> outputType() {
+        return Distance.class;
     }
 
     @Override
-    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> src, final SampleList<PhysicalDistance> output, CallableForNewSample<PhysicalDistance> callable) {
+    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> src, final SampleList<Distance> output, CallableForNewSample<Distance> callable) {
         // Interval guard
         if (lastRan.secondsSinceUnixEpoch() + interval.value >= timeNow.secondsSinceUnixEpoch()) {
             return false;
@@ -61,7 +61,7 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, PhysicalDista
         final double distance = src.filter(valid).filter(new InRange(mode - 2 * sd, mode + 2 * sd)).aggregate(basic).get(FowlerBasic.class);
         final Date latestTime = values.latest();
         lastRan = latestTime;
-        final Sample<PhysicalDistance> newSample = new Sample<>(latestTime, new PhysicalDistance(distance));
+        final Sample<Distance> newSample = new Sample<>(latestTime, new Distance(distance));
         output.push(newSample);
         callable.newSample(sampled, newSample);
         return true;

@@ -49,8 +49,8 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModel");
     private int run = 1;
     private final Median<T> median = new Median<>();
-    private final double intercept;
-    private final double coefficient;
+    protected double intercept;
+    protected double coefficient;
 
     public SmoothedLinearModel() {
         // Model parameters derived by DataAnalysis.R using data from experiments:
@@ -64,6 +64,11 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     }
 
     public SmoothedLinearModel(final double intercept, final double coefficient) {
+        this.intercept = intercept;
+        this.coefficient = coefficient;
+    }
+
+    public void setParameters(final double intercept, final double coefficient) {
         this.intercept = intercept;
         this.coefficient = coefficient;
     }
@@ -82,7 +87,7 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     @Override
     public void map(Sample<T> value) {
         median.map(value);
-   }
+    }
 
     @Override
     public Double reduce() {
@@ -106,17 +111,5 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
 
     public Double medianOfRssi() {
         return median.reduce();
-    }
-
-    public double intercept() {
-        return intercept;
-    }
-
-    public double coefficient() {
-        return coefficient;
-    }
-
-    public double maximumRssi() {
-        return - intercept / coefficient;
     }
 }

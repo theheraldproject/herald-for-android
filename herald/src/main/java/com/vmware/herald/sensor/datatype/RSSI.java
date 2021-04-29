@@ -4,11 +4,13 @@
 
 package com.vmware.herald.sensor.datatype;
 
+import java.util.Objects;
+
 /// RSSI in dBm.
 public class RSSI implements DoubleValue {
-    public final int value;
+    public final double value;
 
-    public RSSI(int value) {
+    public RSSI(double value) {
         this.value = value;
     }
 
@@ -17,12 +19,12 @@ public class RSSI implements DoubleValue {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RSSI rssi = (RSSI) o;
-        return value == rssi.value;
+        return Double.compare(rssi.value, value) == 0;
     }
 
     @Override
     public int hashCode() {
-        return value;
+        return Objects.hash(value);
     }
 
     @Override

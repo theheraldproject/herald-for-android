@@ -15,11 +15,11 @@ import com.vmware.herald.sensor.analysis.views.Since;
 import com.vmware.herald.sensor.data.ConcreteSensorLogger;
 import com.vmware.herald.sensor.data.SensorLogger;
 import com.vmware.herald.sensor.datatype.Date;
-import com.vmware.herald.sensor.datatype.PhysicalDistance;
+import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.TimeInterval;
 
-public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, PhysicalDistance> {
+public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Distance> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModelAnalyser");
     private final TimeInterval interval;
     private final TimeInterval smoothingWindow;
@@ -28,15 +28,13 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Physi
     private final Filter<RSSI> valid = new InRange<>(-99, -10);
 
     public SmoothedLinearModelAnalyser() {
-        this.interval = new TimeInterval(4);
-        this.smoothingWindow = new TimeInterval(60);
-        this.model = new SmoothedLinearModel();
+        this(new TimeInterval(4), new TimeInterval(60), new SmoothedLinearModel<RSSI>());
     }
 
-    public SmoothedLinearModelAnalyser(final long interval, final TimeInterval smoothingWindow, final double intercept, final double coefficient) {
-        this.interval = new TimeInterval(interval);
+    public SmoothedLinearModelAnalyser(final TimeInterval interval, final TimeInterval smoothingWindow, final SmoothedLinearModel<RSSI> smoothedLinearModel) {
+        this.interval = interval;
         this.smoothingWindow = smoothingWindow;
-        this.model = new SmoothedLinearModel(intercept, coefficient);
+        this.model = smoothedLinearModel;
     }
 
     @Override
@@ -45,12 +43,12 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Physi
     }
 
     @Override
-    public Class<PhysicalDistance> outputType() {
-        return PhysicalDistance.class;
+    public Class<Distance> outputType() {
+        return Distance.class;
     }
 
     @Override
-    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> input, final SampleList<PhysicalDistance> output, CallableForNewSample<PhysicalDistance> callable) {
+    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> input, final SampleList<Distance> output, CallableForNewSample<Distance> callable) {
         // Interval guard
         final TimeInterval secondsSinceLastRan = new TimeInterval(timeNow.secondsSinceUnixEpoch() - lastRan.secondsSinceUnixEpoch());
         if (secondsSinceLastRan.value < interval.value) {
@@ -79,7 +77,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Physi
         model.reset();
         final Double distance = window.aggregate(model).get(SmoothedLinearModel.class);
         if (distance == null) {
-            logger.debug("analyse, skipped (reason=outOfModelRange,mediaOfRssi={},maximumRssiAtZeroDistance={})", model.medianOfRssi(), model.maximumRssi());
+            logger.debug("analyse, skipped (reason=outOfModelRange,mediaOfRssi={})", model.medianOfRssi());
             return false;
         }
         // Publish distance data
@@ -87,7 +85,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Physi
         final Date timeEnd = window.latest();
         final Date timeMiddle = new Date(timeEnd.secondsSinceUnixEpoch() - ((timeEnd.secondsSinceUnixEpoch() - timeStart.secondsSinceUnixEpoch()) / 2));
         logger.debug("analyse (timeStart={},timeEnd={},timeMiddle={},samples={},medianOfRssi={},distance={})", timeStart, timeEnd, timeMiddle, window.size(), model.medianOfRssi(), distance);
-        final Sample<PhysicalDistance> newSample = new Sample<>(timeMiddle, new PhysicalDistance(distance));
+        final Sample<Distance> newSample = new Sample<>(timeMiddle, new Distance(distance));
         output.push(newSample);
         callable.newSample(sampled, newSample);
         return true;

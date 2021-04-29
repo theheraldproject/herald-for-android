@@ -45,7 +45,7 @@ public class Median<T extends DoubleValue> implements Aggregate<T> {
         maxHeap.clear();
     }
 
-    private final void add(double value) {
+    private void add(double value) {
         if (minHeap.size() == maxHeap.size()) {
             maxHeap.offer(value);
             minHeap.offer(maxHeap.poll());
