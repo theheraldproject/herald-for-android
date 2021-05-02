@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -94,10 +94,14 @@ public class TextFile {
     /// Overwrite file content
     public synchronized void overwrite(String content) {
         try {
-            final FileOutputStream fileOutputStream = new FileOutputStream(file);
+            // Write to temporary file first
+            final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");
+            final FileOutputStream fileOutputStream = new FileOutputStream(temporaryFile);
             fileOutputStream.write(content.getBytes());
             fileOutputStream.flush();
             fileOutputStream.close();
+            // Rename to actual file on completion
+            temporaryFile.renameTo(file);
         } catch (Throwable e) {
             logger.fault("overwrite failed (file={})", file, e);
         }

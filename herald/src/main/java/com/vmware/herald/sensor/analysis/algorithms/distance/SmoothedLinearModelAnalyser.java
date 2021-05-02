@@ -28,15 +28,13 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
     private final Filter<RSSI> valid = new InRange<>(-99, -10);
 
     public SmoothedLinearModelAnalyser() {
-        this.interval = new TimeInterval(4);
-        this.smoothingWindow = new TimeInterval(60);
-        this.model = new SmoothedLinearModel();
+        this(new TimeInterval(4), new TimeInterval(60), new SmoothedLinearModel<RSSI>());
     }
 
-    public SmoothedLinearModelAnalyser(final long interval, final TimeInterval smoothingWindow, final double intercept, final double coefficient) {
-        this.interval = new TimeInterval(interval);
+    public SmoothedLinearModelAnalyser(final TimeInterval interval, final TimeInterval smoothingWindow, final SmoothedLinearModel<RSSI> smoothedLinearModel) {
+        this.interval = interval;
         this.smoothingWindow = smoothingWindow;
-        this.model = new SmoothedLinearModel(intercept, coefficient);
+        this.model = smoothedLinearModel;
     }
 
     @Override
@@ -79,7 +77,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         model.reset();
         final Double distance = window.aggregate(model).get(SmoothedLinearModel.class);
         if (distance == null) {
-            logger.debug("analyse, skipped (reason=outOfModelRange,mediaOfRssi={},maximumRssiAtZeroDistance={})", model.medianOfRssi(), model.maximumRssi());
+            logger.debug("analyse, skipped (reason=outOfModelRange,mediaOfRssi={})", model.medianOfRssi());
             return false;
         }
         // Publish distance data

@@ -1,11 +1,10 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.app;
 
 import com.vmware.herald.sensor.analysis.Sample;
-import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.PayloadData;

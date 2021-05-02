@@ -49,6 +49,10 @@ public class VariantSet {
         }
     }
 
+    public void clear() {
+        map.clear();
+    }
+
     public <T extends DoubleValue> ListManager<T> listManager(final Class<T> variant) {
         ListManager<T> listManager = (ListManager<T>) map.get(variant);
         if (listManager == null) {

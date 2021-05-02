@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -16,9 +16,9 @@ public class RSSITests {
 
     @Test
     public void testEquals() {
-        assertEquals(0, new RSSI(0).value);
-        assertEquals(1, new RSSI(1).value);
-        assertEquals(-1, new RSSI(-1).value);
+        assertEquals(0, new RSSI(0).value, Double.MIN_VALUE);
+        assertEquals(1, new RSSI(1).value, Double.MIN_VALUE);
+        assertEquals(-1, new RSSI(-1).value, Double.MIN_VALUE);
         assertNotEquals(new RSSI(0), new RSSI(1));
         assertNotEquals(new RSSI(-1), new RSSI(1));
     }

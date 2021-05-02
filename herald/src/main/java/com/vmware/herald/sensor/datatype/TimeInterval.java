@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -10,6 +10,8 @@ import java.util.Objects;
 /// Time interval in seconds.
 public class TimeInterval implements DoubleValue {
     public final long value;
+    public static final TimeInterval day = new TimeInterval(24*60*60);
+    public static final TimeInterval hour = new TimeInterval(60*60);
     public static final TimeInterval minute = new TimeInterval(60);
     public static final TimeInterval zero = new TimeInterval(0);
     public static final TimeInterval never = new TimeInterval(Long.MAX_VALUE);
@@ -24,6 +26,10 @@ public class TimeInterval implements DoubleValue {
 
     public TimeInterval(Date from, Date to) {
         this.value = (to.getTime() - from.getTime()) / 1000;
+    }
+
+    public static TimeInterval hours(long hours) {
+        return new TimeInterval(hour.value * hours);
     }
 
     public static TimeInterval minutes(long minutes) {

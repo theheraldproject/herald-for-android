@@ -125,11 +125,11 @@ public class RangesTests {
 
         final IteratorProxy<RSSI> proxy = sl.filter(new NoOp());
         assertTrue(proxy.hasNext());
-        assertEquals(proxy.next().value().value, -9);
-        assertEquals(proxy.next().value().value, -60);
-        assertEquals(proxy.next().value().value, -58);
-        assertEquals(proxy.next().value().value, -61);
-        assertEquals(proxy.next().value().value, -100);
+        assertEquals(proxy.next().value().value, -9, Double.MIN_VALUE);
+        assertEquals(proxy.next().value().value, -60, Double.MIN_VALUE);
+        assertEquals(proxy.next().value().value, -58, Double.MIN_VALUE);
+        assertEquals(proxy.next().value().value, -61, Double.MIN_VALUE);
+        assertEquals(proxy.next().value().value, -100, Double.MIN_VALUE);
         assertFalse(proxy.hasNext());
     }
 
@@ -147,13 +147,13 @@ public class RangesTests {
         final SampleList<RSSI> values = sl.filter(valid).filter(strong).toView();
         final Iterator<Sample<RSSI>> iter = values.iterator();
         assertTrue(iter.hasNext());
-        assertEquals(iter.next().value().value, -60);
-        assertEquals(iter.next().value().value, -61);
+        assertEquals(iter.next().value().value, -60, Double.MIN_VALUE);
+        assertEquals(iter.next().value().value, -61, Double.MIN_VALUE);
         assertFalse(iter.hasNext());
 
         assertEquals(values.size(), 2);
-        assertEquals(values.get(0).value().value, -60);
-        assertEquals(values.get(1).value().value, -61);
+        assertEquals(values.get(0).value().value, -60, Double.MIN_VALUE);
+        assertEquals(values.get(1).value().value, -61, Double.MIN_VALUE);
     }
 
     @Test
