@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,7 +7,7 @@ package com.vmware.herald.sensor.datatype;
 import java.util.Objects;
 
 /// Signed integer (16 bits)
-public class Int16 {
+public class Int16 implements DoubleValue {
     public final static int bitWidth = 16;
     public final static Int16 min = new Int16(Short.MIN_VALUE);
     public final static Int16 max = new Int16(Short.MAX_VALUE);
@@ -33,5 +33,10 @@ public class Int16 {
     @Override
     public String toString() {
         return Integer.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

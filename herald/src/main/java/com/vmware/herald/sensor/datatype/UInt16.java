@@ -1,15 +1,13 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Objects;
 
 /// Unsigned integer (16 bits)
-public class UInt16 {
+public class UInt16 implements DoubleValue {
     public final static int bitWidth = 16;
     public final static UInt16 min = new UInt16(0);
     public final static UInt16 max = new UInt16(65535);
@@ -35,5 +33,10 @@ public class UInt16 {
     @Override
     public String toString() {
         return Integer.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

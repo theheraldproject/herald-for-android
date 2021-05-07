@@ -1,15 +1,13 @@
-//  Copyright 2021 VMware, Inc.
+//  Copyright 2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Objects;
 
 /// Unsigned integer (32 bits)
-public class UInt32 {
+public class UInt32 implements DoubleValue {
     public final static int bitWidth = 32;
     public final static UInt32 min = new UInt32(0);
     public final static UInt32 max = new UInt32(4294967295l);
@@ -35,5 +33,10 @@ public class UInt32 {
     @Override
     public String toString() {
         return Long.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -12,7 +12,6 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
-import android.widget.Switch;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;

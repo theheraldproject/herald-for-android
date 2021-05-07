@@ -1,14 +1,16 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
 
-/// RSSI in dBm.
-public class RSSI {
-    public final int value;
+import java.util.Objects;
 
-    public RSSI(int value) {
+/// RSSI in dBm.
+public class RSSI implements DoubleValue {
+    public final double value;
+
+    public RSSI(double value) {
         this.value = value;
     }
 
@@ -17,12 +19,12 @@ public class RSSI {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         RSSI rssi = (RSSI) o;
-        return value == rssi.value;
+        return Double.compare(rssi.value, value) == 0;
     }
 
     @Override
     public int hashCode() {
-        return value;
+        return Objects.hash(value);
     }
 
     @Override
@@ -30,5 +32,10 @@ public class RSSI {
         return "RSSI{" +
                 "value=" + value +
                 '}';
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

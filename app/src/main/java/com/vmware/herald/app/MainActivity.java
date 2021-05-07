@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -24,10 +24,24 @@ import com.vmware.herald.sensor.Sensor;
 import com.vmware.herald.sensor.SensorArray;
 import com.vmware.herald.sensor.SensorDelegate;
 import com.vmware.herald.sensor.analysis.SocialDistance;
+import com.vmware.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
+import com.vmware.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;
+import com.vmware.herald.sensor.analysis.sampling.AnalysisDelegateManager;
+import com.vmware.herald.sensor.analysis.sampling.AnalysisProviderManager;
+import com.vmware.herald.sensor.analysis.sampling.AnalysisRunner;
+import com.vmware.herald.sensor.analysis.sampling.ConcreteAnalysisDelegate;
+import com.vmware.herald.sensor.analysis.sampling.Sample;
+import com.vmware.herald.sensor.analysis.sampling.SampleList;
+import com.vmware.herald.sensor.analysis.sampling.SampledID;
+import com.vmware.herald.sensor.analysis.views.Since;
+import com.vmware.herald.sensor.data.TextFile;
+import com.vmware.herald.sensor.datatype.Distance;
 import com.vmware.herald.sensor.datatype.ImmediateSendData;
 import com.vmware.herald.sensor.datatype.Location;
 import com.vmware.herald.sensor.datatype.PayloadData;
 import com.vmware.herald.sensor.datatype.Proximity;
+import com.vmware.herald.sensor.datatype.ProximityMeasurementUnit;
+import com.vmware.herald.sensor.datatype.RSSI;
 import com.vmware.herald.sensor.datatype.SensorState;
 import com.vmware.herald.sensor.datatype.SensorType;
 import com.vmware.herald.sensor.datatype.TargetIdentifier;
@@ -66,6 +80,24 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // MARK:- Social mixing
     private final SocialDistance socialMixingScore = new SocialDistance();
     private TimeInterval socialMixingScoreUnit = new TimeInterval(60);
+
+    // MARK:- Distance estimation
+    // Demonstration model assumes, on average, distance between people is zero metres for up
+    // to 5 minutes/day, and within 3.7 metres for up to 8 hours/day (e.g. work and home).
+    // These are initial estimates based on proxemics data (Hall, 1966) for social distance
+    // and social norms. Future work should analyse a sample of actual RSSI histogram
+    // data to understand the distribution of distances between people and use normalisation
+    // across the population using a common model (see histogram equalisation in RssiHistogram).
+    // - Hall, E. (1966). The Hidden Dimension. Anchor Books. ISBN 978-0-385-08476-5
+    private final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
+            new Distance(0), new Distance(3.7),
+            TimeInterval.minutes(5), TimeInterval.hours(8),
+            new TextFile(AppDelegate.getAppDelegate(), "rssi_histogram.csv"));
+    private final SmoothedLinearModelAnalyser smoothedLinearModelAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(1), new TimeInterval(60), smoothedLinearModel);
+    private final AnalysisProviderManager analysisProviderManager = new AnalysisProviderManager(smoothedLinearModelAnalyser);
+    private final ConcreteAnalysisDelegate<Distance> analysisDelegate = new ConcreteAnalysisDelegate<>(Distance.class, 5);
+    private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
+    private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
 
 
     @Override
@@ -167,6 +199,15 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 return t0.payloadData().shortName().compareTo(t1.payloadData().shortName());
             }
         });
+        // Get target distance from analysis delegate
+        for (final Target target : targetList) {
+            if (target.payloadData() == null) {
+                continue;
+            }
+            final SampledID sampledID = new SampledID(target.payloadData());
+            final SampleList<Distance> sampleList = analysisDelegate.samples(sampledID);
+            target.distance(sampleList.filter(Since.recent(90)).toView().latestValue());
+        }
         // Update UI
         ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetListAdapter.getCount() + ")");
         targetListAdapter.clear();
@@ -333,6 +374,15 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
             if (target != null) {
                 target.targetIdentifier(fromTarget);
                 target.proximity(didMeasure);
+                // Supply raw RSSI measurements to distance estimation algorithm
+                if (didMeasure.unit == ProximityMeasurementUnit.RSSI) {
+                    final SampledID sampledID = new SampledID(didRead);
+                    analysisRunner.newSample(sampledID, new Sample<>(new RSSI((int) Math.round(didMeasure.value))));
+                    // Analysis runner doesn't need to be executed as often as updates
+                    // but the overhead is minimal as the demonstration distance analyser
+                    // will only perform calculations and offer updates at fixed intervals
+                    analysisRunner.run();
+                }
             }
         }
         if (foreground) {

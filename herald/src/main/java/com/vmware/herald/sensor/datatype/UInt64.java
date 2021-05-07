@@ -1,4 +1,4 @@
-//  Copyright 2021 VMware, Inc.
+//  Copyright 2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,7 +7,7 @@ package com.vmware.herald.sensor.datatype;
 import java.util.Objects;
 
 /// Unsigned integer (64 bits)
-public class UInt64 {
+public class UInt64 implements DoubleValue {
     public final static int bitWidth = 64;
     public final static UInt64 min = new UInt64(0);
     /// Setting max to signed long max, rather than unsigned long
@@ -36,5 +36,10 @@ public class UInt64 {
     @Override
     public String toString() {
         return Long.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }

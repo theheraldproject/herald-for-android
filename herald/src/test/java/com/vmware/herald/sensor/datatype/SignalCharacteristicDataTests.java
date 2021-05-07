@@ -1,4 +1,4 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -20,7 +20,7 @@ public class SignalCharacteristicDataTests {
     public void testEncodeDecodeWriteRSSI() {
         for (short i=Short.MIN_VALUE; i<Short.MAX_VALUE; i++) {
             final RSSI rssi = SignalCharacteristicData.decodeWriteRSSI(SignalCharacteristicData.encodeWriteRssi(new RSSI(i)));
-            assertEquals(i, rssi.value);
+            assertEquals(i, rssi.value, Double.MIN_VALUE);
         }
         assertNull(SignalCharacteristicData.decodeWriteRSSI(null));
         assertNull(SignalCharacteristicData.decodeWriteRSSI(new Data()));

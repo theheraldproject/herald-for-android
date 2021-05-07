@@ -1,15 +1,13 @@
-//  Copyright 2020 VMware, Inc.
+//  Copyright 2020-2021 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
 package com.vmware.herald.sensor.datatype;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Objects;
 
 /// Unsigned integer (8 bits)
-public class UInt8 {
+public class UInt8 implements DoubleValue {
     public final static int bitWidth = 8;
     public final static UInt8 min = new UInt8(0);
     public final static UInt8 max = new UInt8(255);
@@ -35,5 +33,10 @@ public class UInt8 {
     @Override
     public String toString() {
         return Integer.toString(value);
+    }
+
+    @Override
+    public double doubleValue() {
+        return value;
     }
 }
