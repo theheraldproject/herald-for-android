@@ -285,6 +285,36 @@ public class Data {
         return new Int64(v);
     }
 
+    public void append(final UIntBig value) {
+        final short[] magnitude = value.magnitude();
+        // Magnitude length
+        append(new UInt32(magnitude.length));
+        // Magnitude values
+        for (int i=0; i<magnitude.length; i++) {
+            append(new UInt16((int) magnitude[i] & 0xFFFF));
+        }
+    }
+
+    public UIntBig uintBig(final int index) {
+        if (index < 0) {
+            return null;
+        }
+        final UInt32 length = uint32(index);
+        if (length == null || length.value > Integer.MAX_VALUE) {
+            return null;
+        }
+        final short[] magnitude = new short[(int) length.value];
+        for (int i=0, j=index+4; i<magnitude.length; i++) {
+            final UInt16 value = uint16(j);
+            if (value == null) {
+                return null;
+            }
+            magnitude[i] = (short) (value.value & 0xFFFF);
+            j += 2;
+        }
+        return new UIntBig(magnitude);
+    }
+
     public void append(Float16 value) {
         append(value.bigEndian);
     }
