@@ -135,7 +135,7 @@ public class UIntBig {
         if (magnitude.length == 0) {
             return false;
         }
-        return ((byte) (magnitude[0] & 0x01)) == one;
+        return ((short) (magnitude[0] & 0x01)) == one;
     }
 
     /// Modular exponentiation r = (a ^ b) % c where
@@ -149,7 +149,7 @@ public class UIntBig {
     ///
     /// @return r, the result
     public UIntBig modPow(final UIntBig exponent, final UIntBig modulus) {
-        if (modulus.isOne()) {
+        if (modulus.isZero()) {
             return new UIntBig();
         }
         if (exponent.isOne()) {

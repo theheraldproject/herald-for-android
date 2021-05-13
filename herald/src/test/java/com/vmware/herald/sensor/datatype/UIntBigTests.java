@@ -61,7 +61,7 @@ public class UIntBigTests {
     // MARK: - Right shift by one
 
     @Test
-    public void testRightShiftByOneByte() {
+    public void testRightShiftByOne() {
         for (long i=1; i<Long.MAX_VALUE && i>0; i*=3) {
             final UIntBig a = new UIntBig(i);
             a.rightShiftByOne();
@@ -213,12 +213,12 @@ public class UIntBigTests {
                 assertEquals(e0, e1);
                 t0 += (tE0 - tS0);
                 t1 += (tE1 - tS1);
-                if (x % samples == 0) {
-                    System.err.println("sample=" + (x + 1) + ",ref=" + (t0 / (x + 1)) + "ns/call,bigInt=" + (t1 / (x + 1)) + "ns/call");
+                if (x % samples == 0 && x > 0) {
+                    System.err.println("sample=" + x + ",hardware=" + (t0 / x) + "ns/call,UIntBig=" + (t1 / x) + "ns/call");
                 }
             }
         }
-        System.err.println("sample=" + samples + ",hardware=" + (t0 / samples) + "ns/call,software=" + (t1 / samples) + "ns/call");
+        System.err.println("sample=" + samples + ",hardware=" + (t0 / samples) + "ns/call,UIntBig=" + (t1 / samples) + "ns/call");
     }
 
     // MARK: - Hex
@@ -284,28 +284,29 @@ public class UIntBigTests {
         out.flush();
         out.close();
         // Pending iOS implementation
-        //TestUtil.assertEqualsCrossPlatform("uintBig.csv");
+        TestUtil.assertEqualsCrossPlatform("uintBig.csv");
     }
 
     @Test
     public void testCrossPlatformModPow() throws Exception {
         final PrintWriter out = TestUtil.androidPrintWriter("uintBigModPow.csv");
         out.println("a,b,c,d");
-        for (long i=1; i<Long.MAX_VALUE && i>0; i *= 11) {
-            for (long j = 1; j < Long.MAX_VALUE && j > 0; j *= 7) {
-                for (long k = 1; k < Long.MAX_VALUE && k > 0; k *= 3) {
-                    final long ex = new BigInteger(Long.toString(i)).modPow(new BigInteger(Long.toString(j)), new BigInteger(Long.toString(k))).longValue();
+        for (long i=1; i<0x000FFFFFFFFFFFFFL; i *= 11) {
+            for (long j = 1; j < 0x000FFFFFFFFFFFFFL; j *= 7) {
+                for (long k = 1; k < 0x000FFFFFFFFFFFFFL; k *= 3) {
                     final UIntBig a = new UIntBig(i);
                     final UIntBig b = new UIntBig(j);
                     final UIntBig c = new UIntBig(k);
                     final UIntBig d = a.modPow(b,c);
-                    out.println(i+","+j+","+k+","+d.hexEncodedString());
+                    final Data data = new Data();
+                    data.append(d);
+                    out.println(i+","+j+","+k+","+data.base64EncodedString());
                 }
             }
         }
         out.flush();
         out.close();
         // Pending iOS implementation
-        //TestUtil.assertEqualsCrossPlatform("uintBigModPow.csv");
+        TestUtil.assertEqualsCrossPlatform("uintBigModPow.csv");
     }
 }
