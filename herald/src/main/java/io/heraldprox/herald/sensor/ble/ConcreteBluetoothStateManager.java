@@ -52,6 +52,8 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
 
     /**
      * Monitors bluetooth state changes.
+     * 
+     * @param context The Herald execution Context. Used to register the BLE Receiver against.
      */
     public ConcreteBluetoothStateManager(Context context) {
         state = state();
@@ -63,9 +65,9 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
 
     @Override
     public BluetoothState state() {
-        if (state == null) {
+        if (null == state) {
             final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter == null) {
+            if (null == bluetoothAdapter) {
                 state = BluetoothState.unsupported;
                 return state;
             }

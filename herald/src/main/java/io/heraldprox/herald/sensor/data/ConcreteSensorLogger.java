@@ -71,7 +71,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         final Throwable throwable = getThrowable(values);
         switch (level) {
             case debug: {
-                if (throwable == null) {
+                if (null == throwable) {
                     Log.d(tag, render(message, values));
                 } else {
                     Log.d(tag, render(message, values), throwable);
@@ -79,7 +79,7 @@ public class ConcreteSensorLogger implements SensorLogger {
                 break;
             }
             case info: {
-                if (throwable == null) {
+                if (null == throwable) {
                     Log.i(tag, render(message, values));
                 } else {
                     Log.i(tag, render(message, values), throwable);
@@ -87,7 +87,7 @@ public class ConcreteSensorLogger implements SensorLogger {
                 break;
             }
             case fault: {
-                if (throwable == null) {
+                if (null == throwable) {
                     Log.w(tag, render(message, values));
                 } else {
                     Log.w(tag, render(message, values), throwable);
@@ -98,7 +98,7 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
     private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
-        if (logFile == null) {
+        if (null == logFile) {
             return;
         }
         final String timestamp = dateFormatter.format(new Date());
@@ -129,7 +129,7 @@ public class ConcreteSensorLogger implements SensorLogger {
             while (end > 0) {
                 stringBuilder.append(message.substring(start, end));
                 if (values.length > valueIndex) {
-                    if (values[valueIndex] == null) {
+                    if (null == values[valueIndex]) {
                         stringBuilder.append("NULL");
                     } else {
                         stringBuilder.append(values[valueIndex].toString());

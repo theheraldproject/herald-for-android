@@ -71,6 +71,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
+     * 
+     * @param context The Herald execution environment Context
+     * @param bluetoothStateManager To determine whether Bluetooth is enabled
+     * @param timer Used to register a need for periodic events to occur
+     * @param payloadDataSupplier Source of the payload to transmit
+     * @param database BLE Device database to locate nearby device information
      */
     public ConcreteBLETransmitter(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, PayloadDataSupplier payloadDataSupplier, BLEDatabase database) {
         this.context = context;
@@ -114,14 +120,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     /// Get Bluetooth LE advertiser
     private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (bluetoothAdapter == null) {
+        if (null == bluetoothAdapter) {
             logger.debug("bluetoothLeAdvertiser, no Bluetooth Adapter available");
             return null;
         }
         boolean supported = bluetoothAdapter.isMultipleAdvertisementSupported();
         try {
             final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-            if (bluetoothLeAdvertiser == null) {
+            if (null == bluetoothLeAdvertiser) {
                 logger.debug("bluetoothLeAdvertiser, no LE advertiser present (multiSupported={}, exception=no)", supported);
                 return null;
             }
@@ -178,7 +184,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         if (period >= advertOffDurationMillis) {
                             logger.debug("advertLoopTask, start advert (stop={}ms)", period);
                             final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothLeAdvertiser();
-                            if (bluetoothLeAdvertiser == null) {
+                            if (null == bluetoothLeAdvertiser) {
                                 logger.fault("advertLoopTask, start advert denied, Bluetooth LE advertiser unavailable");
                                 return;
                             }
@@ -200,7 +206,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     if (period >= BLESensorConfiguration.advertRefreshTimeInterval.millis()) {
                         logger.debug("advertLoopTask, stop advert (advert={}ms)", period);
                         final BluetoothLeAdvertiser bluetoothLeAdvertiser = bluetoothLeAdvertiser();
-                        if (bluetoothLeAdvertiser == null) {
+                        if (null == bluetoothLeAdvertiser) {
                             logger.fault("advertLoopTask, stop advert denied, Bluetooth LE advertiser unavailable");
                             return;
                         }
@@ -233,7 +239,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 // startAdvert and it should only call startAdvert after stopAdvert
                 // has been called previously. Logging this condition to verify if
                 // this condition can ever occur to support investigation.
-                if (bluetoothGattServer != null) {
+                if (null != bluetoothGattServer) {
                     logger.fault("startAdvert found existing GATT server");
                     try {
                         bluetoothGattServer.clearServices();
@@ -250,7 +256,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     logger.fault("startAdvert failed to start GATT server", e);
                     result = false;
                 }
-                if (bluetoothGattServer == null) {
+                if (null == bluetoothGattServer) {
                     result = false;
                 } else {
                     try {
@@ -304,7 +310,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             public void run() {
                 boolean result = true;
                 try {
-                    if (bluetoothLeAdvertiser != null && advertiseCallback != null) {
+                    if (null != bluetoothLeAdvertiser && null != advertiseCallback) {
                         bluetoothLeAdvertiser.stopAdvertising(advertiseCallback);
                     }
                 } catch (Throwable e) {
@@ -312,7 +318,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     result = false;
                 }
                 try {
-                    if (bluetoothGattServer != null) {
+                    if (null != bluetoothGattServer) {
                         bluetoothGattServer.clearServices();
                         bluetoothGattServer.close();
                     }
@@ -338,7 +344,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     @Override
     public boolean isSupported() {
-        return bluetoothLeAdvertiser() != null;
+        return null != bluetoothLeAdvertiser();
     }
 
     @Override
@@ -369,7 +375,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private static BluetoothGattServer startGattServer(final SensorLogger logger, final Context context, final PayloadDataSupplier payloadDataSupplier, final BLEDatabase database) {
         logger.debug("startGattServer");
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        if (bluetoothManager == null) {
+        if (null == bluetoothManager) {
             logger.fault("Bluetooth unsupported");
             return null;
         }
@@ -393,10 +399,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             private byte[] onCharacteristicWriteSignalData(BluetoothDevice device, byte[] value) {
                 final String key = device.getAddress();
                 byte[] partialData = onCharacteristicWriteSignalData.get(key);
-                if (partialData == null) {
+                if (null == partialData) {
                     partialData = new byte[0];
                 }
-                byte[] data = new byte[partialData.length + (value == null ? 0 : value.length)];
+                byte[] data = new byte[partialData.length + (null == value ? 0 : value.length)];
                 System.arraycopy(partialData, 0, data, 0, partialData.length);
                 if (value != null) {
                     System.arraycopy(value, 0, data, partialData.length, value.length);
@@ -439,7 +445,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 logger.debug("didReceiveWrite (central={},requestId={},offset={},characteristic={},value={})",
                         targetDevice, requestId, offset,
                         (characteristic.getUuid().equals(BLESensorConfiguration.androidSignalCharacteristicUUID) ? "signal" : "unknown"),
-                        (value != null ? value.length : "null")
+                        (null != value ? value.length : "null")
                 );
                 if (characteristic.getUuid() != BLESensorConfiguration.androidSignalCharacteristicUUID) {
                     if (responseNeeded) {
@@ -464,7 +470,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 switch (SignalCharacteristicData.detect(data)) {
                     case rssi: {
                         final RSSI rssi = SignalCharacteristicData.decodeWriteRSSI(data);
-                        if (rssi == null) {
+                        if (null == rssi) {
                             logger.fault("didReceiveWrite, invalid request (central={},action=writeRSSI)", targetDevice);
                             break;
                         }
@@ -477,7 +483,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     }
                     case payload: {
                         final PayloadData payloadData = SignalCharacteristicData.decodeWritePayload(data);
-                        if (payloadData == null) {
+                        if (null == payloadData) {
                             // Fragmented payload data may be incomplete
                             break;
                         }
@@ -491,7 +497,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     }
                     case payloadSharing: {
                         final PayloadSharingData payloadSharingData = SignalCharacteristicData.decodeWritePayloadSharing(data);
-                        if (payloadSharingData == null) {
+                        if (null == payloadSharingData) {
                             // Fragmented payload sharing data may be incomplete
                             break;
                         }
@@ -512,7 +518,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     }
                     case immediateSend: {
                         final ImmediateSendData immediateSendData = SignalCharacteristicData.decodeImmediateSend(data);
-                        if (immediateSendData == null) {
+                        if (null == immediateSendData) {
                             // Fragmented immediate send data may be incomplete
                             break;
                         }
@@ -555,11 +561,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     private static void setGattService(final SensorLogger logger, final Context context, final BluetoothGattServer bluetoothGattServer) {
         logger.debug("setGattService");
         final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        if (bluetoothManager == null) {
+        if (null == bluetoothManager) {
             logger.fault("Bluetooth unsupported");
             return;
         }
-        if (bluetoothGattServer == null) {
+        if (null == bluetoothGattServer) {
             logger.fault("Bluetooth LE advertiser unsupported");
             return;
         }

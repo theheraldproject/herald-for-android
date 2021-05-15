@@ -9,13 +9,19 @@ import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-/// Codec for signal characteristic data bundles
+/**
+ * Codec for signal characteristic data bundles
+ */
 public class SignalCharacteristicData {
 
-    /// Encode write RSSI data bundle
-    // writeRSSI data format
-    // 0-0 : actionCode
-    // 1-2 : rssi value (Int16)
+    /**
+     * Encode write RSSI data bundle
+     * writeRSSI data format (byte number : use)
+     *
+     * 0-0 : actionCode
+     *
+     * 1-2 : rssi value (Int16)
+     */
     public static Data encodeWriteRssi(final RSSI rssi) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -24,7 +30,11 @@ public class SignalCharacteristicData {
         return new Data(byteBuffer.array());
     }
 
-    /// Decode write RSSI data bundle
+    /**
+     * Decode write RSSI data bundle
+     *
+     * @param data The Data instance to decode the RSSI from
+     */
     public static RSSI decodeWriteRSSI(final Data data) {
         if (data == null || data.value == null) {
             return null;
@@ -42,11 +52,13 @@ public class SignalCharacteristicData {
         return new RSSI(rssiValue.intValue());
     }
 
-    /// Encode write payload data bundle
-    // writePayload data format
-    // 0-0 : actionCode
-    // 1-2 : payload data count in bytes (Int16)
-    // 3.. : payload data
+    /**
+     * Encode write payload data bundle
+     * writePayload data format
+     *     // 0-0 : actionCode
+     *     // 1-2 : payload data count in bytes (Int16)
+     *     // 3.. : payload data
+     */
     public static Data encodeWritePayload(final PayloadData payloadData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + payloadData.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -57,9 +69,11 @@ public class SignalCharacteristicData {
         return new Data(byteBuffer.array());
     }
 
-    /// Decode write payload data bundle
+    /**
+     * Decode write payload data bundle
+     */
     public static PayloadData decodeWritePayload(final Data data) {
-        if (data == null || data.value == null) {
+        if (null == data || null == data.value) {
             return null;
         }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayload) {
@@ -69,7 +83,7 @@ public class SignalCharacteristicData {
             return null;
         }
         final Short payloadDataCount = int16(data.value, 1);
-        if (payloadDataCount == null) {
+        if (null == payloadDataCount) {
             return null;
         }
         if (payloadDataCount == 0) {
@@ -79,18 +93,22 @@ public class SignalCharacteristicData {
             return null;
         }
         final Data payloadDataBytes = new Data(data.value).subdata(3);
-        if (payloadDataBytes == null) {
+        if (null == payloadDataBytes) {
             return null;
         }
         return new PayloadData(payloadDataBytes.value);
     }
 
-    /// Encode write payload sharing data bundle
-    // writePayloadSharing data format
-    // 0-0 : actionCode
-    // 1-2 : rssi value (Int16)
-    // 3-4 : payload sharing data count in bytes (Int16)
-    // 5.. : payload sharing data
+    /**
+     * Encode write payload sharing data bundle
+     * writePayloadSharing data format
+     * 0-0 : actionCode
+     * 1-2 : rssi value (Int16)
+     * 3-4 : payload sharing data count in bytes (Int16)
+     * 5.. : payload sharing data
+     *
+     * @param payloadSharingData The data to share.
+     */
     public static Data encodeWritePayloadSharing(final PayloadSharingData payloadSharingData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(5 + payloadSharingData.data.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -102,7 +120,11 @@ public class SignalCharacteristicData {
         return new Data(byteBuffer.array());
     }
 
-    /// Decode write payload data bundle
+    /**
+     * Decode write payload data bundle
+     *
+     * @param data The raw received Data to decode into PayloadSharingData
+     */
     public static PayloadSharingData decodeWritePayloadSharing(final Data data) {
         if (data == null || data.value == null) {
             return null;
@@ -151,7 +173,7 @@ public class SignalCharacteristicData {
 
     /// Decode immediate send data bundle
     public static ImmediateSendData decodeImmediateSend(final Data data) {
-        if (data == null || data.value == null) {
+        if (null == data || null == data.value) {
             return null;
         }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteImmediate) {
@@ -161,17 +183,17 @@ public class SignalCharacteristicData {
             return null;
         }
         final Short immediateSendDataCount = int16(data.value, 1);
-        if (immediateSendDataCount == null) {
+        if (null == immediateSendDataCount) {
             return null;
         }
-        if (immediateSendDataCount == 0) {
+        if (0 == immediateSendDataCount) {
             return new ImmediateSendData(new Data());
         }
         if (data.value.length != (3 + immediateSendDataCount.intValue())) {
             return null;
         }
         final Data immediateSendDataBytes = new Data(data.value).subdata(3);
-        if (immediateSendDataBytes == null) {
+        if (null == immediateSendDataBytes) {
             return null;
         }
         return new ImmediateSendData(immediateSendDataBytes);
@@ -194,7 +216,7 @@ public class SignalCharacteristicData {
     }
 
     private static byte signalDataActionCode(byte[] signalData) {
-        if (signalData == null || signalData.length == 0) {
+        if (null == signalData || signalData.length == 0) {
             return 0;
         }
         return signalData[0];

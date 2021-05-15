@@ -17,16 +17,28 @@ public class Data {
     }
 
     public Data(byte[] value) {
+        if (null == value) {
+            this.value = new byte[0];
+            return;
+        }
         this.value = value;
     }
 
     public Data(final Data data) {
+        if (null == data) {
+            this.value = new byte[0];
+            return;
+        }
         final byte[] value = new byte[data.value.length];
         System.arraycopy(data.value, 0, value, 0, data.value.length);
         this.value = value;
     }
 
     public Data(byte repeating, int count) {
+        if (count < 0) {
+            this.value = new byte[0];
+            return;
+        }
         this.value = new byte[count];
         for (int i=count; i-->0;) {
             this.value[i] = repeating;
@@ -34,6 +46,10 @@ public class Data {
     }
 
     public Data(String base64EncodedString) {
+        if (null == base64EncodedString) {
+            this.value = new byte[0];
+            return;
+        }
         this.value = Base64.decode(base64EncodedString);
     }
 
@@ -42,12 +58,13 @@ public class Data {
     }
 
     public String hexEncodedString() {
-        if (value == null) {
+        if (value == null || 0 == value.length) {
             return "";
         }
         final StringBuilder stringBuilder = new StringBuilder(value.length * 2);
+        int v;
         for (int i = 0; i < value.length; i++) {
-            final int v = value[i] & 0xFF;
+            v = value[i] & 0xFF;
             stringBuilder.append(hexChars[v >>> 4]);
             stringBuilder.append(hexChars[v & 0x0F]);
         }
@@ -55,6 +72,9 @@ public class Data {
     }
 
     public final static Data fromHexEncodedString(String hexEncodedString) {
+        if (null == hexEncodedString) {
+            return new Data();
+        }
         final int length = hexEncodedString.length();
         final byte[] value = new byte[length / 2];
         for (int i = 0; i < length; i += 2) {
@@ -70,7 +90,7 @@ public class Data {
 
     /// Get subdata from offset to end
     public Data subdata(int offset) {
-        if (offset >=0 && offset < value.length) {
+        if (offset >= 0 && offset < value.length) {
             final byte[] offsetValue = new byte[value.length - offset];
             System.arraycopy(value, offset, offsetValue, 0, offsetValue.length);
             return new Data(offsetValue);
@@ -92,10 +112,16 @@ public class Data {
 
     /// Append data to end of this data.
     public void append(Data data) {
+        if (null == data) {
+            return;
+        }
         append(data.value);
     }
 
     private void append(byte[] data) {
+        if (null == data) {
+            return;
+        }
         final byte[] concatenated = new byte[value.length + data.length];
         System.arraycopy(value, 0, concatenated, 0, value.length);
         System.arraycopy(data, 0, concatenated, value.length, data.length);
@@ -105,7 +131,7 @@ public class Data {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Data data = (Data) o;
         return Arrays.equals(value, data.value);
     }
@@ -123,6 +149,9 @@ public class Data {
     // MARK:- Conversion from intrinsic types to Data
 
     public void append(final UInt8 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF)
         });
@@ -136,6 +165,9 @@ public class Data {
     }
 
     public void append(final Int8 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF)
         });
@@ -149,6 +181,9 @@ public class Data {
     }
 
     public void append(final UInt16 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >>> 8) & 0xFF) // MSB
@@ -167,6 +202,9 @@ public class Data {
 
 
     public void append(final Int16 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF), // LSB
                 (byte) (value.value >> 8)    // MSB
@@ -184,6 +222,9 @@ public class Data {
     }
 
     public void append(final UInt32 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >>> 8) & 0xFF),
@@ -205,6 +246,9 @@ public class Data {
     }
 
     public void append(final Int32 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >> 8) & 0xFF),
@@ -226,6 +270,9 @@ public class Data {
     }
 
     public void append(final UInt64 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >>> 8) & 0xFF),
@@ -255,6 +302,9 @@ public class Data {
     }
 
     public void append(final Int64 value) {
+        if (null == value) {
+            return;
+        }
         append(new byte[]{
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >> 8) & 0xFF),
@@ -284,6 +334,9 @@ public class Data {
     }
 
     public void append(Float16 value) {
+        if (null == value) {
+            return;
+        }
         append(value.bigEndian);
     }
 
@@ -305,11 +358,14 @@ public class Data {
 
     /// Encode string as data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
     public boolean append(final String value) {
+        if (null == value) {
+            return false;
+        }
         return append(value, StringLengthEncodingOption.UINT8);
     }
 
     public boolean append(final String value, final StringLengthEncodingOption encoding) {
-        if (value == null) {
+        if (null == value || null == encoding) {
             return false;
         }
         byte[] data = null;
@@ -318,7 +374,7 @@ public class Data {
         } catch (Throwable e) {
             return false;
         }
-        if (data == null) {
+        if (null == data) {
             return false;
         }
         switch (encoding) {
@@ -358,9 +414,15 @@ public class Data {
         public final int end;
 
         public DecodedString(final String value, final int start, final int end) {
-            this.value = value;
-            this.start = start;
-            this.end = end;
+            if (null == value) {
+                this.value = "";
+                this.start = 0;
+                this.end = 0;
+            } else {
+                this.value = value;
+                this.start = start;
+                this.end = end;
+            }
         }
     }
 
@@ -369,12 +431,13 @@ public class Data {
     }
 
     public DecodedString string(final int index, final StringLengthEncodingOption encoding) {
+        // TODO Refactor Data for max size. Max Java byte length is MAX_INT. It cannot be LONG. Either change to int or refactor data class for array of array of bytes.
         long start = index;
         long end = index;
         switch (encoding) {
             case UINT8: {
                 final UInt8 count = uint8(index);
-                if (count == null) {
+                if (null == count) {
                     return null;
                 }
                 start = index + 1;
@@ -383,7 +446,7 @@ public class Data {
             }
             case UINT16: {
                 final UInt16 count = uint16(index);
-                if (count == null) {
+                if (null == count) {
                     return null;
                 }
                 start = index + 2;
@@ -392,7 +455,7 @@ public class Data {
             }
             case UINT32: {
                 final UInt32 count = uint32(index);
-                if (count == null) {
+                if (null == count) {
                     return null;
                 }
                 start = index + 4;
@@ -401,7 +464,7 @@ public class Data {
             }
             case UINT64: {
                 final UInt64 count = uint64(index);
-                if (count == null) {
+                if (null == count) {
                     return null;
                 }
                 start = index + 8;
@@ -413,6 +476,9 @@ public class Data {
             return null;
         }
         if (start == index || start > value.length || end > value.length) {
+            return null;
+        }
+        if (start > end) {
             return null;
         }
         try {

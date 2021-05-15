@@ -93,6 +93,9 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
 
     @Override
     public PayloadData payload(PayloadTimestamp timestamp, Device device) {
+
+        // TODO Add length of data here so it's compliant with the Herald Envelope Standard V1
+
         final PayloadData payloadData = new PayloadData();
         payloadData.append(commonPayload);
         final ContactIdentifier contactIdentifier = contactIdentifier(timestamp.value);

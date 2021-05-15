@@ -29,7 +29,7 @@ public class Proximity {
 
     /// Get plain text description of proximity data
     public String description() {
-        if (calibration == null) {
+        if (null == calibration) {
             return unit + ":" + value;
         }
         return unit + ":" + value + "[" + calibration.description() + "]";
@@ -37,8 +37,12 @@ public class Proximity {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (null == o || getClass() != o.getClass()) {
+            return false;
+        }
         Proximity proximity = (Proximity) o;
         return unit == proximity.unit &&
                 Objects.equals(value, proximity.value) &&

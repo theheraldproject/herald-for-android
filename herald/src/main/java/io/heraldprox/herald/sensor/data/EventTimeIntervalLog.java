@@ -46,7 +46,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     private void add(String payload) {
         final Date time = payloadToTime.get(payload);
         final Sample sample = payloadToSample.get(payload);
-        if (time == null || sample == null) {
+        if (null == time || null == sample) {
             payloadToTime.put(payload, new Date());
             payloadToSample.put(payload, new Sample());
             return;
@@ -71,10 +71,10 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         Collections.sort(payloadList);
         for (String payload : payloadList) {
             final Sample sample = payloadToSample.get(payload);
-            if (sample == null) {
+            if (null == sample) {
                 continue;
             }
-            if (sample.mean() == null || sample.standardDeviation() == null || sample.min() == null || sample.max() == null) {
+            if (null == sample.mean() || null == sample.standardDeviation() || null == sample.min() || null == sample.max()) {
                 continue;
             }
             content.append(event);

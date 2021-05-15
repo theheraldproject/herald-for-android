@@ -20,7 +20,7 @@ public class Int32 implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Int32 uInt32 = (Int32) o;
         return value == uInt32.value;
     }

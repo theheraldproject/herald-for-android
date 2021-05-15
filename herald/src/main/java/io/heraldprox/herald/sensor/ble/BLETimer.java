@@ -50,11 +50,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * Test APP STANDBY mode
  * 1. ./adb shell dumpsys battery unplug
  * 2. Expect "powerSource=battery"
- * 3. ./adb shell am set-inactive com.vmware.herald true
+ * 3. ./adb shell am set-inactive io.heraldprox.herald true
  * <p>
  * Exit APP STANDBY mode
- * 1. ./adb shell am set-inactive com.vmware.herald false
- * 2. ./adb shell am get-inactive com.vmware.herald
+ * 1. ./adb shell am set-inactive io.heraldprox.herald false
+ * 2. ./adb shell am get-inactive io.heraldprox.herald
  * 3. Expect "idle=false" on terminal
  * 4. ./adb shell dumpsys battery reset
  * 5. Expect "powerSource=usb/ac" on log

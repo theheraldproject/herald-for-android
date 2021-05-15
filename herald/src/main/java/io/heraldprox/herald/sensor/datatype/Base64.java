@@ -27,8 +27,10 @@ public class Base64 {
     public static String encode(byte[] data) {
         final StringBuilder buffer = new StringBuilder();
         int pad = 0;
+        int b;
+        int c;
         for (int i = 0; i < data.length; i += 3) {
-            int b = ((data[i] & 0xFF) << 16) & 0xFFFFFF;
+            b = ((data[i] & 0xFF) << 16) & 0xFFFFFF;
             if (i + 1 < data.length) {
                 b |= (data[i + 1] & 0xFF) << 8;
             } else {
@@ -40,7 +42,7 @@ public class Base64 {
                 pad++;
             }
             for (int j = 0; j < 4 - pad; j++) {
-                int c = (b & 0xFC0000) >> 18;
+                c = (b & 0xFC0000) >> 18;
                 buffer.append(encodeTable[c]);
                 b <<= 6;
             }
@@ -54,8 +56,11 @@ public class Base64 {
     public static byte[] decode(String data) {
         final byte[] bytes = data.getBytes();
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int b;
+        int num;
+        int c;
         for (int i = 0; i < bytes.length; ) {
-            int b = 0;
+            b = 0;
             if (bytes[i] >=0 && bytes[i] < decodeTable.length && decodeTable[bytes[i]] != -1) {
                 b = (decodeTable[bytes[i]] & 0xFF) << 18;
             } else {
@@ -63,7 +68,7 @@ public class Base64 {
                 i++;
                 continue;
             }
-            int num = 0;
+            num = 0;
             if (i + 1 < bytes.length && decodeTable[bytes[i + 1]] != -1) {
                 b = b | ((decodeTable[bytes[i + 1]] & 0xFF) << 12);
                 num++;
@@ -77,7 +82,7 @@ public class Base64 {
                 num++;
             }
             while (num > 0) {
-                int c = (b & 0xFF0000) >> 16;
+                c = (b & 0xFF0000) >> 16;
                 buffer.write((char) c);
                 b <<= 8;
                 num--;

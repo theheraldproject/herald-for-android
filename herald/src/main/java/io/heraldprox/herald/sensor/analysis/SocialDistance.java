@@ -64,12 +64,12 @@ public class SocialDistance extends Interactions {
                     if (!(proximity.value >= excludeRssiBelow && proximity.value <= 0)) {
                         continue;
                     }
-                    if (maxRSSI == null || proximity.value > maxRSSI) {
+                    if (null == maxRSSI || proximity.value > maxRSSI) {
                         maxRSSI = proximity.value;
                     }
                 }
             }
-            if (maxRSSI == null) {
+            if (null == maxRSSI) {
                 continue;
             }
             final double rssi = maxRSSI;

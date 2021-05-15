@@ -33,6 +33,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, UInt8 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(1));
         payloadData.append(value);
@@ -40,6 +43,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, UInt16 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(2));
         payloadData.append(value);
@@ -47,6 +53,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, UInt32 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(4));
         payloadData.append(value);
@@ -54,6 +63,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, UInt64 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(8));
         payloadData.append(value);
@@ -61,6 +73,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Int8 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(1));
         payloadData.append(value);
@@ -68,6 +83,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Int16 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(2));
         payloadData.append(value);
@@ -75,6 +93,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Int32 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(4));
         payloadData.append(value);
@@ -82,6 +103,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Int64 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(8));
         payloadData.append(value);
@@ -89,6 +113,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Float16 value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(2));
         payloadData.append(value);
@@ -96,6 +123,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, String value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         // Append String adds length to payload
         payloadData.append(value);
@@ -103,6 +133,9 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
 
     @Override
     public void addSection(UInt8 code, Data value) {
+        if (null == code || null == value) {
+            return;
+        }
         payloadData.append(code);
         payloadData.append(new UInt8(value.value.length));
         payloadData.append(value);

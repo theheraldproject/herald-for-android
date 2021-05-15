@@ -12,18 +12,18 @@ import java.util.UUID;
 
 /// Legacy payload data received from target
 public class LegacyPayloadData extends PayloadData {
-    public final UUID service;
+    public final UUID service; // null value is permitted
     public enum ProtocolName {
         UNKNOWN, NOT_AVAILABLE, HERALD, OPENTRACE, ADVERT
     }
 
     public LegacyPayloadData(final UUID service, final byte[] value) {
         super(value);
-        this.service = service;
+        this.service = service; // null value is permitted
     }
 
     public ProtocolName protocolName() {
-        if (service == null) {
+        if (null == service) {
             return ProtocolName.NOT_AVAILABLE;
         } else if (service == BLESensorConfiguration.interopOpenTraceServiceUUID) {
             return ProtocolName.OPENTRACE;

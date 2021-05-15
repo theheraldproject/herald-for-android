@@ -65,12 +65,12 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     public ConcreteInertiaSensor(final Context context) {
         this.context = context;
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        this.hardwareSensor = (sensorManager == null ? null : sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
-        if (sensorManager == null) {
+        this.hardwareSensor = (null == sensorManager ? null : sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
+        if (null == sensorManager) {
             logger.fault("init, sensor manager unavailable");
         }
         // Get hardware sensor
-        if (hardwareSensor == null) {
+        if (null == hardwareSensor) {
             logger.fault("init, inertia sensor unavailable");
         }
     }
@@ -83,12 +83,12 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     @Override
     public void start() {
         // Get sensor manager
-        if (sensorManager == null) {
+        if (null == sensorManager) {
             logger.fault("start, sensor manager unavailable");
             return;
         }
         // Get hardware sensor
-        if (hardwareSensor == null) {
+        if (null == hardwareSensor) {
             logger.fault("start, inertia sensor unavailable");
             return;
         }
@@ -100,7 +100,7 @@ public class ConcreteInertiaSensor implements InertiaSensor {
 
     @Override
     public void stop() {
-        if (sensorManager == null) {
+        if (null == sensorManager) {
             logger.fault("stop, sensor manager unavailable");
             return;
         }

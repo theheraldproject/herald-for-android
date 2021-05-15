@@ -39,7 +39,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
 
     private void add(TargetIdentifier identifier) {
         final String payload = identifierToPayload.get(identifier);
-        if (payload == null) {
+        if (null == payload) {
             return;
         }
         add(payload);
@@ -48,7 +48,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
     private void add(String payload) {
         final Date time = payloadToTime.get(payload);
         final Sample sample = payloadToSample.get(payload);
-        if (time == null || sample == null) {
+        if (null == time || null == sample) {
             payloadToTime.put(payload, new Date());
             payloadToSample.put(payload, new Sample());
             return;

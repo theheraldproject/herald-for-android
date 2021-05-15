@@ -50,7 +50,7 @@ public class BatteryLog {
     private void update() {
         final IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         final Intent batteryStatus = context.registerReceiver(null, intentFilter);
-        if (batteryStatus == null) {
+        if (null == batteryStatus) {
             return;
         }
         final int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);

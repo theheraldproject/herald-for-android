@@ -27,7 +27,7 @@ public class ForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         logger.debug("onStartCommand");
 
-        if (intent != null) {
+        if (null != intent) {
             String action = intent.getAction();
 
             switch (action) {

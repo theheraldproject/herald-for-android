@@ -25,7 +25,7 @@ public class NotificationService {
 
     /// Get shared global instance of notification service
     public final static NotificationService shared(final Application application) {
-        if (shared == null) {
+        if (null == shared) {
             shared = new NotificationService(application);
         }
         return shared;
