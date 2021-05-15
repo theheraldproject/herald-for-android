@@ -24,7 +24,7 @@ public class PayloadData extends Data {
     }
 
     public String shortName() {
-        if (value.length == 0) {
+        if (0 == value.length) {
             return "";
         }
         if (!(value.length > 3)) {

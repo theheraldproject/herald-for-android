@@ -10,11 +10,14 @@ import io.heraldprox.herald.sensor.data.SensorLogger;
 import java.security.SecureRandom;
 import java.util.Random;
 
-/// Source of random data
+/**
+ * Source of random data. Can be initialised to a variety of mechanisms.
+ */
 public class RandomSource {
     final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RandomSource");
     public final Method method;
     private Random random = null;
+    /** Used to skip ahead during initial random value initialisation only **/
     private short externalEntropy = 0;
     private boolean initialised = false;
     public enum Method {
@@ -22,12 +25,23 @@ public class RandomSource {
         Random, SecureRandomSingleton, SecureRandom, SecureRandomNIST
     }
 
+    // TODO Allow RandomSource to be completely replaced by a customer provided mechanism, and not just built ins.
+
+    /**
+     * Create a RandomSource using the specific method.
+     *
+     * @param method The Random Source method to use
+     */
     public RandomSource(final Method method) {
         this.method = method;
         externalEntropy = (short) (Math.random() * Short.MAX_VALUE);
     }
 
-    /// Contribute entropy from external source, e.g. unpredictable time intervals
+    /**
+     * Contribute entropy from external source, e.g. unpredictable time intervals
+     *
+     * @param value entropy skip ahead value in bits
+     **/
     public synchronized void addEntropy(final long value) {
         final short contribution = (short) (value % Short.MAX_VALUE);
         externalEntropy += contribution;
@@ -121,36 +135,39 @@ public class RandomSource {
         return random;
     }
 
-    /// Secure random number generator that is blocking after about 7.5 hours
-    /// on idle devices due to lack of entropy.
+    /** Secure random number generator that is blocking after about 7.5 hours
+     *  on idle devices due to lack of entropy.
+     **/
     private static SecureRandom secureRandomSingleton = null;
     private synchronized final static Random getSecureRandomSingleton() {
-        if (secureRandomSingleton == null) {
+        if (null == secureRandomSingleton) {
             secureRandomSingleton = new SecureRandom();
         }
         return secureRandomSingleton;
     }
 
 
-    /// Secure random number generator that is blocking after about 4.5 hours
-    /// on idle devices due to lack of entropy.
+    /** Secure random number generator that is blocking after about 4.5 hours
+     *  on idle devices due to lack of entropy.
+     **/
     private final static Random getSecureRandom() {
         return new SecureRandom();
     }
 
-    /// Secure random number generator that is blocking after about 6.0 hours
-    /// on idle devices due to lack of entropy.
-    /// SecureRandom seeded according to NIST SP800-90A recommendations
-    /// - SHA1PRNG algorithm
-    /// - Algorithm seeded with 440 bits of secure random data
-    /// - Skips first random number of bytes to mitigate against poor implementations
-    /// Compliance to NIST SP800-90A offers quality assurance against an accepted
-    /// standard. The aim here is not to offer the most perfect random source, but
-    /// a source with well defined and understood characteristics, thus enabling
-    /// selection of the most appropropriate method, given the intented purpose.
-    /// This implementation supports security strength for NIST SP800-57
-    /// Part 1 Revision 5 (informally, generation of cryptographic keys for
-    /// encryption of sensitive data).
+    /** Secure random number generator that is blocking after about 6.0 hours
+     *  on idle devices due to lack of entropy.
+     *  SecureRandom seeded according to NIST SP800-90A recommendations
+     *  - SHA1PRNG algorithm
+     *  - Algorithm seeded with 440 bits of secure random data
+     *  - Skips first random number of bytes to mitigate against poor implementations
+     *  Compliance to NIST SP800-90A offers quality assurance against an accepted
+     *  standard. The aim here is not to offer the most perfect random source, but
+     *  a source with well defined and understood characteristics, thus enabling
+     *  selection of the most appropropriate method, given the intented purpose.
+     *  This implementation supports security strength for NIST SP800-57
+     *  Part 1 Revision 5 (informally, generation of cryptographic keys for
+     *  encryption of sensitive data).
+     **/
     private final static Random getSecureRandomNIST() {
         try {
             // Obtain SHA1PRNG specifically where possible for NIST SP800-90A compliance.

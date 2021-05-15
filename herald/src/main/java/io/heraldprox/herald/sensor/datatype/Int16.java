@@ -20,7 +20,7 @@ public class Int16 implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Int16 uInt16 = (Int16) o;
         return value == uInt16.value;
     }

@@ -23,7 +23,7 @@ public class UInt64 implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         UInt64 uInt64 = (UInt64) o;
         return value == uInt64.value;
     }

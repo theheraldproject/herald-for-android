@@ -6,7 +6,14 @@ package io.heraldprox.herald.sensor.datatype;
 
 import java.util.Objects;
 
-/// RSSI in dBm.
+/**
+ * RSSI in locally measured units.
+ *
+ * Value is typically -1 to -99 on most systems, with 0 indicating RSSI is not ready,
+ * and -100 indicating an out of range or error condition.
+ *
+ * This logic varies by source system though. Some (non Android) systems use 0 to -128.
+ */
 public class RSSI implements DoubleValue {
     public final double value;
 
@@ -17,7 +24,7 @@ public class RSSI implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         RSSI rssi = (RSSI) o;
         return Double.compare(rssi.value, value) == 0;
     }

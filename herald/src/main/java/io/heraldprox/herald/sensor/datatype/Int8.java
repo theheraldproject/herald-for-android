@@ -20,7 +20,7 @@ public class Int8 implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Int8 uInt8 = (Int8) o;
         return value == uInt8.value;
     }
