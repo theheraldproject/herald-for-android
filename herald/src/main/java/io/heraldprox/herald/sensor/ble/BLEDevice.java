@@ -78,7 +78,7 @@ public class BLEDevice extends Device {
         if (state() != BLEDeviceState.connected) {
             return TimeInterval.zero;
         }
-        if (lastConnectedAt == null) {
+        if (null == lastConnectedAt) {
             return TimeInterval.zero;
         }
         return new TimeInterval((new Date().getTime() - lastConnectedAt.getTime()) / 1000);
@@ -87,7 +87,7 @@ public class BLEDevice extends Device {
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     /// This is also used by immediateSendAll to choose targets
     public TimeInterval timeIntervalSinceLastUpdate() {
-        if (lastUpdatedAt == null) {
+        if (null == lastUpdatedAt) {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
@@ -114,7 +114,7 @@ public class BLEDevice extends Device {
     }
 
     public void pseudoDeviceAddress(PseudoDeviceAddress pseudoDeviceAddress) {
-        if (this.pseudoDeviceAddress == null || !this.pseudoDeviceAddress.equals(pseudoDeviceAddress)) {
+        if (null == this.pseudoDeviceAddress || !this.pseudoDeviceAddress.equals(pseudoDeviceAddress)) {
             this.pseudoDeviceAddress = pseudoDeviceAddress;
             lastUpdatedAt = new Date();
         }
@@ -152,7 +152,7 @@ public class BLEDevice extends Device {
         lastUpdatedAt = new Date();
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
-            if (ignoreForDuration == null) {
+            if (null == ignoreForDuration) {
                 ignoreForDuration = TimeInterval.minute;
             } else if (ignoreForDuration.value < TimeInterval.minutes(3).value) {
                 ignoreForDuration = new TimeInterval(Math.round(ignoreForDuration.value * 1.2));
@@ -174,7 +174,7 @@ public class BLEDevice extends Device {
 
     /// Should ignore this device for now.
     public boolean ignore() {
-        if (ignoreUntil == null) {
+        if (null == ignoreUntil) {
             return false;
         }
         if (new Date().getTime() < ignoreUntil.getTime()) {
@@ -195,7 +195,7 @@ public class BLEDevice extends Device {
     }
 
     public TimeInterval timeIntervalSinceLastPayloadDataUpdate() {
-        if (lastPayloadDataUpdate == null) {
+        if (null == lastPayloadDataUpdate) {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastPayloadDataUpdate.getTime()) / 1000);
@@ -238,7 +238,7 @@ public class BLEDevice extends Device {
     }
 
     public Calibration calibration() {
-        if (txPower == null) {
+        if (null == txPower) {
             return null;
         }
         return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, new Double(txPower.value));
@@ -322,7 +322,7 @@ public class BLEDevice extends Device {
     }
 
     public TimeInterval timeIntervalSinceLastWritePayload() {
-        if (lastWritePayloadAt == null) {
+        if (null == lastWritePayloadAt) {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastWritePayloadAt.getTime()) / 1000);
@@ -334,7 +334,7 @@ public class BLEDevice extends Device {
     }
 
     public TimeInterval timeIntervalSinceLastWriteRssi() {
-        if (lastWriteRssiAt == null) {
+        if (null == lastWriteRssiAt) {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastWriteRssiAt.getTime()) / 1000);
@@ -346,14 +346,14 @@ public class BLEDevice extends Device {
     }
 
     public TimeInterval timeIntervalSinceLastWritePayloadSharing() {
-        if (lastWritePayloadSharingAt == null) {
+        if (null == lastWritePayloadSharingAt) {
             return TimeInterval.never;
         }
         return new TimeInterval((new Date().getTime() - lastWritePayloadSharingAt.getTime()) / 1000);
     }
 
     public TimeInterval timeIntervalUntilIgnoreExpires() {
-        if (ignoreUntil == null) {
+        if (null == ignoreUntil) {
             return TimeInterval.zero;
         }
         if (ignoreUntil.getTime() == Long.MAX_VALUE) {
@@ -363,11 +363,11 @@ public class BLEDevice extends Device {
     }
 
     public boolean protocolIsOpenTrace() {
-        return legacyPayloadCharacteristic != null && signalCharacteristic == null;
+        return null != legacyPayloadCharacteristic && null == signalCharacteristic;
     }
 
     public boolean protocolIsHerald() {
-        return signalCharacteristic != null && payloadCharacteristic != null;
+        return null != signalCharacteristic && null != payloadCharacteristic;
     }
 
     public void scanRecord(ScanRecord scanRecord) {

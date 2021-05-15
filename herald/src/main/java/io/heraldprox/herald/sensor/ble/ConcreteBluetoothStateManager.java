@@ -65,9 +65,9 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
 
     @Override
     public BluetoothState state() {
-        if (state == null) {
+        if (null == state) {
             final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (bluetoothAdapter == null) {
+            if (null == bluetoothAdapter) {
                 state = BluetoothState.unsupported;
                 return state;
             }

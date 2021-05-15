@@ -52,7 +52,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     public BLEDevice device(final BluetoothDevice bluetoothDevice) {
         final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
         BLEDevice device = database.get(identifier);
-        if (device == null) {
+        if (null == device) {
             final BLEDevice newDevice = new BLEDevice(identifier, this);
             device = newDevice;
             database.put(identifier, newDevice);
@@ -76,21 +76,21 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         final BluetoothDevice bluetoothDevice = scanResult.getDevice();
         final TargetIdentifier targetIdentifier = new TargetIdentifier(bluetoothDevice);
         final BLEDevice existingDevice = database.get(targetIdentifier);
-        if (existingDevice != null) {
+        if (null != existingDevice) {
             return existingDevice;
         }
         // Get device by pseudo device address
         final PseudoDeviceAddress pseudoDeviceAddress = pseudoDeviceAddress(scanResult);
-        if (pseudoDeviceAddress != null) {
+        if (null != pseudoDeviceAddress) {
             // Reuse existing Android device
             BLEDevice deviceWithSamePseudoDeviceAddress = null;
             for (final BLEDevice device : database.values()) {
-                if (device.pseudoDeviceAddress() != null && device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
+                if (null != device.pseudoDeviceAddress() && device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
                     deviceWithSamePseudoDeviceAddress = device;
                     break;
                 }
             }
-            if (deviceWithSamePseudoDeviceAddress != null) {
+            if (null != deviceWithSamePseudoDeviceAddress) {
                 database.put(targetIdentifier, deviceWithSamePseudoDeviceAddress);
                 if (deviceWithSamePseudoDeviceAddress.peripheral() != bluetoothDevice) {
                     deviceWithSamePseudoDeviceAddress.peripheral(bluetoothDevice);
@@ -116,11 +116,11 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     /// Get pseudo device address for Android devices
     private PseudoDeviceAddress pseudoDeviceAddress(final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
-        if (scanRecord == null) {
+        if (null == scanRecord) {
             return null;
         }
         // HERALD pseudo device address
-        if (scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor) != null) {
+        if (null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor)) {
             final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor);
             if (data != null && data.length == 6) {
                 return new PseudoDeviceAddress(data);
@@ -128,9 +128,9 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         }
         // OpenTrace device id
         else if (BLESensorConfiguration.interopOpenTraceEnabled &&
-                scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId) != null) {
+                null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId)) {
             final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId);
-            if (data != null && data.length > 0) {
+            if (null != data && data.length > 0) {
                 return new PseudoDeviceAddress(data);
             }
         }
@@ -173,7 +173,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
 
     @Override
     public void delete(final BLEDevice device) {
-        if (device == null) {
+        if (null == device) {
             return;
         }
         final List<TargetIdentifier> identifiers = new ArrayList<>();
@@ -202,7 +202,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     @Override
     public PayloadSharingData payloadSharingData(final BLEDevice peer) {
         final RSSI rssi = peer.rssi();
-        if (rssi == null) {
+        if (null == rssi) {
             return new PayloadSharingData(new RSSI(127), new Data(new byte[0]));
         }
         // Get other devices that were seen recently by this device
@@ -214,7 +214,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
                 continue;
             }
             // Device has payload
-            if (device.payloadData() == null) {
+            if (null == device.payloadData()) {
                 continue;
             }
             // Device is iOS or receive only (Samsung J6)
@@ -222,11 +222,11 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
                 continue;
             }
             // Device is HERALD
-            if (device.signalCharacteristic() == null) {
+            if (null == device.signalCharacteristic()) {
                 continue;
             }
             // Payload is not the peer itself
-            if (peer.payloadData() != null && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
+            if (null != peer.payloadData() && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
                 continue;
             }
             // Payload is new to peer
@@ -252,7 +252,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         });
         devices.addAll(unknownDevices);
         devices.addAll(knownDevices);
-        if (devices.size() == 0) {
+        if (0 == devices.size()) {
             return new PayloadSharingData(new RSSI(127), new Data(new byte[0]));
         }
         // Limit how much to share to avoid oversized data transfers over BLE
@@ -261,7 +261,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         for (BLEDevice device : devices) {
             final PayloadData payloadData = device.payloadData();
-            if (payloadData == null) {
+            if (null == payloadData) {
                 continue;
             }
             // Eliminate duplicates (this happens when the same device has changed address but the old version has not expired yet)

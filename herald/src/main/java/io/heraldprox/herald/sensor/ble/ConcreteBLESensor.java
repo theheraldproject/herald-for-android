@@ -97,7 +97,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         switch (attribute) {
             case rssi: {
                 final RSSI rssi = device.rssi();
-                if (rssi == null) {
+                if (null == rssi) {
                     return;
                 }
                 final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value, device.calibration());
@@ -111,7 +111,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                     }
                 });
                 final PayloadData payloadData = device.payloadData();
-                if (payloadData == null) {
+                if (null == payloadData) {
                     return;
                 }
                 operationQueue.execute(new Runnable() {
@@ -126,7 +126,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
             }
             case payloadData: {
                 final PayloadData payloadData = device.payloadData();
-                if (payloadData == null) {
+                if (null == payloadData) {
                     return;
                 }
                 // De-duplicate payload in recent time
@@ -138,7 +138,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                         }
                     }
                     final Date lastReportedAt = didReadPayloadData.get(payloadData);
-                    if (lastReportedAt != null) {
+                    if (null != lastReportedAt) {
                         logger.debug("didRead, filtered duplicate (device={},payloadData={},lastReportedAt={})", device, device.payloadData().shortName(), lastReportedAt);
                         return;
                     }
