@@ -112,6 +112,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
+     * 
+     * @param context The Herald execution environment Context
+     * @param bluetoothStateManager To determine whether Bluetooth is enabled
+     * @param timer Used to register a need for periodic events to occur
+     * @param database BLE Device database to locate nearby device information
+     * @param transmitter The associated BLETransmitter instance
+     * @param payloadDataSupplier Source of the payload to transmit
      */
     public ConcreteBLEReceiver(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, BLEDatabase database, BLETransmitter transmitter, PayloadDataSupplier payloadDataSupplier) {
         this.context = context;

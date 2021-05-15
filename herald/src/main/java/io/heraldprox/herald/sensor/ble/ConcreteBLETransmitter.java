@@ -71,6 +71,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 
     /**
      * Transmitter starts automatically when Bluetooth is enabled.
+     * 
+     * @param context The Herald execution environment Context
+     * @param bluetoothStateManager To determine whether Bluetooth is enabled
+     * @param timer Used to register a need for periodic events to occur
+     * @param payloadDataSupplier Source of the payload to transmit
+     * @param database BLE Device database to locate nearby device information
      */
     public ConcreteBLETransmitter(Context context, BluetoothStateManager bluetoothStateManager, BLETimer timer, PayloadDataSupplier payloadDataSupplier, BLEDatabase database) {
         this.context = context;

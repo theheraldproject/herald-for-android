@@ -52,6 +52,8 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
 
     /**
      * Monitors bluetooth state changes.
+     * 
+     * @param context The Herald execution Context. Used to register the BLE Receiver against.
      */
     public ConcreteBluetoothStateManager(Context context) {
         state = state();
