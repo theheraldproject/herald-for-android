@@ -23,3 +23,4 @@ Later:-
   - issue_release.yml
   - Build and sign final APK for statically linked Herald library
   - Build and push maven release
+- Linting - review this https://andresand.medium.com/android-test-reporting-with-github-actions-876dbf6abeb0
