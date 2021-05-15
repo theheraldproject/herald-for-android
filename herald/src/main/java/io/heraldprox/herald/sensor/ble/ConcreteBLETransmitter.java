@@ -20,7 +20,6 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 
-import com.vmware.herald.BuildConfig;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.BluetoothState;

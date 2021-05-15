@@ -249,8 +249,8 @@ public class RangesTests {
         final double modeValue = summary.get(Mode.class);
         final double sd = Math.sqrt(variance.reduce());
 
-        // See second diagram at https://vmware.github.io/herald/bluetooth/distance
-        // i.e. https://vmware.github.io/herald/images/distance-rssi-regression.png
+        // See second diagram at https://heraldprox.io/bluetooth/distance
+        // i.e. https://heraldprox.io/images/distance-rssi-regression.png
         final FowlerBasic<RSSI> toDistance = new FowlerBasic<>(-50, -24);
 
         final Summary<RSSI> distance = sl.filter(afterPoint).filter(valid).filter(strong).filter(new InRange(modeValue - 2*sd, modeValue + 2*sd)).aggregate(toDistance);

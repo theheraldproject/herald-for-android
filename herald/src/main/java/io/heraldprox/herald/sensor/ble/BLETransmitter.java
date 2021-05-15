@@ -27,6 +27,8 @@ public interface BLETransmitter extends Sensor {
 
     /**
      * Get current payload.
+     * 
+     * @return The current PayloadData for this device.
      */
     PayloadData payloadData();
 
