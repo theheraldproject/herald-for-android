@@ -15,3 +15,9 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew test
+
+      - name: Unit tests results
+        uses: actions/upload-artifact@v1
+        with:
+          name: unit-tests-results
+          path: herald/build/reports/tests/testDebugUnitTest

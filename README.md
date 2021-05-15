@@ -51,13 +51,13 @@ This is a new, original, free and open source cross-platform proximity detection
 
 ## Quick start
 
-Please see the [developer guide](https://vmware.github.io/herald/guide/add)
+Please see the [developer guide](https://heraldprox.io/guide/add)
 for how to integrate your app to Herald.
 
 ## Test results
 
 For current and historic test and efficacy results please see the 
-[Efficacy section](https://vmware.github.io/herald/efficacy/results)
+[Efficacy section](https://heraldprox.io/efficacy/results)
 of the Herald website.
 
 ## References
