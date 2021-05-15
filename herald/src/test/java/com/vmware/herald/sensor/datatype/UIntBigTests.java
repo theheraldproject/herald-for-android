@@ -248,7 +248,10 @@ public class UIntBigTests {
         }
     }
 
-    private final static class MockRandom extends Random {
+    private final static class MockRandom extends RandomSource {
+        public MockRandom() {
+            super(Method.Random);
+        }
         @Override
         public void nextBytes(byte[] bytes) {
             for (int i=bytes.length; i-->0;) {
@@ -259,7 +262,7 @@ public class UIntBigTests {
 
     @Test
     public void testRandom() {
-        final Random random = new MockRandom();
+        final RandomSource random = new MockRandom();
         for (int i=0; i<Short.MAX_VALUE; i++) {
             final UIntBig a = new UIntBig(i, random);
             assertEquals(i, a.bitLength());

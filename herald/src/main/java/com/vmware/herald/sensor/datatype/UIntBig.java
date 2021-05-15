@@ -4,11 +4,15 @@
 
 package com.vmware.herald.sensor.datatype;
 
+import com.vmware.herald.sensor.data.ConcreteSensorLogger;
+import com.vmware.herald.sensor.data.SensorLogger;
+
 import java.util.Arrays;
 import java.util.Random;
 
 /// Mutable unsigned integer of unlimited size (for 32-bit architectures)
 public class UIntBig {
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.UIntBig");
     // Unsigned value (LSB ... MSB)
     private short[] magnitude;
     // Common values
@@ -63,7 +67,7 @@ public class UIntBig {
         }
     }
 
-    public UIntBig(final int bitLength, final Random random) {
+    public UIntBig(final int bitLength, final RandomSource random) {
         magnitude = new short[(bitLength + 15) / 16];
         final byte[] bytes = new byte[2];
         int value, remaining=bitLength;
@@ -161,6 +165,8 @@ public class UIntBig {
         final UIntBig base = new UIntBig(this);
         base.mod(modulus);
         final UIntBig exp = new UIntBig(exponent);
+        long n = 0;
+        final long t0 = System.nanoTime();
         while (!exp.isZero()) {
             if (exp.isOdd()) {
                 result.times(base);
@@ -169,7 +175,12 @@ public class UIntBig {
             exp.rightShiftByOne();
             base.times(base);
             base.mod(modulus);
+            final long t1 = System.nanoTime();
+            n++;
+            logger.debug("modPow progress (bitLength={},elapsed={}ms,average={}}ns/cycle)", n, (t1-t0)/1000000, (t1-t0)/n);
         }
+        final long t1 = System.nanoTime();
+        logger.debug("modPow total (bitLength={},elapsed={}ms,average={}}ns/cycle)", n, (t1-t0)/1000000, (t1-t0)/n);
         return result;
     }
 
@@ -287,7 +298,7 @@ public class UIntBig {
 
     /// Replace self with self - value * multiplier (at offset of self)
     /// Note, multiplier range is [0,32767]
-    protected int minus(final UIntBig value, final short multiplier, final int offset) {
+    public int minus(final UIntBig value, final short multiplier, final int offset) {
         final short[] a = value.magnitude;
         final short[] b = magnitude;
         final int underflow = subtract(a, multiplier, b, offset);
@@ -296,7 +307,7 @@ public class UIntBig {
     }
 
     /// Replace self with self * multiplier
-    protected void times(final UIntBig multiplier) {
+    public void times(final UIntBig multiplier) {
         final short[] a = magnitude;
         final short[] b = multiplier.magnitude;
         final short[] product = new short[a.length + b.length];
