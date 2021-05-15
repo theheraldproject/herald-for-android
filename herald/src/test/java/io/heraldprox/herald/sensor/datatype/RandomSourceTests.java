@@ -54,25 +54,6 @@ public class RandomSourceTests {
     }
 
     @Test
-    public void testNextBytes() {
-        for (RandomSource.Method method : RandomSource.Method.values()) {
-            final RandomSource randomSource = new RandomSource(method);
-            for (int length=0; length<10; length++) {
-                byte[] lastValue = new byte[length];
-                randomSource.nextBytes(lastValue);
-                for (int i = 0; i < 10; i++) {
-                    final byte[] value = new byte[length];
-                    randomSource.nextBytes(value);
-                    if (length > 0) {
-                        assertFalse(Arrays.equals(lastValue, value));
-                    }
-                    lastValue = value;
-                }
-            }
-        }
-    }
-
-    @Test
     public void testExternalEntropy() {
         for (RandomSource.Method method : RandomSource.Method.values()) {
             final RandomSource randomSource = new RandomSource(method);
