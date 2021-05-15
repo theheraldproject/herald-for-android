@@ -1,0 +1,17 @@
+name: Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - develop # PRs from external developers or project team
+      - master  # PRs for triggering a release. Both old (master) and new (main) branch names
+      - main
+
+jobs:
+  unit_tests:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Unit tests
+        run: ./gradlew test
