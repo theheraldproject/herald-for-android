@@ -16,6 +16,7 @@ public class RandomSource {
     public final Method method;
     private Random random = null;
     private short externalEntropy = 0;
+    private boolean initialised = false;
     public enum Method {
         // Singleton random source reused per call
         Random, SecureRandomSingleton, SecureRandom, SecureRandomNIST
@@ -58,6 +59,8 @@ public class RandomSource {
 
     /// Initialise random according to method
     protected synchronized void init() {
+        if (initialised) return;
+
         switch (method) {
             case Random: {
                 random = getRandom();
@@ -82,6 +85,7 @@ public class RandomSource {
             random.nextBoolean();
         }
         externalEntropy = 0;
+        initialised = true;
     }
 
     // MARK:- PRNG implementations
