@@ -10,7 +10,9 @@ import com.vmware.herald.sensor.data.SensorLogger;
 import java.util.Arrays;
 import java.util.Random;
 
-/// Mutable unsigned integer of unlimited size (for 32-bit architectures)
+/**
+ * Mutable unsigned integer of unlimited size (for 32-bit architectures)
+ */
 public class UIntBig {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.UIntBig");
     // Unsigned value (LSB ... MSB)
@@ -20,23 +22,34 @@ public class UIntBig {
     private final static short zero = (short) 0;
     private final static short one = (short) 1;
 
-    /// From raw data
+    /**
+     * From raw data
+     * @param magnitude
+     */
     public UIntBig(final short[] magnitude) {
         this.magnitude = magnitude;
     }
 
-    /// Zero
+    /**
+     * Zero
+     */
     public UIntBig() {
         this(magnitudeZero);
     }
 
-    /// Deep copy of given value
+    /**
+     * Deep copy of given value
+     * @param value
+     */
     private UIntBig(final UIntBig value) {
         this(new short[value.magnitude.length]);
         System.arraycopy(value.magnitude, 0, magnitude, 0, magnitude.length);
     }
 
-    /// UInt64 value as unlimited value
+    /**
+     * UInt64 value as unlimited value
+     * @param uint64
+     */
     public UIntBig(final long uint64) {
         final short[] value = new short[]{
                 (short) (uint64 & 0xFFFF),          // LSB
@@ -47,7 +60,10 @@ public class UIntBig {
         magnitude = trimZeroMSBs(value);
     }
 
-    /// Hex encoded string with format MSB...LSB
+    /**
+     * Hex encoded string with format MSB...LSB
+     * @param hexEncodedString
+     */
     public UIntBig(final String hexEncodedString) {
         // Pad MSB with zeros until length % 4 == 0
         final StringBuilder hex = new StringBuilder(hexEncodedString.length() + 4);
@@ -103,7 +119,10 @@ public class UIntBig {
         return magnitude;
     }
 
-    /// Get unsigned long value
+    /**
+     * Get unsigned long value
+     * @return
+     */
     public long uint64() {
         long value = 0;
         if (magnitude.length >= 1) {
@@ -121,12 +140,17 @@ public class UIntBig {
         return value;
     }
 
-    /// Test if value is zero
+    /**
+     * Test if value is zero
+     * @return
+     */
     protected boolean isZero() {
         return magnitude.length == 0;
     }
 
-    /// Test if value is one
+    /**
+     * Test if value is one
+     */
     protected boolean isOne() {
         if (magnitude.length != 1) {
             return false;
@@ -134,7 +158,9 @@ public class UIntBig {
         return magnitude[0] == one;
     }
 
-    /// Test if value is odd
+    /**
+     * Test if value is odd
+     */
     protected boolean isOdd() {
         if (magnitude.length == 0) {
             return false;
@@ -142,16 +168,18 @@ public class UIntBig {
         return ((short) (magnitude[0] & 0x01)) == one;
     }
 
-    /// Modular exponentiation r = (a ^ b) % c where
-    /// - a: self
-    /// - b: exponent
-    /// - c: modulus
-    /// Performance test shows software implementation is acceptably slower than native hardware
-    /// - Test samples = 399,626,333
-    /// - Native 64-bit hardware = 416ns/call
-    /// - Software 32-bit implementation = 3613ns/call
-    ///
-    /// @return r, the result
+    /**
+     * Modular exponentiation r = (a ^ b) % c where a=self, b=exponent, c=modulus.
+     * Performance test shows software implementation is acceptably slower than native hardware
+     * <ul>
+     * <li>Test samples = 399,626,333</li>
+     * <li>Native 64-bit hardware = 416ns/call</li>
+     * <li>Software 32-bit implementation = 3613ns/call</li>
+     * </ul>
+     * @param exponent (b)
+     * @param modulus (c)
+     * @return r, the result
+     */
     public UIntBig modPow(final UIntBig exponent, final UIntBig modulus) {
         if (modulus.isZero()) {
             return new UIntBig();
@@ -184,7 +212,10 @@ public class UIntBig {
         return result;
     }
 
-    /// Replace self with self % modulus
+    /**
+     * Replace self with self % modulus
+     * @param modulus
+     */
     protected void mod(final UIntBig modulus) {
         final short[] a = modulus.magnitude;;
         final short[] b = magnitude;
@@ -192,8 +223,13 @@ public class UIntBig {
         magnitude = trimZeroMSBs(b);
     }
 
-    /// Reduce b until b < a at offset by repeatedly deducting a from b at offset
-    /// Assumes b.length >= a.length + offset
+    /**
+     * Reduce b until b < a at offset by repeatedly deducting a from b at offset.
+     * Assumes b.length >= a.length + offset.
+     * @param a
+     * @param b
+     * @param offset
+     */
     protected final static void reduce(final short[] a, final short[] b, final int offset) {
         final int valueA = ((int) a[a.length - 1] & 0xFFFF) + (a.length > 1 ? 1 : 0);
         int valueB, carry, quotient;
@@ -219,15 +255,21 @@ public class UIntBig {
         }
     }
 
-    /// Modular function : b % a
+    /**
+     * Modular function : b % a
+     */
     protected final static void mod(final short[] a, final short[] b) {
         for (int offset=b.length - a.length + 1; offset-->0;) {
             reduce(a, b, offset);
         }
     }
 
-    /// Compare a and b, ignoring leading zeros
-    /// @return -1 for a < b, 0 for a == b, 1 for a > b
+    /**
+     * Compare a and b, ignoring leading zeros.
+     * @param a
+     * @param b
+     * @return -1 for a < b, 0 for a == b, 1 for a > b
+     */
     protected final static int compare(final short[] a, final short[] b) {
         int i=a.length-1, j=b.length-1;
         while (i >= 0 && a[i] == 0) {
@@ -258,14 +300,23 @@ public class UIntBig {
         return 0;
     }
 
-    /// Compare self with given value
-    /// @return -1 for self < value, 0 for self == value, 1 for self > value
+    /**
+     * Compare self with given value.
+     * @param value
+     * @return -1 for self < value, 0 for self == value, 1 for self > value
+     */
     protected int compare(final UIntBig value) {
         return compare(magnitude, value.magnitude);
     }
 
-    /// Subtraction function : b - a * multiplier (at offset of b)
-    /// Note, multiplier range is [0,32767]
+    /**
+     * Subtraction function : b - a * multiplier (at offset of b)
+     * @param a
+     * @param multiplier, range [0,32767]
+     * @param b
+     * @param offset
+     * @return
+     */
     protected final static int subtract(final short[] a, final short multiplier, final short[] b, final int offset) {
         final int times = (int) multiplier & 0xFFFF;
         int valueA, valueB, valueAL, valueAH, result, carry = 0;
@@ -296,8 +347,13 @@ public class UIntBig {
         return carry;
     }
 
-    /// Replace self with self - value * multiplier (at offset of self)
-    /// Note, multiplier range is [0,32767]
+    /**
+     * Replace self with self - value * multiplier (at offset of self).
+     * @param value
+     * @param multiplier, range is [0,32767]
+     * @param offset
+     * @return
+     */
     public int minus(final UIntBig value, final short multiplier, final int offset) {
         final short[] a = value.magnitude;
         final short[] b = magnitude;
@@ -306,7 +362,10 @@ public class UIntBig {
         return underflow;
     }
 
-    /// Replace self with self * multiplier
+    /**
+     * Replace self with self * multiplier.
+     * @param multiplier
+     */
     public void times(final UIntBig multiplier) {
         final short[] a = magnitude;
         final short[] b = multiplier.magnitude;
@@ -327,7 +386,9 @@ public class UIntBig {
         magnitude = trimZeroMSBs(product);
     }
 
-    /// Right shift all bits by one bit and insert leading 0 bit
+    /**
+     * Right shift all bits by one bit and insert leading 0 bit.
+     */
     protected void rightShiftByOne() {
         if (isZero()) {
             return;
@@ -344,7 +405,11 @@ public class UIntBig {
         magnitude = trimZeroMSBs(magnitude);
     }
 
-    /// Remove leading zeros from array
+    /**
+     * Remove leading zeros from array
+     * @param magnitude
+     * @return
+     */
     protected final static short[] trimZeroMSBs(final short[] magnitude) {
         int i = magnitude.length - 1;
         for (; i>0 && magnitude[i] == zero; i--);
@@ -359,7 +424,10 @@ public class UIntBig {
         return trimmed;
     }
 
-    /// Count of bits based on highest set bit
+    /**
+     * Count of bits based on highest set bit
+     * @return
+     */
     public int bitLength() {
         if (magnitude.length == 0) {
             return 0;
