@@ -5,7 +5,11 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
+import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
+import io.heraldprox.herald.sensor.data.SensorLogger;
+import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
+import java.security.MessageDigest;
 import java.util.Objects;
 
 /** Pseudo device address to enable caching of device payload without relying on device mac address
@@ -48,27 +52,33 @@ import java.util.Objects;
  /// been collected, which will take increasing time when the device is idle.
  **/
 public class PseudoDeviceAddress {
-    private static RandomSource randomSource = new RandomSource(RandomSource.Method.Random);
+    private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.PseudoDeviceAddress");
     public final long address;
     public final byte[] data;
 
     /**
-     * Generates a random PseudoDeviceAddress based on the requested RandomSource.Method
-     * @param method The RandomSource method to use for PseudoDeviceAddress generation.
+     * Generates a random PseudoDeviceAddress based on the requested RandomSource
+     * @param randomSource The RandomSource to use for PseudoDeviceAddress generation.
      */
-    public PseudoDeviceAddress(final RandomSource.Method method) {
+    public PseudoDeviceAddress(final RandomSource randomSource) {
         // Bluetooth device address is 48-bit (6 bytes), using
         // the same length to offer the same collision avoidance
         // Choose between random, secure random singleton, secure random, and NIST compliant secure random as random source
-        // - Random is non-blocking and has been adapted to obtain entropy from reliable source in this context. It is
+        // - NonBlockingPRNG is non-blocking and has been adapted to obtain entropy from reliable source in this context. It is
         //   sufficiently secure for this purpose, validated and recommended.
-        // - SecureRandomSingleton is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
-        // - SecureRandom is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
-        // - SecureRandomNIST is block after 6 hours on idle devices and inappropriate for this use case, not recommended
-        if (randomSource == null || randomSource.method != method) {
-            randomSource = new RandomSource(method);
-        }
-        this.data = encode(randomSource.nextLong()); // Long is 8 bytes - we only need 6
+        // - BlockingSecureRandomSingleton is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
+        // - BlockingSecureRandom is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
+        // - BlockingSecureRandomNIST is block after 6 hours on idle devices and inappropriate for this use case, not recommended
+
+        // Generate next random long value, 8-bytes
+        final Data randomData = new Data(new byte[8]);
+        randomSource.nextBytes(randomData.value);
+        // Compute cryptographic hash of random value to separate it from the random source (seed)
+        final Data cryptographicHashOfRandomData = cryptographicHash(randomData);
+        // Take last 8-bytes of cryptographic hash as long value for encoding as address source
+        final Int64 addressSource = cryptographicHashOfRandomData.int64(cryptographicHashOfRandomData.value.length - 8);
+        // Encoder will discard the first two of the 8 bytes as the address is only 6 bytes long
+        this.data = encode(addressSource.value);
         this.address = decode(this.data);
     }
 
@@ -109,6 +119,21 @@ public class PseudoDeviceAddress {
         }
         final Int64 int64 = decoded.int64(0);
         return (int64 == null ? 0 : decoded.int64(0).value);
+    }
+
+    /**
+     * Cryptographic hash function (SHA256) for separating the address from
+     * its random source.
+     */
+    protected static Data cryptographicHash(final Data data) {
+        try {
+            final MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            final byte[] hash = sha.digest(data.value);
+            return new Data(hash);
+        } catch (Throwable e) {
+            logger.fault("SHA-256 unavailable", e);
+            return data;
+        }
     }
 
     @Override
