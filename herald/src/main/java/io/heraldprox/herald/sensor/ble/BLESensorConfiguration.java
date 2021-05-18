@@ -6,6 +6,7 @@ package io.heraldprox.herald.sensor.ble;
 
 import io.heraldprox.herald.sensor.data.SensorLoggerLevel;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.random.NonBlockingCSPRNG;
 import io.heraldprox.herald.sensor.datatype.random.NonBlockingPRNG;
 import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
@@ -139,7 +140,7 @@ public class BLESensorConfiguration {
     /// - Set to Random for reliable continuous operation, validated
     /// - Other methods will cause blocking after 4-8 hours and interrupt operation on idle devices
     /// - Blocking can also occur at app initialisation, advert refresh, and also impact system services
-    public static RandomSource pseudoDeviceAddressRandomisation = new NonBlockingPRNG();
+    public static RandomSource pseudoDeviceAddressRandomisation = new NonBlockingCSPRNG();
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
     public static boolean deviceIntrospectionEnabled = false;

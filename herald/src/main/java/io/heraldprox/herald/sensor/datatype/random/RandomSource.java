@@ -4,6 +4,10 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import java.security.MessageDigest;
+
+import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
+import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
 
 /**
@@ -11,6 +15,7 @@ import io.heraldprox.herald.sensor.datatype.Data;
  * custom random source that is application specific.
  */
 public abstract class RandomSource {
+    private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RandomSource");
     /** Entropy gathered from external sources via addEntropy() */
     private long entropy = (long) (Math.random() * Long.MAX_VALUE);
 
@@ -20,7 +25,28 @@ public abstract class RandomSource {
      * @param value entropy skip ahead value in bits
      **/
     public synchronized void addEntropy(final long value) {
-        entropy += value;
+        entropy ^= value;
+    }
+
+    /**
+     * Collect entropy from external sources. Use detected BLE MAC addresses as an entropy source
+     * as these addresses are mostly, if not all, derived from disparate SecureRandom instances.
+     *
+     * @param value BLE MAC address of target device
+     */
+    public synchronized void addEntropy(final String value) {
+        if (value == null || value.isEmpty()) {
+            return;
+        }
+        // Use cryptographic hash function to separate entropy material from source value
+        final Data hashOfValue = sha256(new Data(value.getBytes()));
+        // Truncate hash to derive entropy, using system-wide random instance to select index and
+        // also add entropy to the singleton random instance as detections are truly random events.
+        final int index = (int) (Math.abs(Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFl)) % (hashOfValue.value.length - 8));
+        final long entropy = hashOfValue.int64(index).value;
+        logger.debug("Added entropy (value={})", entropy);
+        // Accumulate entropy
+        addEntropy(entropy);
     }
 
     /**
@@ -30,7 +56,7 @@ public abstract class RandomSource {
      */
     protected synchronized long useEntropy() {
         final long useEntropy = entropy;
-        entropy = (long) (Math.random() * Long.MAX_VALUE);
+        entropy = Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFl);
         return useEntropy;
     }
 
@@ -63,5 +89,20 @@ public abstract class RandomSource {
         final Data data = new Data(new byte[8]);
         nextBytes(data.value);
         return data.int64(0).value;
+    }
+
+    /**
+     * Cryptographic hash function (SHA256) for separating the random value from
+     * its random source through hashing and truncation.
+     */
+    protected final static Data sha256(final Data data) {
+        try {
+            final MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            final byte[] hash = sha.digest(data.value);
+            return new Data(hash);
+        } catch (Throwable e) {
+            logger.fault("SHA-256 unavailable", e);
+            return data;
+        }
     }
 }
