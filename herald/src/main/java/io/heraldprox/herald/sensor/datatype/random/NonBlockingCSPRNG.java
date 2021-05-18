@@ -24,12 +24,26 @@ import io.heraldprox.herald.sensor.datatype.Data;
  * Finally, for additional assurance, entropy can also be gathered from the mac addresses of
  * encountered devices, where the majority of, if not all, addresses should have been generated
  * from their own SecureRandom source.
+ *
  * As an overview, this CSPRNG is based on:
  * - Random seed derived from entropy gathered from truly random events
  * - Deterministic PRNG offering uniform distribution of random values given the initial seed
  * - Crytographic hash function for separating random values from the random seed
+ *
+ * The expectation is that it will be possible to identify a random seed that yielded an individual
+ * observation, and also a seed that yielded consecutive values using brute force methods. However,
+ * this is intentional as the design aims to ensure observations are associated with most candidate
+ * seeds (2^61 out of 2^64). This deliberate strategy makes an attack unattractive due to the level
+ * of uncertainty. The ability to rapidly find one of the seeds is evidence to show the attacker
+ * that little information has been gained for exploitation, as the identified seed is just one of
+ * many candidates. Running the process for a long period will show there are multiple seeds that
+ * can yield the observations.
  */
 public class NonBlockingCSPRNG extends RandomSource {
+    private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.NonBlockingCSPRNG");
+    // Enable manual debug mode to write internal data to logger for visual inspection,
+    // using explicit flag here to ensure data is not leaked to log by mistake
+//    private final static boolean manualDebugMode = true;
     private long getRandomLastCalledAt = System.nanoTime();
     // Using 2048 bits of random data to derive the random seed via a cryptographic hash function
     private final Data randomSeedSourceData = new Data(new byte[256]);
@@ -63,7 +77,9 @@ public class NonBlockingCSPRNG extends RandomSource {
         final long entropyFromExternalSources = useEntropy();
         // - 1D. Combination of available entropy
         final long entropy = entropyFromElapsedTime ^ entropyFromSystemUpTime ^ entropyFromExternalSources;
-
+//        if (manualDebugMode) {
+//            logger.debug("getCSPRNG entropy (elapsed={},upTime={},external={},combined={})", entropyFromElapsedTime, entropyFromSystemUpTime, entropyFromExternalSources, entropy);
+//        }
         // Requirement 2 : Uniformly distributed PRNG
         // A PRNG must deliver uniformly distributed random values and a long period length, such
         // that knowledge of prior values offer negligible or no benefit in predicting future values.
@@ -88,13 +104,17 @@ public class NonBlockingCSPRNG extends RandomSource {
         //       means there are 2^256 / 2^64 / 2^8 = 2^24 possible source seeds that can generate
         //       the same random seed. This increases the search space that make an attack
         //       impractical given limited observations.
-        final long randomSeed = randomSeedSourceDataHash.int64(randomSeedSource.nextInt(randomSeedSourceDataHash.value.length - 8)).value;
+        final int index = randomSeedSource.nextInt(randomSeedSourceDataHash.value.length - 8);
+        final long randomSeed = randomSeedSourceDataHash.int64(index).value;
         // - 2D. Create a non-blocking PRNG for one-time use where the seed has been derived from
         //       truly random events, and via a cryptographic hash function to protect the source
         //       seed from compromise. The combination of these two methods mean there are
         //       2^37 * 2^24 = 2^61 possible entropy values that can generate the same random seed.
         //       This is a large search space that make an attack impractical given limited
         //       observations.
+//        if (manualDebugMode) {
+//            logger.debug("getCSPRNG seed (seed={},index={},hash={})", randomSeed, index, randomSeedSourceDataHash.hexEncodedString());
+//        }
         return new Random(randomSeed);
     }
 
@@ -112,6 +132,9 @@ public class NonBlockingCSPRNG extends RandomSource {
         // Truncate random data to derive random long value, using the CSPRNG to select index
         final int index = (int) random.nextInt(nextLongSourceData.value.length - 4);
         final int randomValue = nextLongSourceData.int32(index).value;
+//        if (manualDebugMode) {
+//            logger.debug("nextInt (value={},index={},hash={})", randomValue, index, nextLongSourceData.hexEncodedString());
+//        }
         return randomValue;
     }
 
@@ -124,6 +147,9 @@ public class NonBlockingCSPRNG extends RandomSource {
         // Truncate random data to derive random long value, using the CSPRNG to select index
         final int index = (int) random.nextInt(nextLongSourceData.value.length - 8);
         final long randomValue = nextLongSourceData.int64(index).value;
+//        if (manualDebugMode) {
+//            logger.debug("nextLong (value={},index={},hash={})", randomValue, index, nextLongSourceData.hexEncodedString());
+//        }
         return randomValue;
     }
 
