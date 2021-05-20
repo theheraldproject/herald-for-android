@@ -119,7 +119,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         if (null == scanRecord) {
             return null;
         }
-        // Add external entropy to PRNG
+        // Add external entropy to RandomSource
         BLESensorConfiguration.pseudoDeviceAddressRandomisation.addEntropy(scanResult.getDevice().getAddress());
         // HERALD pseudo device address
         if (null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor)) {

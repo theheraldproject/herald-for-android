@@ -12,44 +12,32 @@ import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 import java.security.MessageDigest;
 import java.util.Objects;
 
-/** Pseudo device address to enable caching of device payload without relying on device mac address
+/**
+ * Pseudo device address to enable caching of device payload without relying on device mac address
  * that may change frequently like the A10 and A20.
  *
- /// Pseudo device address is by default generated from an adaptation of Random, not SecureRandom.
- /// This is necessary to avoid app blocking caused by SecureRandom on idle devices with
- /// limited entropy. SecureRandom uses /dev/urandom (derived from /dev/random) as random
- /// seed source which is a shared resource that when exhausted causes disruption across
- /// the whole system beyond the app. /dev/random gathers entropy from system events such
- /// as storage activities and user actions which can easily become exhausted on idle
- /// devices. Tests have shown blocking can start within 4 to 8 hours, and time to recover
- /// increases over time, leading the app and underlying services to eventually halt.
- /// The same issue has been observed on both mobile and server hardware, hence the use
- /// of SecureRandom should be reserved for the production of strong encryption keys on
- /// rare occasions, rather than repeated use in the production of ephemeral time limited
- /// address data.
- /// Given /dev/random is easily exhausted on idle mobile devices because entropy is gathered
- /// from a specific set of events (e.g. boot up, storage, user activities) that should
- /// normally occur more frequently than encryption key generation requests. A similar
- /// approach can be taken to adapt Random to use an entropy source that is guaranteed to
- /// be non-exhaustive in this context, thus avoiding the blocking issue while achieving
- /// appropriate strength that is fit for purpose. The adaptation takes advantage of the
- /// continuous running nature of the proximity detection process where timing events are
- /// highly variable due to external factors such as OS state, phones in the vicinity,
- /// Bluetooth connection time, and other system processes. The result is a reliable
- /// entropy source that is sufficiently challenging to predict for this purpose.
- /// In short, an attacker will need to establish the seed of Math.random() based on
- /// limited observations of truncated values where any number of values and bits could
- /// have been skipped between observations and from initialisation. While cracking the
- /// seed of Random is trivial when the value index is known (i.e. it simply confirms
- /// Random value sequence is deterministic, given the seed, as per Java documentation),
- /// it is significantly more challenging when the position data is unknown, and information
- /// has been discarded (truncated) in the process, especially when the position is in
- /// essence selected by a highly random process.
- /// In practice, using secure random can cause blocking on app initialisation, bluetooth
- /// power cycle, advert refresh that occurs once every 15 minutes, and also blocking of
- /// underlying system services which impacts a wide range of services including Bluetooth
- /// operation and garbage collection, leading to zero detection until sufficient entropy has
- /// been collected, which will take increasing time when the device is idle.
+ * Pseudo device address is by default generated from an adaptation SecureRandom.
+ * This is necessary to avoid app blocking caused by SecureRandom on idle devices with
+ * limited entropy. SecureRandom uses /dev/urandom (derived from /dev/random) as random
+ * seed source which is a shared resource that when exhausted causes disruption across
+ * the whole system beyond the app. /dev/random gathers entropy from system events such
+ * as storage activities and user actions which can easily become exhausted on idle
+ * devices. Tests have shown blocking can start within 4 to 8 hours, and time to recover
+ * increases over time, leading the app and underlying services to eventually halt.
+ * The same issue has been observed on both mobile and server hardware, hence the use
+ * of SecureRandom should be reserved for the production of strong encryption keys on
+ * rare occasions, rather than repeated use in the production of ephemeral time limited
+ * address data.
+ * Given /dev/random is easily exhausted on idle mobile devices because entropy is gathered
+ * from a specific set of events (e.g. boot up, storage, user activities) that should
+ * normally occur more frequently than encryption key generation requests. A similar
+ * approach can be taken to adapt SecureRandom to use an entropy source that is guaranteed
+ * to be non-exhaustive in this context, thus avoiding the blocking issue while achieving
+ * appropriate strength that is fit for purpose. The adaptation takes advantage of the
+ * continuous running nature of the proximity detection process where timing and detection
+ * events are highly variable due to external factors such as OS state, phones in the
+ * vicinity,  Bluetooth connection time, and other system processes. The result is a
+ * reliable entropy source that is sufficiently challenging to predict for this purpose.
  **/
 public class PseudoDeviceAddress {
     public final long address;
@@ -57,20 +45,37 @@ public class PseudoDeviceAddress {
 
     /**
      * Generates a random PseudoDeviceAddress based on the requested RandomSource
-     * @param randomSource The RandomSource to use for PseudoDeviceAddress generation.
+     * @param randomSource The random source to use for PseudoDeviceAddress generation, the
+     *                     recommended source is NonBlockingSecureRandom
      */
     public PseudoDeviceAddress(final RandomSource randomSource) {
-        // Bluetooth device address is 48-bit (6 bytes), using
-        // the same length to offer the same collision avoidance
-        // Choose between random, secure random singleton, secure random, and NIST compliant secure random as random source
-        // - NonBlockingPRNG is non-blocking and has been adapted to obtain entropy from reliable source in this context. It is
-        //   sufficiently secure for this purpose, validated and recommended.
-        // - NonBlockingCSPRNG is non-blocking and has been adapted to obtain entropy from reliable source in this context.
-        //   It uses SHA256 and truncation to separate the random values from random seed. It is sufficiently secure for this
-        //   purpose, validated and recommended. This is the fastest solution.
-        // - BlockingSecureRandomSingleton is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
-        // - BlockingSecureRandom is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
-        // - BlockingSecureRandomNIST is block after 6 hours on idle devices and inappropriate for this use case, not recommended
+        // Bluetooth device address is 48-bit (6 bytes), using the same length to offer the same collision avoidance
+        // Recommended random source is NonBlockingSecureRandom
+        // - All included random sources obtain truly random entropy data from reliable sources in the application context.
+        //   - 1. Random source call time is determined by a combination of this device's time keeping and also other
+        //        devices' performance which are both variable and unpredictable at nano time scale.
+        //   - 2. BLE MAC address of target devices and detection time are unpredictable as they are both dependent on
+        //        user environment and activities, and also behaviour of other users. The order of detection is unpredictable,
+        //        and the actual address is also derived from the other device's SecureRandom source.
+        // - Non-blocking random sources are recommended for the target application domain as a blocking event caused by
+        //   exhaustion of entropy will impact wider system (e.g. BLE MAC address generation) and prevent detection of
+        //   target devices, thus impacts risk estimation in disease control.
+        //   - 1. NonBlockingPRNG will never block, as it is based on a combination of Random, and entropy data. It is
+        //        sufficiently secure for the target domain, but now superceded by NonBlockingSecureRandom.
+        //   - 2. NonBlockingCSPRNG will never block, as it is based on a combination of Random, SHA256, and entropy data.
+        //        It improves on NonBlockingPRNG by offering cryptographic separation of observable random data and
+        //        internal state. This is also sufficiently secure for the target domain, but now superceded by
+        //        NonBlockingSecureRandom.
+        //   - 3. NonBlockingSecureRandom is unlikely to block when used with default parameters. It is based on a
+        //        combination of SecureRandom, SHA256, xor, truncation, and entropy data. Utilisation of SecureRandom
+        //        has been planned and minimised to avoid exhausting system entropy. This is now the recommended
+        //        random source for generating pseudo device addresses.
+        // - Blocking random sources are not recommended for the target application, and only provided here to support
+        //   applications with strict security compliance requirements, or when the device is known to be frequently
+        //   active, thus the chance of exhausting system entropy is low.
+        //   - 1. BlockingSecureRandomSingleton is blocking after 4-8 hours on idle devices.
+        //   - 2. BlockingSecureRandom is blocking after 4-8 hours on idle devices.
+        //   - 3. BlockingSecureRandomNIST is blocking after 6 hours on idle devices.
         // Encoder will discard the first two of the 8 bytes as the address is only 6 bytes long
         this.data = encode(randomSource.nextLong());
         this.address = decode(this.data);

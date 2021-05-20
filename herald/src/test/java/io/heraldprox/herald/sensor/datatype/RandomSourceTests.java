@@ -15,6 +15,7 @@ import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomNIST;
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomSingleton;
 import io.heraldprox.herald.sensor.datatype.random.NonBlockingCSPRNG;
 import io.heraldprox.herald.sensor.datatype.random.NonBlockingPRNG;
+import io.heraldprox.herald.sensor.datatype.random.NonBlockingSecureRandom;
 import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
 import static org.junit.Assert.assertEquals;
@@ -32,6 +33,7 @@ public class RandomSourceTests {
         final List<RandomSource> randomSources = Arrays.asList(
                 new NonBlockingPRNG(),
                 new NonBlockingCSPRNG(),
+                new NonBlockingSecureRandom(),
                 new BlockingSecureRandom(),
                 new BlockingSecureRandomSingleton(),
                 new BlockingSecureRandomNIST());
@@ -83,6 +85,7 @@ public class RandomSourceTests {
             int lastValue = randomSource.nextInt();
             for (int i=-1000; i<1000; i++) {
                 randomSource.addEntropy(i);
+                randomSource.addEntropy(Integer.toString(i));
                 final int value = randomSource.nextInt();
                 if (value == lastValue) {
                     duplicates++;

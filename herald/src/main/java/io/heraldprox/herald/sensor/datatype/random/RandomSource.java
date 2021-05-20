@@ -5,10 +5,13 @@
 package io.heraldprox.herald.sensor.datatype.random;
 
 import java.security.MessageDigest;
+import java.util.Arrays;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.Int32;
+import io.heraldprox.herald.sensor.datatype.Int64;
 
 /**
  * Source of random data. Override and implement nextBytes() method to provide
@@ -17,7 +20,10 @@ import io.heraldprox.herald.sensor.datatype.Data;
 public abstract class RandomSource {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RandomSource");
     /** Entropy gathered from external sources via addEntropy() */
-    private long entropy = (long) (Math.random() * Long.MAX_VALUE);
+    private final RingBuffer entropy = new RingBuffer(2048);
+    private long lastUseEntropyTimestamp = System.nanoTime();
+
+    // MARK: - Entropy gathering and usage
 
     /**
      * Contribute entropy from external source, e.g. unpredictable time intervals
@@ -25,7 +31,7 @@ public abstract class RandomSource {
      * @param value entropy skip ahead value in bits
      **/
     public synchronized void addEntropy(final long value) {
-        entropy ^= value;
+        entropy.push(value);
     }
 
     /**
@@ -39,25 +45,37 @@ public abstract class RandomSource {
             return;
         }
         // Use cryptographic hash function to separate entropy material from source value
-        final Data hashOfValue = sha256(new Data(value.getBytes()));
-        // Truncate hash to derive entropy, using system-wide random instance to select index and
-        // also add entropy to the singleton random instance as detections are truly random events.
-        final int index = (int) (Math.abs(Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFl)) % (hashOfValue.value.length - 8));
-        final long entropy = hashOfValue.int64(index).value;
-        logger.debug("Added entropy (value={})", entropy);
-        // Accumulate entropy
-        addEntropy(entropy);
+        final Data entropyData = new Data(value.getBytes());
+        entropyData.append(new Int64(System.nanoTime()));
+        entropy.push(hash(entropyData));
     }
 
     /**
-     * Spend entropy from external source. Entropy is replaced by random value.
+     * Spend entropy from external source. Entropy is cleared upon use.
      *
      * @return Entropy gathered by addEntropy()
      */
     protected synchronized long useEntropy() {
-        final long useEntropy = entropy;
-        entropy = Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFl);
-        return useEntropy;
+        // Hash function may fail if SHA-256 is not available, or there is no entropy data.
+        Data hash = entropy.hash();
+        if (hash == null || hash.value.length < 8) {
+            // Revert to elapsed time alone as entropy source. Hash function will always succeed.
+            final Data data = new Data();
+            data.append(new Int64(lastUseEntropyTimestamp ^ System.nanoTime()));
+            hash = hash(data);
+        }
+        lastUseEntropyTimestamp = System.nanoTime();
+        entropy.clear();
+        return hash.uint64(0).value;
+    }
+
+    /**
+     * Spend entropy by transferring available entropy data to sink. Entropy is cleared upon use.
+     * @param sink Target data buffer for transferring entropy data.
+     */
+    protected synchronized void useEntropy(final Data sink) {
+        sink.append(entropy.get());
+        entropy.clear();
     }
 
     // MARK:- Random data
@@ -92,17 +110,27 @@ public abstract class RandomSource {
     }
 
     /**
-     * Cryptographic hash function (SHA256) for separating the random value from
-     * its random source through hashing and truncation.
+     * Cryptographic hash function : SHA256
+     * Reverts to non-cryptographic Java hash function in the unlikely event that
+     * SHA256 is not supported on the system. This should never happen as SHA256
+     * must be supported in all Java implementations.
      */
-    protected final static Data sha256(final Data data) {
+    protected final static Data hash(final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);
             return new Data(hash);
         } catch (Throwable e) {
-            logger.fault("SHA-256 unavailable", e);
-            return data;
+            // This should never happen as every implementation of Java should
+            // support MD5, SHA1, and SHA256 as a minimum.
+            logger.fault("SHA-256 unavailable, emulating with non-cryptographic hash function", e);
+            // Revert to build-in hash function to emulate 256-bit (32-byte) hash
+            final Data hash = new Data();
+            hash.append(new Int32(Arrays.hashCode(data.value)));
+            while (hash.value.length < 32) {
+                hash.append(new Int32(Arrays.hashCode(hash.value)));
+            }
+            return hash;
         }
     }
 }

@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.datatype.random;
 
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Random;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
@@ -97,7 +98,7 @@ public class NonBlockingCSPRNG extends RandomSource {
         //       This offers a large search space that make an attack impractical given limited
         //       observations.
         randomSeedSource.nextBytes(randomSeedSourceData.value);
-        final Data randomSeedSourceDataHash = sha256(randomSeedSourceData);
+        final Data randomSeedSourceDataHash = hash(randomSeedSourceData);
         // - 2C. Truncating cryptographic hash at a random index to derive the seed for the
         //       one-time use PRNG. Index is selected by a random source seeded by truly random
         //       events. Truncating the 256-bit hash down to a 64-bit random seed in 8-bit blocks

@@ -87,22 +87,22 @@ public class K {
         /**
          The last matching key seed on day 2000 (over 5 years from epoch) is the hash of the secret key. A new secret key will need to be established before all matching key seeds are exhausted on day 2000.
          */
-        matchingKeySeed[n] = new MatchingKeySeed(F.h(secretKey));
+        matchingKeySeed[n] = new MatchingKeySeed(F.hash(secretKey));
         for (int i=n; i-->0;) {
-            matchingKeySeed[i] = new MatchingKeySeed(F.h(F.t(matchingKeySeed[i + 1])));
+            matchingKeySeed[i] = new MatchingKeySeed(F.hash(F.truncate(matchingKeySeed[i + 1])));
         }
         /**
          Matching key for day i is the hash of the matching key seed for day i xor i - 1. A separation of matching key from its seed is necessary because the matching key is distributed by the server to all phones for on-device matching in a decentralised contact tracing solution. Given a seed is used to derive the seeds for other days, publishing the hash prevents an attacker from establishing the other seeds.
          */
         final MatchingKey[] matchingKey = new MatchingKey[n + 1];
         for (int i=1; i<=n; i++) {
-            matchingKey[i] = new MatchingKey(F.h(F.xor(matchingKeySeed[i], matchingKeySeed[i - 1])));
+            matchingKey[i] = new MatchingKey(F.hash(F.xor(matchingKeySeed[i], matchingKeySeed[i - 1])));
         }
         /**
          Matching key on day 0 is derived from matching key seed on day 0 and day -1. Implemented as special case for clarity in above code.
          */
-        final MatchingKeySeed matchingKeySeedMinusOne = new MatchingKeySeed(F.h(F.t(matchingKeySeed[0])));
-        matchingKey[0] = new MatchingKey(F.h(F.xor(matchingKeySeed[0], matchingKeySeedMinusOne)));
+        final MatchingKeySeed matchingKeySeedMinusOne = new MatchingKeySeed(F.hash(F.truncate(matchingKeySeed[0])));
+        matchingKey[0] = new MatchingKey(F.hash(F.xor(matchingKeySeed[0], matchingKeySeedMinusOne)));
         return matchingKey;
     }
 
@@ -117,27 +117,27 @@ public class K {
         /**
          The last contact key seed on day i at period 240 (last 6 minutes of the day) is the hash of the matching key for day i.
          */
-        contactKeySeed[n] = new ContactKeySeed(F.h(matchingKey));
+        contactKeySeed[n] = new ContactKeySeed(F.hash(matchingKey));
         for (int j=n; j-->0;) {
-            contactKeySeed[j] = new ContactKeySeed(F.h(F.t(contactKeySeed[j + 1])));
+            contactKeySeed[j] = new ContactKeySeed(F.hash(F.truncate(contactKeySeed[j + 1])));
         }
         /**
          Contact key for day i at period j is the hash of the contact key seed for day i at period j xor j - 1. A separation of contact key from its seed is necessary because the contact key is distributed to other phones as evidence for encounters on day i within period j. Given a seed is used to derive the seeds for other periods on the same day, transmitting the hash prevents an attacker from establishing the other seeds on day i.
          */
         final ContactKey[] contactKey = new ContactKey[n + 1];
         for (int j=1; j<=n; j++) {
-            contactKey[j] = new ContactKey(F.h(F.xor(contactKeySeed[j], contactKeySeed[j - 1])));
+            contactKey[j] = new ContactKey(F.hash(F.xor(contactKeySeed[j], contactKeySeed[j - 1])));
         }
         /**
          Contact key on day 0 is derived from contact key seed at period 0 and period -1. Implemented as special case for clarity in above code.
          */
-        final ContactKeySeed contactKeySeedMinusOne = new ContactKeySeed(F.h(F.t(contactKeySeed[0])));
-        contactKey[0] = new ContactKey(F.h(F.xor(contactKeySeed[0], contactKeySeedMinusOne)));
+        final ContactKeySeed contactKeySeedMinusOne = new ContactKeySeed(F.hash(F.truncate(contactKeySeed[0])));
+        contactKey[0] = new ContactKey(F.hash(F.xor(contactKeySeed[0], contactKeySeedMinusOne)));
         return contactKey;
     }
 
     /// Generate contact identifer I_{c}
     protected static ContactIdentifier contactIdentifier(ContactKey contactKey) {
-        return new ContactIdentifier(F.t(contactKey, 16));
+        return new ContactIdentifier(F.truncate(contactKey, 16));
     }
 }
