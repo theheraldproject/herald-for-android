@@ -1,11 +1,19 @@
 package com.vmware.herald.sensor.data;
 
+import com.vmware.herald.sensor.datatype.Data;
 import com.vmware.herald.sensor.datatype.UIntBig;
 
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import static org.junit.Assert.assertEquals;
 
@@ -90,4 +98,32 @@ public class SecurityTests {
     }
 
 
+    @Test
+    public void test_aes() throws Exception {
+        // Generate secret key
+        final String key = "examplekey";
+        final MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        final byte[] keyData = sha256.digest(key.getBytes(StandardCharsets.UTF_8));
+        System.out.println("key = " + new Data(keyData).hexEncodedString());
+        final SecretKey secretKey = new SecretKeySpec(keyData, "AES");
+
+        // IV required for CBC
+        final byte[] ivData = new byte[16];
+        final IvParameterSpec iv = new IvParameterSpec(ivData);
+
+        // Encrypt data
+        final String data = "hello";
+        final Cipher cipherEncrypt = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipherEncrypt.init(Cipher.ENCRYPT_MODE, secretKey, iv);
+        final byte[] cipherText = cipherEncrypt.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        System.out.println("encrypted = " + new Data(cipherText).hexEncodedString());
+
+        // Decrypt data
+        final Cipher cipherDecrypt = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipherDecrypt.init(Cipher.DECRYPT_MODE, secretKey, iv);
+        final byte[] clearText = cipherDecrypt.doFinal(cipherText);
+        final String dataOut = new String(clearText, StandardCharsets.UTF_8);
+        System.out.println("decrypted = " + dataOut);
+        assertEquals(data, dataOut);
+    }
 }
