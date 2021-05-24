@@ -38,12 +38,17 @@ import io.heraldprox.herald.sensor.payload.simple.F;
  *   bits follow a uniform distribution. This function is used to advance the internal state of
  *   this random source, by hashing a combination of current state and external entropy.
  *
- * Performance is 6298ns/call to nextLong when the internal state is replaced every second.
- *
- * Distribution test shows solution offers similar characteristics as BlockingSecureRandomNIST
- * - NonBlockingSecureRandom,samples=1000000,sequenceError=0.011930763568868408,valueError=0.0124595
- * - BlockingSecureRandom,samples=1000000,sequenceError=0.01340685803891449,valueError=0.0125805
- * - BlockingSecureRandomNIST,samples=1000000,sequenceError=0.011800755248335893,valueError=0.0119505
+ * Algorithm and performance characteristics:
+ * - 2048 bit seed entropy collected from thread scheduler timing of 1 millisecond at nanosecond resolution
+ * - Up to 2048 bit external entropy collected from BLE MAC address of target devices and detection time
+ * - 2048 bit internal state updated by SHA-256 of current state and available external entropy
+ * - 2048 bit ephemeral state derived from SHA-256 of XOR(previous state, current state)
+ * - Random bits derived from recursive SHA-256 of XOR(ephemeral state, random output)
+ * - 6298ns/call to nextLong when the internal state is replaced every second.
+ * - Distribution test shows solution offers similar characteristics as BlockingSecureRandomNIST
+ *   - BlockingSecureRandomNIST, samples=1000000, sequenceError=0.011800755248335893, valueError=0.0119505
+ *   - NonBlockingSecureRandom,  samples=1000000, sequenceError=0.011930763568868408, valueError=0.0124595
+ *   - BlockingSecureRandom,     samples=1000000, sequenceError=0.01340685803891449,  valueError=0.0125805
  *
  * SecureRandom is blocking when it is used on an idle device as entropy is exhausted. The lack
  * of system activities mean entropy is not replenished at a required rate, thus causing other
@@ -54,6 +59,20 @@ import io.heraldprox.herald.sensor.payload.simple.F;
  * when the phone was recently booted up. Following numerous investigations and implementations
  * of a cryptographically secure random source, the evidence suggests SecureRandom should be
  * avoided completely to prevent blocking.
+ *
+ * Please refer to the following paper for a review of entropy sources for SecureRandom
+ *
+ * Michaelis K., Meyer C., Schwenk J. (2013) Randomly Failed! The State of Randomness in Current
+ * Java Implementations. In: Dawson E. (eds) Topics in Cryptology – CT-RSA 2013. CT-RSA 2013.
+ * Lecture Notes in Computer Science, vol 7779. Springer, Berlin, Heidelberg.
+ * https://doi.org/10.1007/978-3-642-36095-4_9
+ *
+ * This new solution addresses previous vulnerabilities by using
+ * - 2048 bits as internal state
+ * - SHA256 instead of SHA1 for hashing
+ * - Single thread for entropy collection
+ * - Initial entropy collection is blocking
+ * - Reseeding is non-blocking, thus attack on system load cannot compromise internal state
  *
  * Note: Logging has been disabled by commenting to avoid information leakage, only fault
  * messages are retained.
@@ -90,7 +109,7 @@ public class NonBlockingSecureRandom extends RandomSource {
      * every 6 hours.
      */
     public NonBlockingSecureRandom() {
-        this(1024, TimeInterval.hours(6));
+        this(2048, TimeInterval.hours(6));
     }
 
     /**
@@ -116,12 +135,22 @@ public class NonBlockingSecureRandom extends RandomSource {
                 // Generate random data as basis for hashing by SHA256
                 final Data randomData = new Data(new byte[bits / 8]);
                 // Generate one bit per millisecond
-                for (int i=randomData.value.length * 8; i-->0;) {
+                long lastNanoTime = 0;
+                for (int i=randomData.value.length * 8; i>0;) {
                     // Generate one random bit based on last bit of nano time
-                    final byte randomBit = (byte) (System.nanoTime() & 1);
-                    // Set random bit in random data
-                    final int byteIndex = i / 8;
-                    randomData.value[byteIndex] = (byte) ((randomData.value[byteIndex] << 1) | randomBit);
+                    // Given nanoTime() is nanosecond precision, not resolution,
+                    // consecutive calls may report the same value, thus this
+                    // condition is checked and result discounted to prevent
+                    // unintentional collection of repeated bits
+                    final long nanoTime = System.nanoTime();
+                    if (nanoTime != lastNanoTime) {
+                        i--;
+                        final byte randomBit = (byte) (nanoTime & 1);
+                        // Set random bit in random data
+                        final int byteIndex = i / 8;
+                        randomData.value[byteIndex] = (byte) ((randomData.value[byteIndex] << 1) | randomBit);
+                        lastNanoTime = nanoTime;
+                    }
                     // Sleep for about one millisecond +/- random amount dependent on thread
                     // scheduling according to wider system processes
                     try {
@@ -196,12 +225,13 @@ public class NonBlockingSecureRandom extends RandomSource {
         //       but the solution is primarily designed for generation of pseudo device addresses
         //       which is only 6 bytes long derived from truncation of 8 bytes of random data.
         Data randomByteBlock = hash(ephemeralRandomSeed);
+        final Data ephemeralRandomSeedSuffix = ephemeralRandomSeed.subdata(1);
         for (int i=0; i<bytes.length; i++) {
             // Taking the first byte from the hash as random data
             bytes[i] = randomByteBlock.value[0];
             // Hashing the remaining bytes mixed with part of the ephemeral random seed to generate
             // the next block
-            randomByteBlock = hash(xor(ephemeralRandomSeed.subdata(1), randomByteBlock.subdata(1)));
+            randomByteBlock = hash(xor(ephemeralRandomSeedSuffix, randomByteBlock.subdata(1)));
         }
     }
 

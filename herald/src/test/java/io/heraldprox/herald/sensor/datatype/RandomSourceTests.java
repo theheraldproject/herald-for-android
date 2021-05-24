@@ -35,7 +35,7 @@ public class RandomSourceTests {
         final List<RandomSource> randomSources = Arrays.asList(
                 new NonBlockingPRNG(),
                 new NonBlockingCSPRNG(),
-                new NonBlockingSecureRandom(),
+                new NonBlockingSecureRandom(2048, TimeInterval.seconds(1)),
                 new BlockingSecureRandom(),
                 new BlockingSecureRandomSingleton(),
                 new BlockingSecureRandomNIST());
