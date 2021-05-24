@@ -8,10 +8,12 @@ import org.junit.Test;
 
 import io.heraldprox.herald.sensor.datatype.random.RingBuffer;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class RingBufferTests {
 
@@ -21,7 +23,66 @@ public class RingBufferTests {
         assertEquals(0, ringBuffer.size());
         assertEquals(0, ringBuffer.get().value.length);
         assertEquals(0, ringBuffer.get(0));
+        assertEquals(0, ringBuffer.pop());
+        assertEquals(0, ringBuffer.size());
         assertNull(ringBuffer.hash());
+    }
+
+    @Test
+    public void testPushPop() throws Exception {
+        final RingBuffer ringBuffer = new RingBuffer(2);
+        // Buffer = 1
+        ringBuffer.push((byte) 1);
+        assertEquals(1, ringBuffer.get(0));
+        // Buffer = empty
+        assertEquals(1, ringBuffer.pop());
+        assertEquals(0, ringBuffer.size());
+
+        // Buffer = 1,2
+        ringBuffer.push((byte) 1);
+        ringBuffer.push((byte) 2);
+        assertEquals(1, ringBuffer.get(0));
+        assertEquals(2, ringBuffer.get(1));
+        // Buffer = empty
+        assertEquals(1, ringBuffer.pop());
+        assertEquals(2, ringBuffer.pop());
+        assertEquals(0, ringBuffer.size());
+
+        // Buffer = [1,]2,3
+        ringBuffer.push((byte) 1);
+        ringBuffer.push((byte) 2);
+        ringBuffer.push((byte) 3);
+        assertEquals(2, ringBuffer.get(0));
+        assertEquals(3, ringBuffer.get(1));
+        // Buffer = empty
+        assertEquals(2, ringBuffer.pop());
+        assertEquals(3, ringBuffer.pop());
+        assertEquals(0, ringBuffer.size());
+    }
+
+    @Test
+    public void testPop() throws Exception {
+        final RingBuffer ringBuffer = new RingBuffer(4);
+        // Buffer = 1,2,3,4
+        ringBuffer.push((byte) 1);
+        ringBuffer.push((byte) 2);
+        ringBuffer.push((byte) 3);
+        ringBuffer.push((byte) 4);
+        assertArrayEquals(new byte[]{1}, ringBuffer.pop(1).value);
+        assertArrayEquals(new byte[]{2,3}, ringBuffer.pop(2).value);
+        assertArrayEquals(new byte[]{4}, ringBuffer.pop(3).value);
+        assertEquals(0, ringBuffer.size());
+
+        // Buffer = [1,]2,3,4,5
+        ringBuffer.push((byte) 1);
+        ringBuffer.push((byte) 2);
+        ringBuffer.push((byte) 3);
+        ringBuffer.push((byte) 4);
+        ringBuffer.push((byte) 5);
+        assertArrayEquals(new byte[]{2}, ringBuffer.pop(1).value);
+        assertArrayEquals(new byte[]{3,4}, ringBuffer.pop(2).value);
+        assertArrayEquals(new byte[]{5}, ringBuffer.pop(3).value);
+        assertEquals(0, ringBuffer.size());
     }
 
     @Test

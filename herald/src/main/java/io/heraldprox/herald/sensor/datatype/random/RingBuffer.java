@@ -61,7 +61,7 @@ public class RingBuffer {
         push((byte) ((value >> 32) & 0xFF));
         push((byte) ((value >> 40) & 0xFF));
         push((byte) ((value >> 48) & 0xFF));
-        push((byte) ((value >> 56))); // MSB
+        push((byte) ((value >> 56)));      // MSB
     }
 
     /**
@@ -106,6 +106,30 @@ public class RingBuffer {
         return data[index + oldestPosition];
     }
 
+    public synchronized byte pop() {
+        if (size() == 0) {
+            return 0;
+        }
+        final byte value = get(0);
+        if (size() == 1) {
+            clear();
+        } else {
+            oldestPosition++;
+            if (data.length == oldestPosition) {
+                oldestPosition = 0;
+            }
+        }
+        return value;
+    }
+
+    public synchronized Data pop(final int bytes) {
+        final byte[] data = new byte[Math.min(bytes, size())];
+        for (int i=0; i<data.length; i++) {
+            data[i] = pop();
+        }
+        return new Data(data);
+    }
+
     /**
      * Clear ring buffer data.
      */
@@ -113,6 +137,7 @@ public class RingBuffer {
         oldestPosition = data.length;
         newestPosition = data.length;
     }
+
 
     private synchronized void incrementNewest() {
         if (newestPosition == data.length) {

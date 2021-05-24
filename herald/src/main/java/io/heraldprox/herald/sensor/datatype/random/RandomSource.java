@@ -4,12 +4,14 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.Int16;
 import io.heraldprox.herald.sensor.datatype.Int32;
 import io.heraldprox.herald.sensor.datatype.Int64;
 
@@ -20,15 +22,24 @@ import io.heraldprox.herald.sensor.datatype.Int64;
 public abstract class RandomSource {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RandomSource");
     /** Entropy gathered from external sources via addEntropy() */
-    private final RingBuffer entropy = new RingBuffer(2048);
+    public final RingBuffer entropy = new RingBuffer(4096);
     private long lastUseEntropyTimestamp = System.nanoTime();
 
     // MARK: - Entropy gathering and usage
 
     /**
-     * Contribute entropy from external source, e.g. unpredictable time intervals
+     * Contribute entropy from external source.
      *
-     * @param value entropy skip ahead value in bits
+     * @param value entropy data
+     **/
+    public synchronized void addEntropy(final byte value) {
+        entropy.push(value);
+    }
+
+    /**
+     * Contribute entropy from external source.
+     *
+     * @param value entropy data
      **/
     public synchronized void addEntropy(final long value) {
         entropy.push(value);
@@ -38,16 +49,24 @@ public abstract class RandomSource {
      * Collect entropy from external sources. Use detected BLE MAC addresses as an entropy source
      * as these addresses are mostly, if not all, derived from disparate SecureRandom instances.
      *
-     * @param value BLE MAC address of target device
+     * @param value BLE MAC address of target device, only the hex digits [0-9A-Z] are used
      */
     public synchronized void addEntropy(final String value) {
-        if (value == null || value.isEmpty()) {
+        if (value == null) {
             return;
         }
-        // Use cryptographic hash function to separate entropy material from source value
-        final Data entropyData = new Data(value.getBytes());
-        entropyData.append(new Int64(System.nanoTime()));
-        entropy.push(hash(entropyData));
+        // Add target identifier and detection time as entropy data
+        final Data entropyData = new Data();
+        // Add address hex value as entropy
+        final String hexAddress = value.toUpperCase().replaceAll("[^0-9A-F]", "");
+        if (hexAddress == null || hexAddress.isEmpty()) {
+            return;
+        }
+        entropyData.append(new Data(hexAddress.getBytes(StandardCharsets.UTF_8)));
+        // Add detection time (last 16 bits) as entropy
+        entropyData.append(new Int16((int) (System.nanoTime() & 0xFFFF)));
+        // Add entropy
+        entropy.push(entropyData);
     }
 
     /**
@@ -70,12 +89,12 @@ public abstract class RandomSource {
     }
 
     /**
-     * Spend entropy by transferring available entropy data to sink. Entropy is cleared upon use.
+     * Spend entropy by transferring entropy data to sink. Spent entropy is cleared and not reused.
+     * @param bytes Maximum number of bytes to transfer if available.
      * @param sink Target data buffer for transferring entropy data.
      */
-    protected synchronized void useEntropy(final Data sink) {
-        sink.append(entropy.get());
-        entropy.clear();
+    public synchronized void useEntropy(final int bytes, final Data sink) {
+        sink.append(entropy.pop(bytes));
     }
 
     // MARK:- Random data

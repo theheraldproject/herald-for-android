@@ -6,6 +6,7 @@ package io.heraldprox.herald.sensor.datatype;
 
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -18,6 +19,7 @@ import io.heraldprox.herald.sensor.datatype.random.NonBlockingPRNG;
 import io.heraldprox.herald.sensor.datatype.random.NonBlockingSecureRandom;
 import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -80,6 +82,45 @@ public class RandomSourceTests {
 
     @Test
     public void testAddEntropy() {
+        final String address = "0123456789ABCDEF";
+        final byte[] addressBytes = address.getBytes(StandardCharsets.UTF_8);
+        for (RandomSource randomSource : randomSources()) {
+            // Entropy should be empty on start
+            assertEquals(0, randomSource.entropy.size());
+
+            // Add byte entropy
+            randomSource.addEntropy((byte) 1);
+            final Data byteEntropy = new Data();
+            randomSource.useEntropy(1, byteEntropy);
+            assertArrayEquals(new byte[]{1}, byteEntropy.value);
+            assertEquals(0, randomSource.entropy.size());
+
+            // Add long entropy = 8-bytes = long value as LSB...MSB
+            randomSource.addEntropy(((long) 2 << 56) | 3);
+            final Data longEntropy = new Data();
+            randomSource.useEntropy(8, longEntropy);
+            assertArrayEquals(new byte[]{3,0,0,0,0,0,0,2}, longEntropy.value);
+            assertEquals(0, randomSource.entropy.size());
+
+            // String entropy = String as UTF8 bytes + 2-bytes nano time
+            randomSource.addEntropy(address);
+            final Data stringEntropy = new Data();
+            randomSource.useEntropy(16, stringEntropy);
+            assertArrayEquals(addressBytes, stringEntropy.value);
+            final Data timeEntropy = new Data();
+            randomSource.useEntropy(2, timeEntropy);
+            assertEquals(0, randomSource.entropy.size());
+
+            // String entropy only uses 0-9 and A-Z hex digits
+            randomSource.addEntropy(" 0!1@2£3$4%5^6&7*8(9) a B c D e f ");
+            final Data stringFilteredEntropy = new Data();
+            randomSource.useEntropy(18, stringFilteredEntropy);
+            assertEquals(0, randomSource.entropy.size());
+        }
+    }
+
+    @Test
+    public void testNextIntWithAddEntropy() {
         for (RandomSource randomSource : randomSources()) {
             int duplicates = 0;
             int lastValue = randomSource.nextInt();
@@ -129,7 +170,6 @@ public class RandomSourceTests {
             nextLongPerformance(randomSource, samples);
         }
     }
-
 
     // MARK: - Supporting test functions
 
