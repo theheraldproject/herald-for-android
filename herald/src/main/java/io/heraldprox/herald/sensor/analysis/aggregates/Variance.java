@@ -24,9 +24,9 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
         run = thisRun;
         if (run == 2) {
             // initialise mean
-            mean = sum / count;
+            mean = (count == 0 ? 0 : sum / count);
             // reinitialise counters
-            sum = 0.0;
+            sum = 0;
             count = 0;
         }
     }
@@ -45,8 +45,8 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
 
     @Override
     public Double reduce() {
-        if (count < 1) {
-            return 0d;
+        if (run < 2 || count < 2) {
+            return null;
         }
         return sum / (count - 1); // Sample variance
     }

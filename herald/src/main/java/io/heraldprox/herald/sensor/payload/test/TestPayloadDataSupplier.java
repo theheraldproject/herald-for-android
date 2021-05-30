@@ -30,7 +30,7 @@ public class TestPayloadDataSupplier extends DefaultPayloadDataSupplier {
 
     public TestPayloadDataSupplier(int identifier, int length) {
         this.identifier = identifier;
-        this.length = length;
+        this.length = (length >= 7 ? length : 7);
     }
 
     @Override

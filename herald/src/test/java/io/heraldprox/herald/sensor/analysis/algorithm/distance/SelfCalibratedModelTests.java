@@ -1,3 +1,7 @@
+//  Copyright 2021 Herald Project Contributors
+//  SPDX-License-Identifier: Apache-2.0
+//
+
 package io.heraldprox.herald.sensor.analysis.algorithm.distance;
 
 import io.heraldprox.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;

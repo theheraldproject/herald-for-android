@@ -38,7 +38,14 @@ public class FowlerBasic<T extends DoubleValue> implements Aggregate<T> {
 
     @Override
     public Double reduce() {
-        final double exponent = (mode.reduce() - intercept) / coefficient;
+        if (coefficient == 0) {
+            return null;
+        }
+        final Double modeValue = mode.reduce();
+        if (modeValue == null) {
+            return null;
+        }
+        final double exponent = (modeValue - intercept) / coefficient;
         return Math.pow(10, exponent);
     }
 
