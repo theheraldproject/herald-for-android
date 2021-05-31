@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Linting
-        run: ./gradlew check -x test --stacktrace --info
+        run: ./gradlew check --stacktrace --info
 
       - name: Linting results
         uses: actions/upload-artifact@v1
