@@ -5,13 +5,14 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import java.text.SimpleDateFormat;
+import java.util.Locale;
 import java.util.TimeZone;
 
 /// UTC date time
 public class Date extends java.util.Date {
-    private final static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     static {
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     public Date() {
@@ -31,6 +32,6 @@ public class Date extends java.util.Date {
     }
 
     public String toString() {
-        return dateFormat.format(this);
+        return dateFormatter.format(this);
     }
 }

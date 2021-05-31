@@ -13,11 +13,16 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /// CSV battery log for post event analysis and visualisation
 public class BatteryLog {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    static {
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
     private final static TimeInterval updateInterval = TimeInterval.seconds(30);
     private final Context context;
     private final TextFile textFile;

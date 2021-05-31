@@ -7,6 +7,7 @@ package io.heraldprox.herald.sensor.datatype.random;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.Locale;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -58,7 +59,8 @@ public abstract class RandomSource {
         // Add target identifier and detection time as entropy data
         final Data entropyData = new Data();
         // Add address hex value as entropy
-        final String hexAddress = value.toUpperCase().replaceAll("[^0-9A-F]", "");
+        // Using Locale.US to force ASCII string conversion
+        final String hexAddress = value.toUpperCase(Locale.US).replaceAll("[^0-9A-F]", "");
         if (hexAddress == null || hexAddress.isEmpty()) {
             return;
         }

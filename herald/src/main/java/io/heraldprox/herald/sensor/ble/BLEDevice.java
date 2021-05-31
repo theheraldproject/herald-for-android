@@ -241,7 +241,7 @@ public class BLEDevice extends Device {
         if (null == txPower) {
             return null;
         }
-        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, new Double(txPower.value));
+        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, Double.valueOf(txPower.value));
     }
 
     public boolean receiveOnly() {

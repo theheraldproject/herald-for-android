@@ -16,10 +16,15 @@ import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /// CSV contact log for post event analysis and visualisation
 public class CalibrationLog extends DefaultSensorDelegate {
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    static {
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
     private final TextFile textFile;
 
     public CalibrationLog(final Context context, final String filename) {
