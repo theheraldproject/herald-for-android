@@ -40,7 +40,5 @@ jobs:
       - name: Linting results
         uses: actions/upload-artifact@v1
         with:
-          name: linting-results-html
-          path: herald/build/reports/lint-results.html
-          name: linting-results-xml
-          path: herald/build/reports/lint-results.xml
+          name: linting-results
+          path: herald/build/reports/lint-results.*
