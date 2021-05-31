@@ -29,10 +29,6 @@ jobs:
         with:
           name: unit-tests-results
           path: herald/build/reports/tests/testDebugUnitTest
-  lint:
-    runs-on: [ubuntu-latest]
-    steps:
-      - uses: actions/checkout@v2
 
       - name: Linting
         run: ./gradlew check --stacktrace --info
@@ -41,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: linting-results
-          path: herald/build/reports/lint-results.*
+          path: herald/build/reports/lint-results.html
