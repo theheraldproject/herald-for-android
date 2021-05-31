@@ -11,10 +11,19 @@ import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
+
+import android.annotation.SuppressLint;
 
 public class ConcreteSensorLogger implements SensorLogger {
     private final String subsystem, category;
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    static {
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
+    /** Will not leak. When Logger leaves memory, context reference will be removed. */
+    @SuppressLint("StaticFieldLeak")
     private static Context context = null;
     private static TextFile logFile = null;
 

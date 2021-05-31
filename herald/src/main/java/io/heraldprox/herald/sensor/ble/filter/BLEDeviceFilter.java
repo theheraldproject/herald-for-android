@@ -19,14 +19,19 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /// Device filter for avoiding connection to devices that definitely cannot
 /// host sensor services.
 public class BLEDeviceFilter {
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    static {
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
     private final List<FilterPattern> filterPatterns;
     private final TextFile textFile;

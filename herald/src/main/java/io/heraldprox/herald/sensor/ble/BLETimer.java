@@ -17,6 +17,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
+import android.annotation.SuppressLint;
+
 /**
  * Steady one second timer for controlling BLE operations. Having a reliable timer for starting
  * and stopping scans is fundamental for reliable detection and tracking. Methods that have been
@@ -79,10 +81,11 @@ public class BLETimer {
         }
     };
 
+    @SuppressLint("WakelockTimeout")
     public BLETimer(Context context) {
         final PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Sensor:BLETimer");
-        wakeLock.acquire();
+        wakeLock.acquire(); // Deliberate use wakelock forever and actively manage sleep time so as not to waste battery
         final Thread timerThread = new Thread(new Runnable() {
             private long last = 0;
 

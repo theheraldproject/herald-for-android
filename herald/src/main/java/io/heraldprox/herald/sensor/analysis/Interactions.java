@@ -24,6 +24,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /// Log of interactions for recording encounters (time, proximity, and identity).
 /// This is can be used as basis for maintaining a persistent log
@@ -31,11 +33,12 @@ import java.util.Map;
 public class Interactions extends DefaultSensorDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Analysis.EncounterLog");
     private final TextFile textFile;
-    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     private List<Encounter> encounters = new ArrayList<>();
 
     public Interactions() {
         textFile = null;
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     public Interactions(final Context context, final String filename) {

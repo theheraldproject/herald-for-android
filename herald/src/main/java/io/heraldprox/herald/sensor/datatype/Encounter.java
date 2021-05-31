@@ -6,12 +6,17 @@ package io.heraldprox.herald.sensor.datatype;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Encounter record describing proximity with target at a moment in time
  */
 public class Encounter {
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    static {
+        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
     public Date timestamp = null;
     public Proximity proximity = null;
     public PayloadData payload = null;

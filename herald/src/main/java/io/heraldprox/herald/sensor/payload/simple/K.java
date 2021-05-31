@@ -11,6 +11,8 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Key generation functions for the Simple Payload.
@@ -25,9 +27,16 @@ public class K {
     /// Epoch as time interval since 1970
     private final static TimeInterval epoch = K.getEpoch();
 
-    /// Date from string date "yyyy-MM-dd'T'HH:mm:ssXXXX"
+    /**
+     * Date from string date "yyyy-MM-dd'T'HH:mm:ssXXXX" in UTC
+     * 
+     * @param fromString Time string in UTC timezone
+     * @return Herald Date instance
+     */
     protected static Date date(String fromString) {
-        final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+        final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.UK);
+        // Only ever used in tests. K class only uses UTC.
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
         try {
             return format.parse(fromString);
         } catch (Throwable e) {
