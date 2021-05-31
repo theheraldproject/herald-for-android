@@ -2,7 +2,7 @@
 //  SPDX-License-Identifier: Apache-2.0
 //
 
-package io.heraldprox.herald.sensor.ble;
+package io.heraldprox.herald.sensor.ble.filter;
 
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertManufacturerData;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertParser;

@@ -73,7 +73,7 @@ public class DetectionLog extends DefaultSensorDelegate {
 
     @Override
     public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
-        if (payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value) == null) {
+        if (null == payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value)) {
             logger.debug("didRead (payload={})", payloadDataFormatter.shortFormat(payloadData));
             write();
         }
@@ -82,7 +82,7 @@ public class DetectionLog extends DefaultSensorDelegate {
     @Override
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         for (PayloadData payloadData : didShare) {
-            if (payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value) == null) {
+            if (null == payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value)) {
                 logger.debug("didShare (payload={})", payloadDataFormatter.shortFormat(payloadData));
                 write();
             }

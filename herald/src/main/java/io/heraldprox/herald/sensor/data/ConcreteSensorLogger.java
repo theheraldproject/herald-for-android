@@ -55,7 +55,11 @@ public class ConcreteSensorLogger implements SensorLogger {
 
     private void log(SensorLoggerLevel level, String message, final Object... values) {
         if (!suppress(level)) {
-            outputLog(level, tag(subsystem, category), message, values);
+            // android.util.Log is unavailable during test, this will throw error.
+            try {
+                outputLog(level, tag(subsystem, category), message, values);
+            } catch (Throwable e) {
+            }
             outputStream(level, subsystem, category, message, values);
         }
     }
@@ -127,7 +131,7 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
     private static String render(final String message, final Object... values) {
-        if (values.length == 0) {
+        if (0 == values.length) {
             return message;
         } else {
             final StringBuilder stringBuilder = new StringBuilder();

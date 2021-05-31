@@ -9,9 +9,9 @@ public class InertiaLocationReference implements LocationReference {
     public final double x, y, z, magnitude;
 
     public InertiaLocationReference(Double x, Double y, Double z) {
-        this.x = (x == null ? 0 : x);
-        this.y = (y == null ? 0 : y);
-        this.z = (z == null ? 0 : z);
+        this.x = (null == x ? 0 : x);
+        this.y = (null == y ? 0 : y);
+        this.z = (null == z ? 0 : z);
         this.magnitude = Math.sqrt((this.x * this.x) + (this.y * this.y) + (this.z * this.z));
     }
 

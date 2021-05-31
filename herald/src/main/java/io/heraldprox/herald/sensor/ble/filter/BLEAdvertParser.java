@@ -67,7 +67,7 @@ public class BLEAdvertParser {
     }
 
     public static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
-        if (raw == null) {
+        if (null == raw) {
             return new byte[]{};
         }
         if (offset < 0 || length <= 0) {
@@ -85,7 +85,7 @@ public class BLEAdvertParser {
     }
 
     public static byte[] subDataLittleEndian(byte[] raw, int offset, int length) {
-        if (raw == null) {
+        if (null == raw) {
             return new byte[]{};
         }
         if (offset < 0 || length <= 0) {
@@ -137,7 +137,7 @@ public class BLEAdvertParser {
                 final byte type = manu.data[bytePos];
                 final int typeValue = type & 0xFF;
                 // "01" marks legacy service UUID encoding without length data
-                if (type == 0x01) {
+                if (0x01 == type) {
                     final int length = manu.data.length - bytePos - 1;
                     final Data data = new Data(subDataBigEndian(manu.data, bytePos + 1, length));
                     final Data raw = new Data(subDataBigEndian(manu.data, bytePos, manu.data.length - bytePos));

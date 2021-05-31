@@ -149,7 +149,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
                 break;
             }
         }
-        if (device == null) {
+        if (null == device) {
             final TargetIdentifier identifier = new TargetIdentifier();
             final BLEDevice newDevice = new BLEDevice(identifier, this);
             device = newDevice;

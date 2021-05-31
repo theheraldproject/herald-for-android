@@ -142,7 +142,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         if (newestPosition == data.length) {
             // just gone past the end of the container
             newestPosition = 0;
-            if (oldestPosition == 0) {
+            if (0 == oldestPosition) {
                 ++oldestPosition; // erases oldest if not already removed
             }
         }

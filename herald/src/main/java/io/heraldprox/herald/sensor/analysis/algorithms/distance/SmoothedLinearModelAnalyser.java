@@ -57,7 +57,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         }
         // Input guard : Must have valid data to analyse
         final SampleList<RSSI> validInput = input.filter(valid).toView();
-        if (validInput.size() == 0) {
+        if (0 == validInput.size()) {
             logger.debug("analyse, skipped (reason=noValidData,inputSamples={},validInputSamples={})", input.size(), validInput.size());
             return false;
         }
@@ -76,7 +76,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         // Estimate distance based on smoothed linear model
         model.reset();
         final Double distance = window.aggregate(model).get(SmoothedLinearModel.class);
-        if (distance == null) {
+        if (null == distance) {
             logger.debug("analyse, skipped (reason=outOfModelRange,mediaOfRssi={})", model.medianOfRssi());
             return false;
         }

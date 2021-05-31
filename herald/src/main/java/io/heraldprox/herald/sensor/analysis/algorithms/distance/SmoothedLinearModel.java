@@ -92,7 +92,7 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     @Override
     public Double reduce() {
         final Double medianOfRssi = medianOfRssi();
-        if (medianOfRssi == null) {
+        if (null == medianOfRssi) {
             logger.debug("reduce, medianOfRssi is null");
             return null;
         }

@@ -31,7 +31,7 @@ public class PayloadData extends Data {
             return Base64.encode(value);
         }
         final Data subdata = subdata(3, value.length - 3);
-        final byte[] suffix = (subdata == null || subdata.value == null ? new byte[0] : subdata.value);
+        final byte[] suffix = (null == subdata || null == subdata.value ? new byte[0] : subdata.value);
         final String base64EncodedString = Base64.encode(suffix);
         return base64EncodedString.substring(0, Math.min(6, base64EncodedString.length()));
     }

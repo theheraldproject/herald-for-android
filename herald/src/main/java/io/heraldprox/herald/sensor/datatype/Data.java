@@ -58,7 +58,7 @@ public class Data {
     }
 
     public String hexEncodedString() {
-        if (value == null || 0 == value.length) {
+        if (null == value || 0 == value.length) {
             return "";
         }
         final StringBuilder stringBuilder = new StringBuilder(value.length * 2);

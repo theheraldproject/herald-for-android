@@ -1124,7 +1124,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             }
             case writePayload: {
                 final PayloadData payloadData = transmitter.payloadData();
-                if (null == payloadData || null == payloadData.value || payloadData.value.length == 0) {
+                if (null == payloadData || null == payloadData.value || 0 == payloadData.value.length) {
                     logger.fault("nextTask failed (task=writePayload,device={},reason=missingPayloadData)", device);
                     gatt.disconnect();
                     return; // => onConnectionStateChange

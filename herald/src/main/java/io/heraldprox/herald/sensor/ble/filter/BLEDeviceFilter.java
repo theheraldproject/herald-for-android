@@ -86,7 +86,7 @@ public class BLEDeviceFilter {
                 textFile.write("time,ignore,featureData,scanRecordRawData,identifier,rssi,deviceModel,deviceName");
             }
         }
-        if (BLESensorConfiguration.deviceFilterTrainingEnabled || patterns == null || patterns.length == 0) {
+        if (BLESensorConfiguration.deviceFilterTrainingEnabled || null == patterns || 0 == patterns.length) {
             filterPatterns = null;
         } else {
             filterPatterns = compilePatterns(patterns);
@@ -137,7 +137,7 @@ public class BLEDeviceFilter {
     /// Extract messages from manufacturer specific data
     protected final static List<Data> extractMessages(final byte[] rawScanRecordData) {
         // Parse raw scan record data in scan response data
-        if (null == rawScanRecordData || rawScanRecordData.length == 0) {
+        if (null == rawScanRecordData || 0 == rawScanRecordData.length) {
             return null;
         }
         final BLEScanResponseData bleScanResponseData = BLEAdvertParser.parseScanResponse(rawScanRecordData, 0);
@@ -251,7 +251,7 @@ public class BLEDeviceFilter {
             return null;
         }
         // Empty raw data
-        if (null == rawData || null == rawData.value || rawData.value.length == 0) {
+        if (null == rawData || null == rawData.value || 0 == rawData.value.length) {
             return null;
         }
         // Extract messages

@@ -66,10 +66,9 @@ public class PseudoDeviceAddress {
         //        It improves on NonBlockingPRNG by offering cryptographic separation of observable random data and
         //        internal state. This is also sufficiently secure for the target domain, but now superceded by
         //        NonBlockingSecureRandom.
-        //   - 3. NonBlockingSecureRandom is unlikely to block when used with default parameters. It is based on a
-        //        combination of SecureRandom, SHA256, xor, truncation, and entropy data. Utilisation of SecureRandom
-        //        has been planned and minimised to avoid exhausting system entropy. This is now the recommended
-        //        random source for generating pseudo device addresses.
+        //   - 3. NonBlockingSecureRandom will never block. It is based on a combination of SHA256, xor, truncation, and
+        //        self-populating time-based entropy data. This is now the recommended random source for generating
+        //        pseudo device addresses.
         // - Blocking random sources are not recommended for the target application, and only provided here to support
         //   applications with strict security compliance requirements, or when the device is known to be frequently
         //   active, thus the chance of exhausting system entropy is low.
@@ -117,7 +116,7 @@ public class PseudoDeviceAddress {
             decoded.append(new Data((byte) 0, 8 - decoded.value.length));
         }
         final Int64 int64 = decoded.int64(0);
-        return (int64 == null ? 0 : decoded.int64(0).value);
+        return (null == int64 ? 0 : decoded.int64(0).value);
     }
 
     @Override

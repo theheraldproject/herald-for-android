@@ -72,7 +72,7 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
         // Update model
         update();
         final Double sampleMedian = medianOfRssi();
-        if (sampleMedian == null) {
+        if (null == sampleMedian) {
             logger.debug("reduce, sample median is null");
             return null;
         }

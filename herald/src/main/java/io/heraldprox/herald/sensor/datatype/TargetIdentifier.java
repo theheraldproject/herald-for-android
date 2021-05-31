@@ -14,7 +14,7 @@ import java.util.UUID;
 public class TargetIdentifier {
     public final String value;
 
-    protected TargetIdentifier(final String value) {
+    public TargetIdentifier(final String value) {
         this.value = value;
     }
 

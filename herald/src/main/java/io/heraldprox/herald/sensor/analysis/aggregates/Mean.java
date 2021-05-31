@@ -32,6 +32,9 @@ public class Mean<T extends DoubleValue> implements Aggregate<T> {
 
     @Override
     public Double reduce() {
+        if (0 == count) {
+            return null;
+        }
         return sum / count;
     }
 

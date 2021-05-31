@@ -71,10 +71,10 @@ public class StatisticsLog extends DefaultSensorDelegate {
         Collections.sort(payloadList);
         for (String payload : payloadList) {
             final Sample sample = payloadToSample.get(payload);
-            if (sample == null) {
+            if (null == sample) {
                 continue;
             }
-            if (sample.mean() == null || sample.standardDeviation() == null || sample.min() == null || sample.max() == null) {
+            if (null == sample.mean() || null == sample.standardDeviation() || null == sample.min() || null == sample.max()) {
                 continue;
             }
             content.append(csv(payload));
