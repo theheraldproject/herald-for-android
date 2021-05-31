@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
@@ -21,12 +22,13 @@ public class Calibration {
     }
 
     /// Get plain text description of calibration data
+    @NonNull
     public String description() {
         return unit + ":" + value;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Calibration that = (Calibration) o;

@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
@@ -17,7 +20,8 @@ public class F {
     /**
      * Cryptographic hash function : SHA256
      */
-    protected final static Data hash(final Data data) {
+    @Nullable
+    protected final static Data hash(@NonNull final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);
@@ -31,21 +35,22 @@ public class F {
     /**
      * Truncation function : Delete second half of data
      */
-    protected final static Data truncate(final Data data) {
+    protected final static Data truncate(@NonNull final Data data) {
         return truncate(data, data.value.length / 2);
     }
 
     /**
      * Truncation function : Retain first n bytes of data
      */
-    protected final static Data truncate(final Data data, int n) {
+    protected final static Data truncate(@NonNull final Data data, int n) {
         return data.subdata(0, n);
     }
 
     /**
      * XOR function : Compute left xor right, assumes left and right are the same length
      */
-    protected final static Data xor(final Data left, final Data right) {
+    @NonNull
+    protected final static Data xor(@NonNull final Data left, @NonNull final Data right) {
         final byte[] leftByteArray = left.value;
         final byte[] rightByteArray = right.value;
         final byte[] resultByteArray = new byte[left.value.length];

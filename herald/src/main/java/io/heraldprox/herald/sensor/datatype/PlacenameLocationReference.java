@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 /// Free text place name.
 public class PlacenameLocationReference implements LocationReference {
     public final String name;
@@ -12,6 +14,7 @@ public class PlacenameLocationReference implements LocationReference {
         this.name = name;
     }
 
+    @NonNull
     public String description() {
         return "PLACE(name=" + name + ")";
     }

@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.util.Objects;
 
 /// Signed integer (16 bits)
@@ -18,7 +21,7 @@ public class Int16 implements DoubleValue {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Int16 uInt16 = (Int16) o;
@@ -30,6 +33,7 @@ public class Int16 implements DoubleValue {
         return Objects.hash(value);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return Integer.toString(value);

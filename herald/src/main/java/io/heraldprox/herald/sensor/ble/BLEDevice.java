@@ -8,6 +8,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanRecord;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.Device;
 import io.heraldprox.herald.sensor.datatype.Calibration;
 import io.heraldprox.herald.sensor.datatype.CalibrationMeasurementUnit;
@@ -25,53 +28,77 @@ import java.util.Queue;
 
 public class BLEDevice extends Device {
     /// Pseudo device address for tracking Android devices that change address constantly.
+    @Nullable
     private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
     private final BLEDeviceDelegate delegate;
     /// Android Bluetooth device object for interacting with this device.
+    @Nullable
     private BluetoothDevice peripheral = null;
     /// Bluetooth device connection state.
     private BLEDeviceState state = BLEDeviceState.disconnected;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
+    @Nullable
     private PayloadData payloadData = null;
+    @Nullable
     private Date lastPayloadDataUpdate = null;
     /// Immediate Send data to send next
+    @Nullable
     private Data immediateSendData = null;
     /// Most recent RSSI measurement taken by readRSSI or didDiscover.
+    @Nullable
     private RSSI rssi = null;
     /// Transmit power data where available (only provided by Android devices)
+    @Nullable
     private BLE_TxPower txPower = null;
     /// Is device receive only?
     private boolean receiveOnly = false;
     /// Ignore logic
+    @Nullable
     private TimeInterval ignoreForDuration = null;
+    @Nullable
     private Date ignoreUntil = null;
+    @Nullable
     private ScanRecord scanRecord = null;
 
     /// BLE characteristics
+    @Nullable
     private BluetoothGattCharacteristic signalCharacteristic = null;
+    @Nullable
     private BluetoothGattCharacteristic payloadCharacteristic = null;
+    @Nullable
     private BluetoothGattCharacteristic legacyPayloadCharacteristic = null;
+    @Nullable
     protected byte[] signalCharacteristicWriteValue = null;
+    @Nullable
     protected Queue<byte[]> signalCharacteristicWriteQueue = null;
 
+    @Nullable
     private BluetoothGattCharacteristic modelCharacteristic = null;
+    @Nullable
     private String model = null;
+    @Nullable
     private BluetoothGattCharacteristic deviceNameCharacteristic = null;
+    @Nullable
     private String deviceName = null;
 
     /// Track connection timestamps
+    @Nullable
     private Date lastDiscoveredAt = null;
+    @Nullable
     private Date lastConnectedAt = null;
 
     /// Payload data already shared with this peer
     protected final List<PayloadData> payloadSharingData = new ArrayList<>();
 
     /// Track write timestamps
+    @Nullable
     private Date lastWritePayloadAt = null;
+    @Nullable
     private Date lastWriteRssiAt = null;
+    @Nullable
     private Date lastWritePayloadSharingAt = null;
 
     public TimeInterval timeIntervalSinceConnected() {
@@ -93,6 +120,7 @@ public class BLEDevice extends Device {
         return new TimeInterval((new Date().getTime() - lastUpdatedAt.getTime()) / 1000);
     }
 
+    @NonNull
     public String description() {
         return "BLEDevice[" +
                 "id=" + identifier +
@@ -109,6 +137,7 @@ public class BLEDevice extends Device {
         this.delegate = delegate;
     }
 
+    @Nullable
     public PseudoDeviceAddress pseudoDeviceAddress() {
         return pseudoDeviceAddress;
     }
@@ -120,6 +149,7 @@ public class BLEDevice extends Device {
         }
     }
 
+    @Nullable
     public BluetoothDevice peripheral() {
         return peripheral;
     }
@@ -183,6 +213,7 @@ public class BLEDevice extends Device {
         return false;
     }
 
+    @Nullable
     public PayloadData payloadData() {
         return payloadData;
     }
@@ -205,10 +236,12 @@ public class BLEDevice extends Device {
         this.immediateSendData = immediateSendData;
     }
 
+    @Nullable
     public Data immediateSendData() {
         return immediateSendData;
     }
 
+    @Nullable
     public RSSI rssi() {
         return rssi;
     }
@@ -223,10 +256,12 @@ public class BLEDevice extends Device {
         this.legacyPayloadCharacteristic = characteristic;
     }
 
+    @Nullable
     public BluetoothGattCharacteristic legacyPayloadCharacteristic() {
         return legacyPayloadCharacteristic;
     }
 
+    @Nullable
     public BLE_TxPower txPower() {
         return txPower;
     }
@@ -237,6 +272,7 @@ public class BLEDevice extends Device {
         delegate.device(this, BLEDeviceAttribute.txPower);
     }
 
+    @Nullable
     public Calibration calibration() {
         if (null == txPower) {
             return null;
@@ -261,6 +297,7 @@ public class BLEDevice extends Device {
         legacyPayloadCharacteristic = null;
     }
 
+    @Nullable
     public BluetoothGattCharacteristic signalCharacteristic() {
         return signalCharacteristic;
     }
@@ -270,6 +307,7 @@ public class BLEDevice extends Device {
         lastUpdatedAt = new Date();
     }
 
+    @Nullable
     public BluetoothGattCharacteristic payloadCharacteristic() {
         return payloadCharacteristic;
     }
@@ -281,6 +319,7 @@ public class BLEDevice extends Device {
 
     public boolean supportsModelCharacteristic() { return null != modelCharacteristic; }
 
+    @Nullable
     public BluetoothGattCharacteristic modelCharacteristic() { return modelCharacteristic; }
 
     public void modelCharacteristic(BluetoothGattCharacteristic modelCharacteristic) {
@@ -290,6 +329,7 @@ public class BLEDevice extends Device {
 
     public boolean supportsDeviceNameCharacteristic() { return null != deviceNameCharacteristic; }
 
+    @Nullable
     public BluetoothGattCharacteristic deviceNameCharacteristic() { return deviceNameCharacteristic; }
 
     public void deviceNameCharacteristic(BluetoothGattCharacteristic deviceNameCharacteristic) {
@@ -297,6 +337,7 @@ public class BLEDevice extends Device {
         lastUpdatedAt = new Date();
     }
 
+    @Nullable
     public String deviceName() { return deviceName; }
 
     public void deviceName(String deviceName) {
@@ -304,6 +345,7 @@ public class BLEDevice extends Device {
         lastUpdatedAt = new Date();
     }
 
+    @Nullable
     public String model() { return model; }
 
     public void model(String model) {
@@ -374,10 +416,12 @@ public class BLEDevice extends Device {
         this.scanRecord = scanRecord;
     }
 
+    @Nullable
     public ScanRecord scanRecord() {
         return scanRecord;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return description();

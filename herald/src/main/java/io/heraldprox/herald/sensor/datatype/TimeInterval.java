@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.util.Date;
 import java.util.Objects;
 
@@ -20,22 +23,25 @@ public class TimeInterval implements DoubleValue {
         this.value = seconds;
     }
 
-    public TimeInterval(Date date) {
+    public TimeInterval(@NonNull Date date) {
         this.value = date.getTime() / 1000;
     }
 
-    public TimeInterval(Date from, Date to) {
+    public TimeInterval(@NonNull Date from, @NonNull Date to) {
         this.value = (to.getTime() - from.getTime()) / 1000;
     }
 
+    @NonNull
     public static TimeInterval hours(long hours) {
         return new TimeInterval(hour.value * hours);
     }
 
+    @NonNull
     public static TimeInterval minutes(long minutes) {
         return new TimeInterval(minute.value * minutes);
     }
 
+    @NonNull
     public static TimeInterval seconds(long seconds) {
         return new TimeInterval(seconds);
     }
@@ -45,7 +51,7 @@ public class TimeInterval implements DoubleValue {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         TimeInterval that = (TimeInterval) o;
@@ -57,6 +63,7 @@ public class TimeInterval implements DoubleValue {
         return Objects.hash(value);
     }
 
+    @NonNull
     @Override
     public String toString() {
         if (value == never.value) {

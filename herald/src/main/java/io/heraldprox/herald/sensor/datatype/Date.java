@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -19,7 +21,7 @@ public class Date extends java.util.Date {
         super();
     }
 
-    public Date(final java.util.Date date) {
+    public Date(@NonNull final java.util.Date date) {
         super(date.getTime());
     }
 
@@ -31,6 +33,7 @@ public class Date extends java.util.Date {
         return getTime() / 1000;
     }
 
+    @NonNull
     public String toString() {
         return dateFormatter.format(this);
     }

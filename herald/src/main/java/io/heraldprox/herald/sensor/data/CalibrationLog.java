@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.data;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.datatype.InertiaLocationReference;
 import io.heraldprox.herald.sensor.datatype.Location;
@@ -25,20 +27,23 @@ public class CalibrationLog extends DefaultSensorDelegate {
     static {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
+    @NonNull
     private final TextFile textFile;
 
-    public CalibrationLog(final Context context, final String filename) {
+    public CalibrationLog(@NonNull final Context context, @NonNull final String filename) {
         textFile = new TextFile(context, filename);
         if (textFile.empty()) {
             textFile.write("time,payload,rssi,x,y,z");
         }
     }
 
+    @NonNull
     private static String timestamp() {
         return dateFormatter.format(new Date());
     }
 
-    private static String csv(String value) {
+    @NonNull
+    private static String csv(@NonNull String value) {
         return TextFile.csv(value);
     }
 
@@ -46,12 +51,12 @@ public class CalibrationLog extends DefaultSensorDelegate {
 
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(SensorType sensor, @NonNull Proximity didMeasure, TargetIdentifier fromTarget, @NonNull PayloadData withPayload) {
         textFile.write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
+    public void sensor(SensorType sensor, @NonNull Location didVisit) {
         if (didVisit.value instanceof InertiaLocationReference) {
             final InertiaLocationReference reference = (InertiaLocationReference) didVisit.value;
             textFile.write(timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);

@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Random;
@@ -55,6 +57,7 @@ public class NonBlockingCSPRNG extends RandomSource {
      * Get non-blocking CSPRNG by managing entropy collection
      * @return
      */
+    @NonNull
     private synchronized Random getCSPRNG() {
         // Requirement 1 : Truly random seed
         // A PRNG must be initialised with a truly random seed to be cryptographically secure.

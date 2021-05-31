@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Date;
@@ -17,16 +20,21 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 /// a profile of the receiver for normalisation
 public class RssiHistogram extends DefaultSensorDelegate {
     public final int min, max;
+    @NonNull
     public final long[] histogram;
+    @NonNull
     private final long[] cdf;
+    @NonNull
     private final double[] transform;
+    @Nullable
     private final TextFile textFile;
     private final TimeInterval updatePeriod;
+    @NonNull
     private Date lastUpdateTime = new Date(0);
     private long samples = 0;
 
     /// Accumulate histogram of RSSI for value range [min, max] and auto-write profile to storage at regular intervals
-    public RssiHistogram(final int min, final int max, final TimeInterval updatePeriod, final TextFile textFile) {
+    public RssiHistogram(final int min, final int max, final TimeInterval updatePeriod, @Nullable final TextFile textFile) {
         this.min = min;
         this.max = max;
         this.histogram = new long[max - min + 1];
@@ -47,7 +55,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull Proximity didMeasure, TargetIdentifier fromTarget) {
         // Guard for data collection until histogram reaches maximum count
         if (Long.MAX_VALUE == samples) {
             return;
@@ -110,7 +118,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     /// Read profile data from storage, this replaces existing in-memory profile
-    public void read(TextFile textFile) {
+    public void read(@NonNull TextFile textFile) {
         clear();
         final String content = textFile.contentsOf();
         for (final String row : content.split("\n")) {
@@ -130,6 +138,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     /// Render profile data as CSV (RSSI,count)
+    @NonNull
     private String toCsv() {
         final StringBuilder s = new StringBuilder();
         for (int i=0; i<histogram.length; i++) {
@@ -141,7 +150,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     /// Write profile data to storage
-    public void write(TextFile textFile) {
+    public void write(@NonNull TextFile textFile) {
         final String content = toCsv();
         textFile.overwrite(content);
     }
@@ -149,7 +158,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     // MARK: - Histogram equalisation
 
     /// Compute cumulative distribution function (CDF) of histogram
-    private static void cumulativeDistributionFunction(final long[] histogram, final long[] cdf) {
+    private static void cumulativeDistributionFunction(@NonNull final long[] histogram, final long[] cdf) {
         long sum = 0;
         for (int i = 0; i < histogram.length; i++) {
             cdf[i] = (sum += histogram[i]);
@@ -175,7 +184,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
 //    }
 
     /// Compute transformation table for normalising histogram to maximise its dynamic range
-    private static void normalisation(final long[] cdf, final double[] transform) {
+    private static void normalisation(@NonNull final long[] cdf, final double[] transform) {
         final double sum = cdf[cdf.length - 1];
         final long max = cdf.length - 1;
         if (sum > 0) {
@@ -211,6 +220,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
 //        return normalised;
 //    }
 
+    @NonNull
     @Override
     public String toString() {
         return "RssiHistogram{samples="+samples+",p05="+samplePercentile(0.05)+",p50="+samplePercentile(0.5) + ",p95="+samplePercentile(0.95)+"}";

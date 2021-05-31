@@ -7,6 +7,9 @@ package io.heraldprox.herald.sensor.ble.filter;
 import android.bluetooth.le.ScanRecord;
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.ble.BLEDevice;
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
@@ -33,7 +36,9 @@ public class BLEDeviceFilter {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
+    @Nullable
     private final List<FilterPattern> filterPatterns;
+    @Nullable
     private final TextFile textFile;
     private final Map<Data, ShouldIgnore> samples = new HashMap<>();
 
@@ -77,7 +82,7 @@ public class BLEDeviceFilter {
 
     /// BLE device filter for matching devices against the given set of patterns
     /// and writing advert data to file for analysis.
-    public BLEDeviceFilter(final Context context, final String file, final String[] patterns) {
+    public BLEDeviceFilter(@Nullable final Context context, @Nullable final String file, @Nullable final String[] patterns) {
         if (null == context || null == file) {
             textFile = null;
         } else {
@@ -97,7 +102,8 @@ public class BLEDeviceFilter {
     // Using regular expression over hex representation of feature data for maximum flexibility and usability
 
     /// Match message against all patterns in sequential order, returns matching pattern or null
-    protected static FilterPattern match(final List<FilterPattern> filterPatterns, final String message) {
+    @Nullable
+    protected static FilterPattern match(@NonNull final List<FilterPattern> filterPatterns, @Nullable final String message) {
         final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
         if (null == message) {
             return null;
@@ -115,7 +121,8 @@ public class BLEDeviceFilter {
     }
 
     /// Compile regular expressions into patterns.
-    protected static List<FilterPattern> compilePatterns(final String[] regularExpressions) {
+    @NonNull
+    protected static List<FilterPattern> compilePatterns(@NonNull final String[] regularExpressions) {
         final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.BLEDeviceFilter");
         final List<FilterPattern> filterPatterns = new ArrayList<>(regularExpressions.length);
         for (final String regularExpression : regularExpressions) {
@@ -135,7 +142,8 @@ public class BLEDeviceFilter {
     }
 
     /// Extract messages from manufacturer specific data
-    protected final static List<Data> extractMessages(final byte[] rawScanRecordData) {
+    @Nullable
+    protected final static List<Data> extractMessages(@Nullable final byte[] rawScanRecordData) {
         // Parse raw scan record data in scan response data
         if (null == rawScanRecordData || 0 == rawScanRecordData.length) {
             return null;
@@ -167,7 +175,8 @@ public class BLEDeviceFilter {
     // MARK:- Filtering functions
 
     /// Extract feature data from scan record
-    private List<Data> extractFeatures(final ScanRecord scanRecord) {
+    @Nullable
+    private List<Data> extractFeatures(@Nullable final ScanRecord scanRecord) {
         if (null == scanRecord) {
             return null;
         }
@@ -181,7 +190,7 @@ public class BLEDeviceFilter {
     }
 
     /// Add training example to adaptive filter.
-    public synchronized void train(final BLEDevice device, final boolean ignore) {
+    public synchronized void train(@NonNull final BLEDevice device, final boolean ignore) {
         final ScanRecord scanRecord = device.scanRecord();
         // Get feature data from scan record
         if (null == scanRecord) {
@@ -245,7 +254,8 @@ public class BLEDeviceFilter {
     }
 
     /// Match filter patterns against data items, returning the first match
-    protected final static MatchingPattern match(final List<FilterPattern> patternList, final Data rawData) {
+    @Nullable
+    protected final static MatchingPattern match(@Nullable final List<FilterPattern> patternList, @Nullable final Data rawData) {
         // No pattern to match against
         if (null == patternList || patternList.isEmpty()) {
             return null;
@@ -277,7 +287,8 @@ public class BLEDeviceFilter {
     }
 
     /// Match scan record messages against all registered patterns, returns matching pattern or null.
-    public MatchingPattern match(final BLEDevice device) {
+    @Nullable
+    public MatchingPattern match(@NonNull final BLEDevice device) {
         try {
             final ScanRecord scanRecord = device.scanRecord();
             // Cannot match device without any scan record data
@@ -307,7 +318,7 @@ public class BLEDeviceFilter {
     }
 
     /// Should the device be ignored based on scan record data?
-    private boolean ignoreBasedOnStatistics(final BLEDevice device) {
+    private boolean ignoreBasedOnStatistics(@NonNull final BLEDevice device) {
         final ScanRecord scanRecord = device.scanRecord();
         // Do not ignore device without any scan record data
         if (null == scanRecord) {

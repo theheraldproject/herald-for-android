@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.aggregates;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
@@ -32,7 +35,7 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         if (1 == run) {
             sum += value.value().doubleValue();
         } else {
@@ -43,6 +46,7 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
         count++;
     }
 
+    @Nullable
     @Override
     public Double reduce() {
         if (run < 2 || count < 2) {

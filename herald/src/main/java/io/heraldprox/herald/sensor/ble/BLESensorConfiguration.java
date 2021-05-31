@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.data.SensorLoggerLevel;
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.random.NonBlockingCSPRNG;
@@ -54,6 +56,7 @@ public class BLESensorConfiguration {
     public static UUID interopOpenTraceServiceUUID = UUID.fromString("A6BA4286-C550-4794-A888-9467EF0B31A8");
 	public static UUID interopOpenTracePayloadCharacteristicUUID = UUID.fromString("D1034710-B11E-42F2-BCA3-F481177D5BB2");
     public static int interopOpenTraceManufacturerId = 1023;
+    @NonNull
     public static TimeInterval interopOpenTracePayloadDataUpdateTimeInterval = TimeInterval.minutes(5);
 
     // MARK:- Interoperability with Advert based protocols
@@ -68,6 +71,7 @@ public class BLESensorConfiguration {
     /// - Scan for 16-bit service UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
     public static boolean interopAdvertBasedProtocolEnabled = false;
     public static UUID interopAdvertBasedProtocolServiceUUID = UUID.fromString("0000FD6F-0000-1000-8000-00805F9B34FB");
+    @NonNull
     public static Data interopAdvertBasedProtocolServiceDataKey = Data.fromHexEncodedString("FD6F");
 
 
@@ -115,6 +119,7 @@ public class BLESensorConfiguration {
     // MARK:- App configurable BLE features
 
     /// Log level for BLESensor
+    @NonNull
     public static SensorLoggerLevel logLevel = SensorLoggerLevel.debug;
 
     /// Payload update at regular intervals, in addition to default HERALD communication process.
@@ -132,15 +137,18 @@ public class BLESensorConfiguration {
     public static TimeInterval filterDuplicatePayloadData = TimeInterval.never;
 
     /// Expiry time for shared payloads, to ensure only recently seen payloads are shared
+    @NonNull
     public static TimeInterval payloadSharingExpiryTimeInterval = new TimeInterval(5 * TimeInterval.minute.value);
 
     /// Advert refresh time interval
+    @NonNull
     public static TimeInterval advertRefreshTimeInterval = TimeInterval.minutes(15);
 
     /// Randomisation method for generating the pseudo device addresses, see PseudoDeviceAddress and RandomSource for details.
     /// - Set to NonBlockingSecureRandom for reliable continuous operation, validated
     /// - Other methods will cause blocking after 4-8 hours and interrupt operation on idle devices
     /// - Blocking can also occur at app initialisation, advert refresh, and also impact system services
+    @NonNull
     public static RandomSource pseudoDeviceAddressRandomisation = new NonBlockingSecureRandom();
 
     /// Interrogate standard Bluetooth services to obtain device make/model data
@@ -161,6 +169,7 @@ public class BLESensorConfiguration {
     /// - Java regular expression patterns, case insensitive, find pattern anywhere in message
     /// - Remember to include ^ to match from start of message
     /// - Use deviceFilterTrainingEnabled in development environment to identify patterns
+    @NonNull
     public static String[] deviceFilterFeaturePatterns = new String[]{
             "^10....04",
             "^10....14",

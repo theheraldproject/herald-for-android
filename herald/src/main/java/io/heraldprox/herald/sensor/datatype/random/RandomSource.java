@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -52,7 +55,7 @@ public abstract class RandomSource {
      *
      * @param value BLE MAC address of target device, only the hex digits [0-9A-Z] are used
      */
-    public synchronized void addEntropy(final String value) {
+    public synchronized void addEntropy(@Nullable final String value) {
         if (value == null) {
             return;
         }
@@ -95,7 +98,7 @@ public abstract class RandomSource {
      * @param bytes Maximum number of bytes to transfer if available.
      * @param sink Target data buffer for transferring entropy data.
      */
-    public synchronized void useEntropy(final int bytes, final Data sink) {
+    public synchronized void useEntropy(final int bytes, @NonNull final Data sink) {
         sink.append(entropy.pop(bytes));
     }
 
@@ -136,7 +139,8 @@ public abstract class RandomSource {
      * SHA256 is not supported on the system. This should never happen as SHA256
      * must be supported in all Java implementations.
      */
-    protected final static Data hash(final Data data) {
+    @NonNull
+    protected final static Data hash(@NonNull final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);

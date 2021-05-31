@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Date;
@@ -23,21 +26,23 @@ public class AnalysisProviderManager {
     private final List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> providers = new ArrayList<>();
     private final Map<Class<? extends DoubleValue>, CallableForNewSample<? extends DoubleValue>> callables = new ConcurrentHashMap<>();
 
-    public AnalysisProviderManager(final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> ... providers) {
+    public AnalysisProviderManager(@NonNull final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> ... providers) {
         for (final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider : providers) {
             add(provider);
         }
     }
 
+    @NonNull
     public Set<Class<? extends DoubleValue>> inputTypes() {
         return lists.keySet();
     }
 
+    @NonNull
     public Set<Class<? extends DoubleValue>> outputTypes() {
         return outputTypes;
     }
 
-    public void add(final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider) {
+    public void add(@NonNull final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider) {
         final Class<? extends DoubleValue> inputType = provider.inputType();
         final Class<? extends DoubleValue> outputType = provider.outputType();
         final List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list = list(inputType);
@@ -46,6 +51,7 @@ public class AnalysisProviderManager {
         providers.add(provider);
     }
 
+    @Nullable
     private synchronized List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
         List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list = lists.get(inputType);
         if (null == list) {
@@ -55,12 +61,13 @@ public class AnalysisProviderManager {
         return list;
     }
 
-    private synchronized <U extends DoubleValue> CallableForNewSample<U> callable(final Class<U> type, final AnalysisDelegateManager delegates) {
+    @NonNull
+    private synchronized <U extends DoubleValue> CallableForNewSample<U> callable(final Class<U> type, @NonNull final AnalysisDelegateManager delegates) {
         CallableForNewSample<? extends DoubleValue> callable = callables.get(type);
         if (null == callable) {
             callable = new CallableForNewSample<U>() {
                 @Override
-                public void newSample(SampledID sampled, Sample<U> item) {
+                public void newSample(SampledID sampled, @NonNull Sample<U> item) {
                     delegates.newSample(sampled, item);
                 }
             };
@@ -69,7 +76,7 @@ public class AnalysisProviderManager {
         return (CallableForNewSample<U>) callable;
     }
 
-    public <T extends DoubleValue, U extends DoubleValue> boolean analyse(final Date timeNow, final SampledID sampled, final VariantSet variantSet, final AnalysisDelegateManager delegates) {
+    public <T extends DoubleValue, U extends DoubleValue> boolean analyse(final Date timeNow, final SampledID sampled, @NonNull final VariantSet variantSet, @NonNull final AnalysisDelegateManager delegates) {
         boolean update = false;
         for (final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider : providers) {
             final SampleList<T> input = (SampleList<T>) variantSet.listManager(provider.inputType(), sampled);

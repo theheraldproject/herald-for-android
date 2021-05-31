@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 
 import java.nio.ByteBuffer;
@@ -22,7 +25,8 @@ public class SignalCharacteristicData {
      *
      * 1-2 : rssi value (Int16)
      */
-    public static Data encodeWriteRssi(final RSSI rssi) {
+    @NonNull
+    public static Data encodeWriteRssi(@NonNull final RSSI rssi) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWriteRSSI);
@@ -35,7 +39,8 @@ public class SignalCharacteristicData {
      *
      * @param data The Data instance to decode the RSSI from
      */
-    public static RSSI decodeWriteRSSI(final Data data) {
+    @Nullable
+    public static RSSI decodeWriteRSSI(@Nullable final Data data) {
         if (null == data || null == data.value) {
             return null;
         }
@@ -59,7 +64,8 @@ public class SignalCharacteristicData {
      *     // 1-2 : payload data count in bytes (Int16)
      *     // 3.. : payload data
      */
-    public static Data encodeWritePayload(final PayloadData payloadData) {
+    @NonNull
+    public static Data encodeWritePayload(@NonNull final PayloadData payloadData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + payloadData.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWritePayload);
@@ -72,7 +78,8 @@ public class SignalCharacteristicData {
     /**
      * Decode write payload data bundle
      */
-    public static PayloadData decodeWritePayload(final Data data) {
+    @Nullable
+    public static PayloadData decodeWritePayload(@Nullable final Data data) {
         if (null == data || null == data.value) {
             return null;
         }
@@ -109,7 +116,8 @@ public class SignalCharacteristicData {
      *
      * @param payloadSharingData The data to share.
      */
-    public static Data encodeWritePayloadSharing(final PayloadSharingData payloadSharingData) {
+    @NonNull
+    public static Data encodeWritePayloadSharing(@NonNull final PayloadSharingData payloadSharingData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(5 + payloadSharingData.data.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing);
@@ -125,7 +133,8 @@ public class SignalCharacteristicData {
      *
      * @param data The raw received Data to decode into PayloadSharingData
      */
-    public static PayloadSharingData decodeWritePayloadSharing(final Data data) {
+    @Nullable
+    public static PayloadSharingData decodeWritePayloadSharing(@Nullable final Data data) {
         if (null == data || null == data.value) {
             return null;
         }
@@ -161,7 +170,8 @@ public class SignalCharacteristicData {
     // 0-0 : actionCode
     // 1-2 : payload data count in bytes (Int16)
     // 3.. : payload data
-    public static Data encodeImmediateSend(final ImmediateSendData immediateSendData) {
+    @NonNull
+    public static Data encodeImmediateSend(@NonNull final ImmediateSendData immediateSendData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + immediateSendData.data.value.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(0, BLESensorConfiguration.signalCharacteristicActionWriteImmediate);
@@ -172,7 +182,8 @@ public class SignalCharacteristicData {
     }
 
     /// Decode immediate send data bundle
-    public static ImmediateSendData decodeImmediateSend(final Data data) {
+    @Nullable
+    public static ImmediateSendData decodeImmediateSend(@Nullable final Data data) {
         if (null == data || null == data.value) {
             return null;
         }
@@ -200,7 +211,8 @@ public class SignalCharacteristicData {
     }
 
     /// Detect signal characteristic data bundle type
-    public static SignalCharacteristicDataType detect(Data data) {
+    @NonNull
+    public static SignalCharacteristicDataType detect(@NonNull Data data) {
         switch (signalDataActionCode(data.value)) {
             case BLESensorConfiguration.signalCharacteristicActionWriteRSSI:
                 return SignalCharacteristicDataType.rssi;
@@ -215,14 +227,15 @@ public class SignalCharacteristicData {
         }
     }
 
-    private static byte signalDataActionCode(byte[] signalData) {
+    private static byte signalDataActionCode(@Nullable byte[] signalData) {
         if (null == signalData || 0 == signalData.length) {
             return 0;
         }
         return signalData[0];
     }
 
-    private static Short int16(byte[] data, int index) {
+    @Nullable
+    private static Short int16(@NonNull byte[] data, int index) {
         if (index < data.length - 1) {
             final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
             byteBuffer.order(ByteOrder.LITTLE_ENDIAN);

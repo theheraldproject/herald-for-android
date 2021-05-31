@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.analysis;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Encounter;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
@@ -23,7 +25,7 @@ public class SocialDistance extends Interactions {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
         final Encounter encounter = new Encounter(didMeasure, new PayloadData(fromTarget.value.getBytes()));
         if (encounter.isValid()) {
             append(encounter);
@@ -41,10 +43,10 @@ public class SocialDistance extends Interactions {
     /// or RSSI less than excludeRssiBelow in every minute.
     /// - measuredPower defines RSSI at 1 metre
     /// - excludeRssiBelow defines minimum RSSI to include in analysis
-    public Double scoreByProximity(Date start, Date end) {
+    public Double scoreByProximity(@NonNull Date start, @NonNull Date end) {
         return scoreByProximity(start, end, -32d, -65d);
     }
-    public Double scoreByProximity(Date start, Date end, double measuredPower, double excludeRssiBelow) {
+    public Double scoreByProximity(@NonNull Date start, @NonNull Date end, double measuredPower, double excludeRssiBelow) {
         // Get encounters over time period
         final List<Encounter> encounters = subdata(start, end);
         // Get number of minutes in time period
@@ -84,10 +86,10 @@ public class SocialDistance extends Interactions {
 
     /// Calculate social distance score based on number of different devices per 1 minute time window over duration
     /// A score of 1.0 means 6 or more in every minute, score of 0.0 means no device in every minute.
-    public Double scoreByTarget(Date start, Date end) {
+    public Double scoreByTarget(@NonNull Date start, @NonNull Date end) {
         return scoreByTarget(start, end, 6, -65);
     }
-    public Double scoreByTarget(Date start, Date end, int maximumDeviceCount, double excludeRssiBelow) {
+    public Double scoreByTarget(@NonNull Date start, @NonNull Date end, int maximumDeviceCount, double excludeRssiBelow) {
         // Get encounters over time period
         final List<Encounter> encounters = subdata(start, end);
         // Get number of minutes in time period

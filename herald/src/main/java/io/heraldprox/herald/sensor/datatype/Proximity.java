@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
@@ -28,6 +29,7 @@ public class Proximity {
     }
 
     /// Get plain text description of proximity data
+    @NonNull
     public String description() {
         if (null == calibration) {
             return unit + ":" + value;
@@ -36,7 +38,7 @@ public class Proximity {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) {
             return true;
         }

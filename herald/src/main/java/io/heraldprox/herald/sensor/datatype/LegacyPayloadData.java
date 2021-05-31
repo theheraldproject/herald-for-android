@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 
 import org.json.JSONObject;
@@ -22,6 +24,7 @@ public class LegacyPayloadData extends PayloadData {
         this.service = service; // null value is permitted
     }
 
+    @NonNull
     public ProtocolName protocolName() {
         if (null == service) {
             return ProtocolName.NOT_AVAILABLE;

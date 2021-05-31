@@ -4,12 +4,15 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /// IEE 754 binary16 format 16-bit float
 public class Float16 implements DoubleValue {
     public final float value;
+    @NonNull
     public final Data bigEndian;
 
     public Float16(float value) {
@@ -20,7 +23,7 @@ public class Float16 implements DoubleValue {
         this.bigEndian = new Data(byteBuffer.array());
     }
 
-    public Float16(Data bigEndian) {
+    public Float16(@NonNull Data bigEndian) {
         this.bigEndian = bigEndian;
         final ByteBuffer byteBuffer = ByteBuffer.wrap(bigEndian.value);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);

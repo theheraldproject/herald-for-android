@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 import java.util.Map;
@@ -18,6 +21,7 @@ public class ListManager<T extends DoubleValue> {
         this.listSize = listSize;
     }
 
+    @Nullable
     public synchronized SampleList<T> list(final SampledID listFor) {
         SampleList<T> list = map.get(listFor);
         if (null == list) {
@@ -27,6 +31,7 @@ public class ListManager<T extends DoubleValue> {
         return list;
     }
 
+    @NonNull
     public synchronized Set<SampledID> sampledIDs() {
         return map.keySet();
     }

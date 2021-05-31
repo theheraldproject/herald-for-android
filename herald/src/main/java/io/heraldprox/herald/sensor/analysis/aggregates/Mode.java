@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.aggregates;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
@@ -13,6 +16,7 @@ import java.util.Map;
 
 public class Mode<T extends DoubleValue> implements Aggregate<T> {
     private int run = 1;
+    @NonNull
     private Map<Double,Counter> counts = new HashMap<>();
     private final static class Counter {
         public long value = 1;
@@ -29,7 +33,7 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         if (run > 1) return;
         Counter counter = counts.get(value.value().doubleValue());
         if (null == counter) {
@@ -39,6 +43,7 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
         }
     }
 
+    @Nullable
     @Override
     public Double reduce() {
         if (counts.isEmpty()) {

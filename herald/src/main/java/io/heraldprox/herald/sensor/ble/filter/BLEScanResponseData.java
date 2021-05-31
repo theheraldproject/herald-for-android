@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble.filter;
 
+import androidx.annotation.NonNull;
+
 import java.util.List;
 
 public class BLEScanResponseData {
@@ -15,6 +17,7 @@ public class BLEScanResponseData {
         this.segments = segments;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return segments.toString();

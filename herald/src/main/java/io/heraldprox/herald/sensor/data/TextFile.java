@@ -8,6 +8,8 @@ import android.content.Context;
 import android.media.MediaScannerConnection;
 import android.os.Environment;
 
+import androidx.annotation.NonNull;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,9 +21,10 @@ import java.util.concurrent.TimeUnit;
 
 public class TextFile {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+    @NonNull
     private final File file;
 
-    public TextFile(final Context context, final String filename) {
+    public TextFile(@NonNull final Context context, @NonNull final String filename) {
         final File folder = new File(getRootFolder(context), "Sensor");
         if (!folder.exists()) {
             if (!folder.mkdirs()) {
@@ -39,6 +42,7 @@ public class TextFile {
     }
 
     /// Get contents of file
+    @NonNull
     public synchronized String contentsOf() {
         try {
             final FileInputStream fileInputStream = new FileInputStream(file);
@@ -64,7 +68,7 @@ public class TextFile {
      * @param context Application context.
      * @return Root folder.
      */
-    private static File getRootFolder(final Context context) {
+    private static File getRootFolder(@NonNull final Context context) {
         // Get SD card or emulated external storage. By convention (really!?)
         // SD card is reported after emulated storage, so select the last folder
         final File[] externalMediaDirs = context.getExternalMediaDirs();
@@ -92,7 +96,7 @@ public class TextFile {
     }
 
     /// Overwrite file content
-    public synchronized void overwrite(String content) {
+    public synchronized void overwrite(@NonNull String content) {
         try {
             // Write to temporary file first
             final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");
@@ -108,7 +112,8 @@ public class TextFile {
     }
 
     /// Quote value for CSV output if required.
-    public static String csv(String value) {
+    @NonNull
+    public static String csv(@NonNull String value) {
         if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {
             return "\"" + value + "\"";
         } else {

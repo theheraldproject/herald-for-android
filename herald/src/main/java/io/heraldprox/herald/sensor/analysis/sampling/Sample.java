@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Date;
 
 public class Sample<T> {
@@ -20,7 +22,7 @@ public class Sample<T> {
         this.value = value;
     }
 
-    public Sample(final Sample<T> other) {
+    public Sample(@NonNull final Sample<T> other) {
         this.taken = other.taken;
         this.value = other.value;
     }
@@ -38,12 +40,14 @@ public class Sample<T> {
         return value;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return '(' + taken.toString() + ',' + value + ')';
     }
 
-    public final static <T> Class<?> valueType(final Sample<T> sample) {
+    @NonNull
+    public final static <T> Class<?> valueType(@NonNull final Sample<T> sample) {
         return sample.value.getClass();
     }
 }

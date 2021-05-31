@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Date;
@@ -13,6 +15,7 @@ public class AnalysisRunner {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "AnalysisRunner");
     private final AnalysisProviderManager analysisProviderManager;
     private final AnalysisDelegateManager analysisDelegateManager;
+    @NonNull
     private final VariantSet variantSet;
 
     public AnalysisRunner(final AnalysisProviderManager analysisProviderManager, final AnalysisDelegateManager analysisDelegateManager, final int defaultListSize) {
@@ -21,11 +24,12 @@ public class AnalysisRunner {
         this.variantSet = new VariantSet(defaultListSize);
     }
 
+    @NonNull
     public VariantSet variantSet() {
         return variantSet;
     }
 
-    public <T extends DoubleValue> void newSample(SampledID sampled, Sample<T> item) {
+    public <T extends DoubleValue> void newSample(SampledID sampled, @NonNull Sample<T> item) {
         variantSet.push(sampled, item);
     }
 

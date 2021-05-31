@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.analysis.aggregates.Median;
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
@@ -85,10 +88,11 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         median.map(value);
     }
 
+    @Nullable
     @Override
     public Double reduce() {
         final Double medianOfRssi = medianOfRssi();
@@ -109,6 +113,7 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
         median.reset();
     }
 
+    @Nullable
     public Double medianOfRssi() {
         return median.reduce();
     }

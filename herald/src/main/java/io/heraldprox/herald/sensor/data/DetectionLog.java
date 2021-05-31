@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.data;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
@@ -20,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /// CSV contact log for post event analysis and visualisation
 public class DetectionLog extends DefaultSensorDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
+    @NonNull
     private final TextFile textFile;
     private final PayloadData payloadData;
     private final String deviceName = android.os.Build.MODEL;
@@ -27,18 +30,19 @@ public class DetectionLog extends DefaultSensorDelegate {
     private final Map<String, String> payloads = new ConcurrentHashMap<>();
     private final PayloadDataFormatter payloadDataFormatter;
 
-    public DetectionLog(final Context context, final String filename, final PayloadData payloadData, PayloadDataFormatter payloadDataFormatter) {
+    public DetectionLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData, PayloadDataFormatter payloadDataFormatter) {
         textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
         this.payloadDataFormatter = payloadDataFormatter;
         write();
     }
 
-    public DetectionLog(final Context context, final String filename, final PayloadData payloadData) {
+    public DetectionLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData) {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
     }
 
-    private String csv(String value) {
+    @NonNull
+    private String csv(@NonNull String value) {
         return TextFile.csv(value);
     }
 
@@ -72,7 +76,7 @@ public class DetectionLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, PayloadData didRead, @NonNull TargetIdentifier fromTarget) {
         if (null == payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value)) {
             logger.debug("didRead (payload={})", payloadDataFormatter.shortFormat(payloadData));
             write();
@@ -80,7 +84,7 @@ public class DetectionLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, @NonNull TargetIdentifier fromTarget) {
         for (PayloadData payloadData : didShare) {
             if (null == payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value)) {
                 logger.debug("didShare (payload={})", payloadDataFormatter.shortFormat(payloadData));

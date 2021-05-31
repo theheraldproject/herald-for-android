@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.datatype.random;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import io.heraldprox.herald.sensor.datatype.Int32;
  */
 public class RingBuffer {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.RingBuffer");
+    @NonNull
     private final byte[] data;
     private int oldestPosition, newestPosition;
 
@@ -68,7 +70,7 @@ public class RingBuffer {
      * Append bytes to end of ring buffer.
      * @param data
      */
-    public synchronized void push(final Data data) {
+    public synchronized void push(@NonNull final Data data) {
         for (int i=0; i<data.value.length; i++) {
             push(data.value[i]);
         }
@@ -122,6 +124,7 @@ public class RingBuffer {
         return value;
     }
 
+    @NonNull
     public synchronized Data pop(final int bytes) {
         final byte[] data = new byte[Math.min(bytes, size())];
         for (int i=0; i<data.length; i++) {
@@ -165,6 +168,7 @@ public class RingBuffer {
      * Get entire ring buffer as data.
      * @return
      */
+    @NonNull
     public synchronized Data get() {
         final Data data = new Data(new byte[size()]);
         for (int i=data.value.length; i-->0;) {
@@ -177,6 +181,7 @@ public class RingBuffer {
      * Cryptographic hash (SHA256) of ring buffer data.
      * @return SHA256 hash, or null if buffer is empty or SHA256 is not available
      */
+    @Nullable
     public synchronized Data hash() {
         if (size() == 0) {
             return null;

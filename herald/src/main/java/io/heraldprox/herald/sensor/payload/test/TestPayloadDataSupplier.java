@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.payload.test;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.Device;
 import io.heraldprox.herald.sensor.ble.BLEDevice;
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
@@ -33,6 +36,7 @@ public class TestPayloadDataSupplier extends DefaultPayloadDataSupplier {
         this.length = (length >= 7 ? length : 7);
     }
 
+    @NonNull
     @Override
     public PayloadData payload(PayloadTimestamp timestamp, Device device) {
         final PayloadData payloadData = new PayloadData();
@@ -46,6 +50,7 @@ public class TestPayloadDataSupplier extends DefaultPayloadDataSupplier {
         return payloadData;
     }
 
+    @Nullable
     @Override
     public LegacyPayloadData legacyPayload(PayloadTimestamp timestamp, Device device) {
         if (!(device instanceof BLEDevice)) {

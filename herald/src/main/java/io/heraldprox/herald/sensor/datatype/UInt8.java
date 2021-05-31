@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.util.Objects;
 
 /// Unsigned integer (8 bits)
@@ -18,7 +21,7 @@ public class UInt8 implements DoubleValue {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         UInt8 uInt8 = (UInt8) o;
@@ -30,6 +33,7 @@ public class UInt8 implements DoubleValue {
         return Objects.hash(value);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return Integer.toString(value);

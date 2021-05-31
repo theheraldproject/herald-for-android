@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble.filter;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 
 public class BLEAdvertServiceData {
@@ -17,6 +19,7 @@ public class BLEAdvertServiceData {
         this.raw = raw;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "BLEAdvertServiceData{" +

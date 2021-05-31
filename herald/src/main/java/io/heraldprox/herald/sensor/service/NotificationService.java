@@ -10,21 +10,27 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 /// Notification service for enabling foreground service (notification must be displayed to show app is running in the background).
 public class NotificationService {
+    @Nullable
     private static NotificationService shared = null;
+    @Nullable
     private static Application application = null;
     private final Context context;
     private int notificationId;
     private Notification notification;
 
-    private NotificationService(final Application application) {
+    private NotificationService(@NonNull final Application application) {
         this.application = application;
         this.context = application.getApplicationContext();
     }
 
     /// Get shared global instance of notification service
-    public final static NotificationService shared(final Application application) {
+    @Nullable
+    public final static NotificationService shared(@NonNull final Application application) {
         if (null == shared) {
             shared = new NotificationService(application);
         }

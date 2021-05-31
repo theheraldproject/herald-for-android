@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble.filter;
 
+import androidx.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +51,7 @@ public enum BLEAdvertSegmentType {
         this.code = code;
     }
 
+    @Nullable
     public static BLEAdvertSegmentType typeFor(int code) {
         BLEAdvertSegmentType type = BY_CODE.get(code);
         if (null == type) {
@@ -57,6 +60,7 @@ public enum BLEAdvertSegmentType {
         return type;
     }
 
+    @Nullable
     public static BLEAdvertSegmentType typeFor(String commonName) {
         BLEAdvertSegmentType type = BY_LABEL.get(commonName);
         if (null == type) {

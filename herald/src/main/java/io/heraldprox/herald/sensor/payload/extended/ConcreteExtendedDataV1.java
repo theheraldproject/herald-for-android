@@ -1,5 +1,8 @@
 package io.heraldprox.herald.sensor.payload.extended;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Float16;
 import io.heraldprox.herald.sensor.datatype.Int16;
@@ -32,7 +35,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, UInt8 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable UInt8 value) {
         if (null == code || null == value) {
             return;
         }
@@ -42,7 +45,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, UInt16 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable UInt16 value) {
         if (null == code || null == value) {
             return;
         }
@@ -52,7 +55,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, UInt32 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable UInt32 value) {
         if (null == code || null == value) {
             return;
         }
@@ -62,7 +65,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, UInt64 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable UInt64 value) {
         if (null == code || null == value) {
             return;
         }
@@ -72,7 +75,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Int8 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Int8 value) {
         if (null == code || null == value) {
             return;
         }
@@ -82,7 +85,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Int16 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Int16 value) {
         if (null == code || null == value) {
             return;
         }
@@ -92,7 +95,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Int32 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Int32 value) {
         if (null == code || null == value) {
             return;
         }
@@ -102,7 +105,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Int64 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Int64 value) {
         if (null == code || null == value) {
             return;
         }
@@ -112,7 +115,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Float16 value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Float16 value) {
         if (null == code || null == value) {
             return;
         }
@@ -122,7 +125,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, String value) {
+    public void addSection(@Nullable UInt8 code, @Nullable String value) {
         if (null == code || null == value) {
             return;
         }
@@ -132,7 +135,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(UInt8 code, Data value) {
+    public void addSection(@Nullable UInt8 code, @Nullable Data value) {
         if (null == code || null == value) {
             return;
         }
@@ -146,6 +149,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
         return payloadData;
     }
 
+    @NonNull
     public List<ConcreteExtendedDataSectionV1> getSections() {
         final List<ConcreteExtendedDataSectionV1> sections = new ArrayList<>();
 

@@ -16,6 +16,9 @@ import java.util.TimeZone;
 
 import android.annotation.SuppressLint;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 public class ConcreteSensorLogger implements SensorLogger {
     private final String subsystem, category;
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
@@ -23,8 +26,10 @@ public class ConcreteSensorLogger implements SensorLogger {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
     /** Will not leak. When Logger leaves memory, context reference will be removed. */
+    @Nullable
     @SuppressLint("StaticFieldLeak")
     private static Context context = null;
+    @Nullable
     private static TextFile logFile = null;
 
     public ConcreteSensorLogger(String subsystem, String category) {
@@ -32,14 +37,14 @@ public class ConcreteSensorLogger implements SensorLogger {
         this.category = category;
     }
 
-    public static void context(final Context context) {
+    public static void context(@Nullable final Context context) {
         if (context != null && context != ConcreteSensorLogger.context) {
             ConcreteSensorLogger.context = context;
             logFile = new TextFile(context, "log.txt");
         }
     }
 
-    private boolean suppress(SensorLoggerLevel level) {
+    private boolean suppress(@NonNull SensorLoggerLevel level) {
         if (BLESensorConfiguration.logLevel == SensorLoggerLevel.off) {
             return true;
         }
@@ -53,7 +58,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private void log(SensorLoggerLevel level, String message, final Object... values) {
+    private void log(@NonNull SensorLoggerLevel level, @NonNull String message, final Object... values) {
         if (!suppress(level)) {
             // android.util.Log is unavailable during test, this will throw error.
             try {
@@ -64,23 +69,24 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    public void debug(String message, final Object... values) {
+    public void debug(@NonNull String message, final Object... values) {
         log(SensorLoggerLevel.debug, message, values);
     }
 
-    public void info(String message, final Object... values) {
+    public void info(@NonNull String message, final Object... values) {
         log(SensorLoggerLevel.info, message, values);
     }
 
-    public void fault(String message, final Object... values) {
+    public void fault(@NonNull String message, final Object... values) {
         log(SensorLoggerLevel.fault, message, values);
     }
 
+    @NonNull
     private static String tag(String subsystem, String category) {
         return subsystem + "::" + category;
     }
 
-    private static void outputLog(final SensorLoggerLevel level, final String tag, final String message, final Object... values) {
+    private static void outputLog(@NonNull final SensorLoggerLevel level, final String tag, @NonNull final String message, final Object... values) {
         final Throwable throwable = getThrowable(values);
         switch (level) {
             case debug: {
@@ -110,7 +116,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, final String message, final Object... values) {
+    private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, @NonNull final String message, final Object... values) {
         if (null == logFile) {
             return;
         }
@@ -122,7 +128,8 @@ public class ConcreteSensorLogger implements SensorLogger {
     }
 
 
-    private static Throwable getThrowable(final Object... values) {
+    @Nullable
+    private static Throwable getThrowable(@NonNull final Object... values) {
         if (values.length > 0 && values[values.length - 1] instanceof Throwable) {
             return (Throwable) values[values.length - 1];
         } else {
@@ -130,7 +137,8 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private static String render(final String message, final Object... values) {
+    @NonNull
+    private static String render(@NonNull final String message, @NonNull final Object... values) {
         if (0 == values.length) {
             return message;
         } else {

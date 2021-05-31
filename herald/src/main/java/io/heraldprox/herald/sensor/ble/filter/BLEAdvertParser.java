@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.ble.filter;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.UInt8;
 
@@ -11,12 +14,14 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class BLEAdvertParser {
-    public static BLEScanResponseData parseScanResponse(byte[] raw, int offset) {
+    @NonNull
+    public static BLEScanResponseData parseScanResponse(@NonNull byte[] raw, int offset) {
         // Multiple segments until end of binary data
         return new BLEScanResponseData(raw.length - offset, extractSegments(raw, offset));
     }
 
-    public static List<BLEAdvertSegment> extractSegments(byte[] raw, int offset) {
+    @NonNull
+    public static List<BLEAdvertSegment> extractSegments(@NonNull byte[] raw, int offset) {
         int position = offset;
         ArrayList<BLEAdvertSegment> segments = new ArrayList<BLEAdvertSegment>();
         int segmentLength;
@@ -49,7 +54,8 @@ public class BLEAdvertParser {
         return segments;
     }
 
-    public static String hex(byte[] bytes) {
+    @NonNull
+    public static String hex(@NonNull byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
             result.append(String.format("%02x", b));
@@ -57,7 +63,8 @@ public class BLEAdvertParser {
         return result.toString();
     }
 
-    public static String binaryString(byte[] bytes) {
+    @NonNull
+    public static String binaryString(@NonNull byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
             result.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
@@ -66,7 +73,8 @@ public class BLEAdvertParser {
         return result.toString();
     }
 
-    public static byte[] subDataBigEndian(byte[] raw, int offset, int length) {
+    @NonNull
+    public static byte[] subDataBigEndian(@Nullable byte[] raw, int offset, int length) {
         if (null == raw) {
             return new byte[]{};
         }
@@ -84,7 +92,8 @@ public class BLEAdvertParser {
         return data;
     }
 
-    public static byte[] subDataLittleEndian(byte[] raw, int offset, int length) {
+    @NonNull
+    public static byte[] subDataLittleEndian(@Nullable byte[] raw, int offset, int length) {
         if (null == raw) {
             return new byte[]{};
         }
@@ -102,7 +111,8 @@ public class BLEAdvertParser {
         return data;
     }
 
-    public static Integer extractTxPower(List<BLEAdvertSegment> segments) {
+    @Nullable
+    public static Integer extractTxPower(@NonNull List<BLEAdvertSegment> segments) {
         // find the txPower code segment in the list
         for (BLEAdvertSegment segment : segments) {
             if (segment.type == BLEAdvertSegmentType.txPowerLevel) {
@@ -112,7 +122,8 @@ public class BLEAdvertParser {
         return null;
     }
 
-    public static List<BLEAdvertManufacturerData> extractManufacturerData(List<BLEAdvertSegment> segments) {
+    @NonNull
+    public static List<BLEAdvertManufacturerData> extractManufacturerData(@NonNull List<BLEAdvertSegment> segments) {
         // find the manufacturerData code segment in the list
         List<BLEAdvertManufacturerData> manufacturerData = new ArrayList<>();
         for (BLEAdvertSegment segment : segments) {
@@ -129,7 +140,8 @@ public class BLEAdvertParser {
         return manufacturerData;
     }
 
-    public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(List <BLEAdvertManufacturerData> manuData) {
+    @NonNull
+    public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(@NonNull List <BLEAdvertManufacturerData> manuData) {
         final List<BLEAdvertAppleManufacturerSegment> appleSegments = new ArrayList<>();
         for (BLEAdvertManufacturerData manu : manuData) {
             int bytePos = 0;
@@ -160,7 +172,8 @@ public class BLEAdvertParser {
         return appleSegments;
     }
 
-    public static List<BLEAdvertServiceData> extractServiceUUID16Data(List<BLEAdvertSegment> segments) {
+    @NonNull
+    public static List<BLEAdvertServiceData> extractServiceUUID16Data(@NonNull List<BLEAdvertSegment> segments) {
         // find the serviceData code segment in the list
         List<BLEAdvertServiceData> serviceData = new ArrayList<>();
         for (BLEAdvertSegment segment : segments) {

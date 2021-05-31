@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import java.util.Date;
 
 /// Raw location data for estimating indirect exposure
@@ -20,6 +22,7 @@ public class Location {
     }
 
     /// Get plain text description of proximity data
+    @NonNull
     public String description() {
         return (null == value ? "null" : value.description()) + ":[from=" + start + ",to=" + end + "]";
     }

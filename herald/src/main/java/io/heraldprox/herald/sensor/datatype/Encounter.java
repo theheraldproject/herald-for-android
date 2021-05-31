@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -17,8 +20,11 @@ public class Encounter {
     static {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
+    @Nullable
     public Date timestamp = null;
+    @Nullable
     public Proximity proximity = null;
+    @Nullable
     public PayloadData payload = null;
 
     public Encounter(Proximity didMeasure, PayloadData withPayload, Date timestamp) {
@@ -31,7 +37,7 @@ public class Encounter {
         this(didMeasure, withPayload, new Date());
     }
 
-    public Encounter(String row) {
+    public Encounter(@NonNull String row) {
         final String[] fields = row.split(",", -1);
         if (!(fields.length >= 6)) {
             return;
@@ -67,6 +73,7 @@ public class Encounter {
         }
     }
 
+    @NonNull
     public String csvString() {
         final String f0 = (null == timestamp ? "" : dateFormatter.format(timestamp));
         final String f1 = (null == proximity || null == proximity.value ? "" : proximity.value.toString());
