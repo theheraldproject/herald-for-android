@@ -7,7 +7,7 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest 
+    runs-on: [ubuntu-latest] 
     permissions: 
       contents: read
       packages: write 
@@ -21,7 +21,7 @@ jobs:
           distribution: 'adopt'
           
       - name: Publish to the Maven Central Repository
-        run: gradle publish
+        run: ./gradlew publish
         env: 
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
