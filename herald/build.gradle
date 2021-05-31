@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.heraldprox'
-version = '2.0.0-beta1'
+version = '2.0.0-beta3'
 
 apply plugin: 'com.android.library'
 
@@ -17,7 +17,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 2
-        versionName "2.0.0-beta1"
+        versionName "2.0.0-beta3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -125,7 +125,7 @@ afterEvaluate {
         repositories {
             maven {
                 name = "OSSRH"
-                url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
                 credentials {
                     username = System.getenv("MAVEN_USERNAME")
                     password = System.getenv("MAVEN_PASSWORD")
