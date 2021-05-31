@@ -6,11 +6,17 @@ package io.heraldprox.herald.sensor.datatype;
 
 import io.heraldprox.herald.sensor.TestUtil;
 import io.heraldprox.herald.sensor.analysis.Sample;
+import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandom;
+import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomNIST;
+import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomSingleton;
+import io.heraldprox.herald.sensor.datatype.random.NonBlockingPRNG;
+import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
 import org.junit.Test;
 
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -20,26 +26,36 @@ public class PseudoDeviceAddressTests {
 
     @Test
     public void testRandom() {
-        for (RandomSource.Method method : RandomSource.Method.values()) {
-            int repeated = 0;
+        final List<RandomSource> randomSources = Arrays.asList(
+                new NonBlockingPRNG(),
+                new BlockingSecureRandom(),
+                new BlockingSecureRandomSingleton(),
+                new BlockingSecureRandomNIST());
+        for (RandomSource randomSource : randomSources) {
+            int duplicateAddress = 0;
+            int duplicateBytes = 0;
             long lastAddress = 0;
             byte[] lastBytes = new byte[6];
             for (int i = 0; i < 1000; i++) {
-                final PseudoDeviceAddress pseudoDeviceAddress = new PseudoDeviceAddress(method);
+                final PseudoDeviceAddress pseudoDeviceAddress = new PseudoDeviceAddress(randomSource);
                 // Address should be different every time
-                assertNotEquals(lastAddress, pseudoDeviceAddress.address);
+                if (lastAddress == pseudoDeviceAddress.address) {
+                    duplicateAddress++;
+                }
                 // Bytes should be different most of the time
                 assertEquals(6, pseudoDeviceAddress.data.length);
                 for (int j=0; j<6; j++) {
                     if (pseudoDeviceAddress.data[j] == lastBytes[j]) {
-                        repeated++;
+                        duplicateBytes++;
                     }
                 }
                 lastAddress = pseudoDeviceAddress.address;
                 lastBytes = pseudoDeviceAddress.data;
             }
-            // Tolerate 10% repeats for individual bytes
-            assertTrue(repeated < (1000 * 6 / 10));
+            // Tolerate 20% duplicate addresses for testing, but expect zero most of the time
+            assertTrue(duplicateAddress < (1000 / 20));
+            // Tolerate 20% duplicate bytes for testing, but expect close to zero most of the time
+            assertTrue(duplicateBytes < (1000 * 6 / 20));
         }
     }
 
@@ -74,16 +90,21 @@ public class PseudoDeviceAddressTests {
 
     @Test
     public void testPerformance() {
-        for (RandomSource.Method method : RandomSource.Method.values()) {
+        final List<RandomSource> randomSources = Arrays.asList(
+                new NonBlockingPRNG(),
+                new BlockingSecureRandom(),
+                new BlockingSecureRandomSingleton(),
+                new BlockingSecureRandomNIST());
+        for (RandomSource randomSource : randomSources) {
             final Sample sample = new Sample();
             long t0, t1;
             for (int i = 100000; i-- > 0; ) {
                 t0 = System.nanoTime();
-                new PseudoDeviceAddress(method);
+                new PseudoDeviceAddress(randomSource);
                 t1 = System.nanoTime();
                 sample.add(t1 - t0);
             }
-            System.err.println(method.name() + " : " + sample);
+            System.err.println(randomSource.getClass().getSimpleName() + " : " + sample);
         }
     }
 

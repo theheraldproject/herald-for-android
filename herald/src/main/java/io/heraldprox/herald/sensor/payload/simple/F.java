@@ -14,8 +14,10 @@ import java.security.MessageDigest;
 public class F {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
 
-    /// Cryptographic hash function : SHA256
-    protected static Data h(Data data) {
+    /**
+     * Cryptographic hash function : SHA256
+     */
+    protected final static Data hash(final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);
@@ -26,18 +28,24 @@ public class F {
         }
     }
 
-    /// Truncation function : Delete second half of data
-    protected static Data t(Data data) {
-        return t(data, data.value.length / 2);
+    /**
+     * Truncation function : Delete second half of data
+     */
+    protected final static Data truncate(final Data data) {
+        return truncate(data, data.value.length / 2);
     }
 
-    /// Truncation function : Retain first n bytes of data
-    protected static Data t(Data data, int n) {
+    /**
+     * Truncation function : Retain first n bytes of data
+     */
+    protected final static Data truncate(final Data data, int n) {
         return data.subdata(0, n);
     }
 
-    /// XOR function : Compute left xor right, assumes left and right are the same length
-    protected static Data xor(Data left, Data right) {
+    /**
+     * XOR function : Compute left xor right, assumes left and right are the same length
+     */
+    protected final static Data xor(final Data left, final Data right) {
         final byte[] leftByteArray = left.value;
         final byte[] rightByteArray = right.value;
         final byte[] resultByteArray = new byte[left.value.length];
