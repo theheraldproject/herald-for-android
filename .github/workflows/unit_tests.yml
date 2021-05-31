@@ -29,3 +29,18 @@ jobs:
         with:
           name: unit-tests-results
           path: herald/build/reports/tests/testDebugUnitTest
+  spotbugs:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Spotbugs
+        run: ./gradlew check --stacktrace --info
+
+      - name: Spotbugs results
+        uses: actions/upload-artifact@v1
+        with:
+          name: spotbugs-results-html
+          path: herald/build/reports/lint-results.html
+          name: spotbugs-results-xml
+          path: herald/build/reports/lint-results.xml

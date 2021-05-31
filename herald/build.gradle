@@ -1,7 +1,7 @@
 plugins {
     id 'maven-publish'
     id 'signing'
-    //id 'com.github.spotbugs' version '4.2.3'
+    id 'com.github.spotbugs' version '4.2.3'
 }
 
 group = 'io.heraldprox'
@@ -40,13 +40,14 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     testImplementation 'junit:junit:4.12'
     testImplementation "org.json:json:20201115"
-    //spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.7.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.7.1'
 }
 
-signing {
-  useGpgCmd()
-  sign(publishing.publications["release","debug"])
-}
+// Causes getAt() warnings - TODO fix this
+//signing {
+//  useGpgCmd()
+//  sign(publishing.publications["release","debug"])
+//}
 
 
 afterEvaluate {
