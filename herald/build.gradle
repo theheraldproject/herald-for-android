@@ -1,8 +1,10 @@
 plugins {
     id 'maven-publish'
+    id 'signing'
+    //id 'com.github.spotbugs' version '4.2.3'
 }
 
-group = 'io.heraldprox.herald'
+group = 'io.heraldprox'
 version = '2.0.0-beta1'
 
 apply plugin: 'com.android.library'
@@ -38,15 +40,24 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     testImplementation 'junit:junit:4.12'
     testImplementation "org.json:json:20201115"
+    //spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.7.1'
 }
+
+signing {
+  useGpgCmd()
+  sign(publishing.publications["release","debug"])
+}
+
 
 afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
                 from components.release
+                //artifact sourcesJar
+                //artifact javadocJar
 
-                groupId = 'io.heraldprox.herald'
+                groupId = 'io.heraldprox'
                 artifactId = 'herald'
                 pom {
                     name = 'Herald'
@@ -75,8 +86,10 @@ afterEvaluate {
             debug(MavenPublication) {
                 // Applies the component for the debug build variant.
                 from components.debug
+                //artifact sourcesJar
+                //artifact javadocJar
 
-                groupId = 'io.heraldprox.herald'
+                groupId = 'io.heraldprox'
                 artifactId = 'herald-debug'
                 pom {
                     name = 'Herald'
@@ -106,11 +119,20 @@ afterEvaluate {
 
         repositories {
             maven {
-                name = 'myRepo'
-                url = "file://${buildDir}/repo"
-                // def releasesRepoUrl = "https://oss.sonatype.org/content/repositories/releases/"
-                // def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
-                // url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                name = "OSSRH"
+                url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                credentials {
+                    username = System.getenv("MAVEN_USERNAME")
+                    password = System.getenv("MAVEN_PASSWORD")
+                }
+            }
+            maven {
+                name = "GitHubPackages"
+                url = "https://maven.pkg.github.com/theheraldproject/herald-for-android"
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR")
+                    password = System.getenv("GITHUB_TOKEN")
+                }
             }
         }
     }
