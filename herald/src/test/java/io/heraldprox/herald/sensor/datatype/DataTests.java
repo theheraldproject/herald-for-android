@@ -163,7 +163,7 @@ public class DataTests {
             assertNull(data.subdata(-1, length));
             assertNull(data.subdata(length, 0));
             // Equivalent to copy
-            if (length == 0) {
+            if (0 == length) {
                 // Offset 0 is invalid when length is 0
                 assertNull(data.subdata(0, length));
             } else {

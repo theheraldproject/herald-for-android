@@ -49,11 +49,11 @@ public class RssiHistogram extends DefaultSensorDelegate {
     @Override
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
         // Guard for data collection until histogram reaches maximum count
-        if (samples == Long.MAX_VALUE) {
+        if (Long.MAX_VALUE == samples) {
             return;
         }
         // Guard for RSSI measurements only
-        if (didMeasure.unit != ProximityMeasurementUnit.RSSI || didMeasure.value == null) {
+        if (didMeasure.unit != ProximityMeasurementUnit.RSSI || null == didMeasure.value) {
             return;
         }
         add(didMeasure.value);
@@ -93,7 +93,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     public int samplePercentile(double percentile) {
-        if (samples == 0) {
+        if (0 == samples) {
             return (int) Math.round(min + (max - min) * percentile);
         }
         final double percentileCount = samples * percentile;

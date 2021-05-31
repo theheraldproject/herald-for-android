@@ -17,9 +17,9 @@ public class Distance implements DoubleValue {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         Distance distance = (Distance) o;
-        return Double.compare(distance.value, value) == 0;
+        return 0 == Double.compare(distance.value, value);
     }
 
     @Override

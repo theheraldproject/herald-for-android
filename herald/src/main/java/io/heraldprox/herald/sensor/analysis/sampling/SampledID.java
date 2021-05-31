@@ -31,7 +31,7 @@ public class SampledID implements Comparable<SampledID> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (null == o || getClass() != o.getClass()) return false;
         SampledID sampledID = (SampledID) o;
         return value == sampledID.value;
     }

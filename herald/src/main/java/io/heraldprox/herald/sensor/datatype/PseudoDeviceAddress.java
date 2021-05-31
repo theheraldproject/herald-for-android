@@ -65,7 +65,7 @@ public class PseudoDeviceAddress {
         // - SecureRandomSingleton is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
         // - SecureRandom is blocking after 4-8 hours on idle devices and inappropriate for this use case, not recommended
         // - SecureRandomNIST is block after 6 hours on idle devices and inappropriate for this use case, not recommended
-        if (randomSource == null || randomSource.method != method) {
+        if (null == randomSource || randomSource.method != method) {
             randomSource = new RandomSource(method);
         }
         this.data = encode(randomSource.nextLong()); // Long is 8 bytes - we only need 6
@@ -108,7 +108,7 @@ public class PseudoDeviceAddress {
             decoded.append(new Data((byte) 0, 8 - decoded.value.length));
         }
         final Int64 int64 = decoded.int64(0);
-        return (int64 == null ? 0 : decoded.int64(0).value);
+        return (null == int64 ? 0 : decoded.int64(0).value);
     }
 
     @Override

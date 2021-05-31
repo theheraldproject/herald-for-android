@@ -53,7 +53,7 @@ public class VariantSet {
 
     public <T extends DoubleValue> ListManager<T> listManager(final Class<T> variant) {
         ListManager<T> listManager = (ListManager<T>) map.get(variant);
-        if (listManager == null) {
+        if (null == listManager) {
             listManager = add(variant, defaultListSize);
         }
         return listManager;

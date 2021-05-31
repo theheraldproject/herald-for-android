@@ -67,7 +67,7 @@ public class Interactions extends DefaultSensorDelegate {
         final long endTime = end.getTime();
         final List<Encounter> subdata = new ArrayList<>();
         for (Encounter encounter : encounters) {
-            if (encounter.timestamp == null) {
+            if (null == encounter.timestamp) {
                 continue;
             }
             final long time = encounter.timestamp.getTime();
@@ -83,7 +83,7 @@ public class Interactions extends DefaultSensorDelegate {
         final long startTime = start.getTime();
         final List<Encounter> subdata = new ArrayList<>();
         for (Encounter encounter : encounters) {
-            if (encounter.timestamp == null) {
+            if (null == encounter.timestamp) {
                 continue;
             }
             final long time = encounter.timestamp.getTime();
@@ -157,7 +157,7 @@ public class Interactions extends DefaultSensorDelegate {
                 currentTimeWindow = timeWindow;
             }
             List<Proximity> proximities = context.get(encounter.payload);
-            if (proximities == null) {
+            if (null == proximities) {
                 proximities = new ArrayList<>(1);
                 context.put(encounter.payload, proximities);
             }
@@ -197,7 +197,7 @@ public class Interactions extends DefaultSensorDelegate {
                 continue;
             }
             InteractionsForTarget triple = targets.get(encounter.payload);
-            if (triple == null) {
+            if (null == triple) {
                 // One encounter is assumed to be at least 1 second minimum
                 final Sample proximity = new Sample(encounter.proximity.value, 1);
                 targets.put(encounter.payload, new InteractionsForTarget(encounter.timestamp, new TimeInterval(1), proximity));
@@ -231,10 +231,10 @@ public class Interactions extends DefaultSensorDelegate {
             }
             final Double value = Math.round(encounter.proximity.value / bin) * bin;
             Date lastSeenAt = targets.get(encounter.payload);
-            if (lastSeenAt == null) {
+            if (null == lastSeenAt) {
                 // One encounter is assumed to be at least 1 second minimum
                 final TimeInterval timeInterval = histogram.get(value);
-                histogram.put(value, new TimeInterval(1 + (timeInterval == null ? 0 : timeInterval.value)));
+                histogram.put(value, new TimeInterval(1 + (null == timeInterval ? 0 : timeInterval.value)));
                 targets.put(encounter.payload, encounter.timestamp);
                 continue;
             }
@@ -248,7 +248,7 @@ public class Interactions extends DefaultSensorDelegate {
             // Proximity for every second of the most recent period of encounter
             // is assumed to be the most recent measurement
             final TimeInterval timeInterval = histogram.get(value);
-            histogram.put(value, new TimeInterval(elapsed.value + (timeInterval == null ? 0 : timeInterval.value)));
+            histogram.put(value, new TimeInterval(elapsed.value + (null == timeInterval ? 0 : timeInterval.value)));
             targets.put(encounter.payload, encounter.timestamp);
         }
         return histogram;

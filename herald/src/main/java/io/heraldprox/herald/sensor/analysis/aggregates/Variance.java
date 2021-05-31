@@ -22,9 +22,9 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
     @Override
     public void beginRun(int thisRun) {
         run = thisRun;
-        if (run == 2) {
+        if (2 == run) {
             // initialise mean
-            mean = (count == 0 ? 0 : sum / count);
+            mean = (0 == count ? 0 : sum / count);
             // reinitialise counters
             sum = 0;
             count = 0;
@@ -33,10 +33,10 @@ public class Variance<T extends DoubleValue> implements Aggregate<T> {
 
     @Override
     public void map(Sample<T> value) {
-        if (run == 1) {
+        if (1 == run) {
             sum += value.value().doubleValue();
         } else {
-            // run == 2
+            // 2 == run
             final double dv = value.value().doubleValue();
             sum += (dv - mean) * (dv - mean);
         }

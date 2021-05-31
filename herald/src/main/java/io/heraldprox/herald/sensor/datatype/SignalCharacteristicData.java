@@ -36,7 +36,7 @@ public class SignalCharacteristicData {
      * @param data The Data instance to decode the RSSI from
      */
     public static RSSI decodeWriteRSSI(final Data data) {
-        if (data == null || data.value == null) {
+        if (null == data || null == data.value) {
             return null;
         }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWriteRSSI) {
@@ -46,7 +46,7 @@ public class SignalCharacteristicData {
             return null;
         }
         final Short rssiValue = int16(data.value, 1);
-        if (rssiValue == null) {
+        if (null == rssiValue) {
             return null;
         }
         return new RSSI(rssiValue.intValue());
@@ -86,7 +86,7 @@ public class SignalCharacteristicData {
         if (null == payloadDataCount) {
             return null;
         }
-        if (payloadDataCount == 0) {
+        if (0 == payloadDataCount) {
             return new PayloadData();
         }
         if (data.value.length != (3 + payloadDataCount.intValue())) {
@@ -126,7 +126,7 @@ public class SignalCharacteristicData {
      * @param data The raw received Data to decode into PayloadSharingData
      */
     public static PayloadSharingData decodeWritePayloadSharing(final Data data) {
-        if (data == null || data.value == null) {
+        if (null == data || null == data.value) {
             return null;
         }
         if (signalDataActionCode(data.value) != BLESensorConfiguration.signalCharacteristicActionWritePayloadSharing) {
@@ -136,21 +136,21 @@ public class SignalCharacteristicData {
             return null;
         }
         final Short rssiValue = int16(data.value, 1);
-        if (rssiValue == null) {
+        if (null == rssiValue) {
             return null;
         }
         final Short payloadSharingDataCount = int16(data.value, 3);
-        if (payloadSharingDataCount == null) {
+        if (null == payloadSharingDataCount) {
             return null;
         }
-        if (payloadSharingDataCount == 0) {
+        if (0 == payloadSharingDataCount) {
             return new PayloadSharingData(new RSSI(rssiValue.intValue()), new Data());
         }
         if (data.value.length != (5 + payloadSharingDataCount.intValue())) {
             return null;
         }
         final Data payloadSharingDataBytes = new Data(data.value).subdata(5);
-        if (payloadSharingDataBytes == null) {
+        if (null == payloadSharingDataBytes) {
             return null;
         }
         return new PayloadSharingData(new RSSI(rssiValue.intValue()), payloadSharingDataBytes);
@@ -216,7 +216,7 @@ public class SignalCharacteristicData {
     }
 
     private static byte signalDataActionCode(byte[] signalData) {
-        if (null == signalData || signalData.length == 0) {
+        if (null == signalData || 0 == signalData.length) {
             return 0;
         }
         return signalData[0];

@@ -113,7 +113,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     public void sensor(SensorType sensor, TargetIdentifier didDetect) {
         if (eventType == EventType.detect) {
             final String payload = targetIdentifierToPayload.get(didDetect);
-            if (payload == null) {
+            if (null == payload) {
                 return;
             }
             add(payload);
@@ -124,7 +124,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
         if (eventType == EventType.measure) {
             final String payload = targetIdentifierToPayload.get(fromTarget);
-            if (payload == null) {
+            if (null == payload) {
                 return;
             }
             add(payload);
@@ -135,14 +135,14 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
         if (eventType == EventType.share) {
             final String payload = targetIdentifierToPayload.get(fromTarget);
-            if (payload == null) {
+            if (null == payload) {
                 return;
             }
             add(payload);
         } else if (eventType == EventType.sharedPeer) {
             for (final PayloadData sharedPeer : didShare) {
                 final String payload = sharedPeer.shortName();
-                if (payload == null) {
+                if (null == payload) {
                     return;
                 }
                 add(payload);
@@ -154,7 +154,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     public void sensor(SensorType sensor, Location didVisit) {
         if (eventType == EventType.visit) {
             final String payload = payloadData.shortName();
-            if (payload == null) {
+            if (null == payload) {
                 return;
             }
             add(payload);

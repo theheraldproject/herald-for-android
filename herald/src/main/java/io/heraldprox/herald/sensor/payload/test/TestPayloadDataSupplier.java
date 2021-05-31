@@ -54,12 +54,18 @@ public class TestPayloadDataSupplier extends DefaultPayloadDataSupplier {
         final BLEDevice bleDevice = (BLEDevice) device;
         final RSSI rssi = bleDevice.rssi();
         final PayloadData payloadData = payload(timestamp, device);
-        if (rssi == null || payloadData == null) {
+        if (null == rssi || null == payloadData) {
             return null;
+        }
+        // Attempt to get phone model. This will fail during test.
+        String model = "unknown";
+        try {
+            model = android.os.Build.MODEL;
+        } catch (Throwable e) {
         }
         try {
             final JSONObject centralWriteDataV2 = new JSONObject();
-            centralWriteDataV2.put("mc", android.os.Build.MODEL); // phone model of central
+            centralWriteDataV2.put("mc", model); // phone model of central
             centralWriteDataV2.put("rs", (double) rssi.value); // rssi
             centralWriteDataV2.put("id", payloadData.base64EncodedString()); // tempID
             centralWriteDataV2.put("o", "OT_HA"); // organisation

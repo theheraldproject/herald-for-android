@@ -32,7 +32,7 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
     public void map(Sample<T> value) {
         if (run > 1) return;
         Counter counter = counts.get(value.value().doubleValue());
-        if (counter == null) {
+        if (null == counter) {
             counts.put(value.value().doubleValue(), new Counter());
         } else {
             counter.value++;

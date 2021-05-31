@@ -55,17 +55,17 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
         final SampleList<RSSI> values = src.filter(valid).toView();
         final Summary<RSSI> summary = values.aggregate(new Mode<RSSI>(), new Variance<RSSI>());
         final Double mode = summary.get(Mode.class);
-        if (mode == null) {
+        if (null == mode) {
             return false;
         }
         final Double var = summary.get(Variance.class);
-        if (var == null) {
+        if (null == var) {
             return false;
         }
         final double sd = Math.sqrt(var);
 
         final Double distance = src.filter(valid).filter(new InRange(mode - 2 * sd, mode + 2 * sd)).aggregate(basic).get(FowlerBasic.class);
-        if (distance == null) {
+        if (null == distance) {
             return false;
         }
         final Date latestTime = values.latest();

@@ -43,7 +43,7 @@ public class Sample {
     }
 
     public void add(final Sample distribution) {
-        if (n == 0) {
+        if (0 == n) {
             n = distribution.n;
             m1 = distribution.m1;
             m2 = distribution.m2;
@@ -138,11 +138,11 @@ public class Sample {
         final Double v2 = d2.variance();
         final Double m1 = d1.mean();
         final Double m2 = d2.mean();
-        if (v1 == null || v2 == null || m1 == null || m2 == null) {
+        if (null == v1 || null == v2 || null == m1 || null == m2) {
             return null;
         }
 
-        if (v1 == 0 && v2 == 0) {
+        if (0 == v1 && 0 == v2) {
             if (m1 == m2) {
                 return 1.0;
             } else {
@@ -152,7 +152,7 @@ public class Sample {
 
         final Double sd1 = Math.sqrt(v1);
         final Double sd2 = Math.sqrt(v2);
-        if (sd1 == null || sd2 == null) {
+        if (null == sd1 || null == sd2) {
             return null;
         }
 

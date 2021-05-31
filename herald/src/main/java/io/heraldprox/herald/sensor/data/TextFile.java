@@ -76,7 +76,7 @@ public class TextFile {
     }
 
     public synchronized boolean empty() {
-        return !file.exists() || file.length() == 0;
+        return !file.exists() || 0 == file.length();
     }
 
     /// Append line to new or existing file

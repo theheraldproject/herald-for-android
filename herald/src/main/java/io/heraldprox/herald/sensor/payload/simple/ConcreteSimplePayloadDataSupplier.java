@@ -65,12 +65,12 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
         }
 
         // Generate and cache contact keys for specific day on-demand
-        if (this.day == null || this.day != day) {
+        if (null == this.day || this.day != day) {
             contactIdentifiers = contactIdentifiers(matchingKeys[day]);
             this.day = day;
         }
 
-        if (contactIdentifiers == null) {
+        if (null == contactIdentifiers) {
             logger.fault("Contact identifiers unavailable (time={},day={})", time, day);
             return null;
         }

@@ -302,7 +302,7 @@ public class RangesTests {
             //       we needed to alter the value somehow or add the risk slices themselves to a new list.
             //       Instead, we only do this for each contact in total (i.e. up to 15 minutes per riskScorer).
             interScore = riskSlice.get(RiskAggregationBasic.class);
-            if (firstNonZeroInterScore == 0.0 && interScore > 0) {
+            if (0.0 == firstNonZeroInterScore && interScore > 0) {
                 firstNonZeroInterScore = interScore;
             }
             System.err.println("RiskAggregationBasic inter score: " + interScore);

@@ -26,7 +26,7 @@ public class RSSI implements DoubleValue {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         RSSI rssi = (RSSI) o;
-        return Double.compare(rssi.value, value) == 0;
+        return 0 == Double.compare(rssi.value, value);
     }
 
     @Override
