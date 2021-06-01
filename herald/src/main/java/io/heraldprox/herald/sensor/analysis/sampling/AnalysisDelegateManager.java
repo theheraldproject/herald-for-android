@@ -35,7 +35,7 @@ public class AnalysisDelegateManager {
         list.add(delegate);
     }
 
-    @Nullable
+    @NonNull
     private synchronized List<AnalysisDelegate<? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
         List<AnalysisDelegate<? extends DoubleValue>> list = lists.get(inputType);
         if (null == list) {

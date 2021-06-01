@@ -21,7 +21,7 @@ public class ListManager<T extends DoubleValue> {
         this.listSize = listSize;
     }
 
-    @Nullable
+    @NonNull
     public synchronized SampleList<T> list(final SampledID listFor) {
         SampleList<T> list = map.get(listFor);
         if (null == list) {

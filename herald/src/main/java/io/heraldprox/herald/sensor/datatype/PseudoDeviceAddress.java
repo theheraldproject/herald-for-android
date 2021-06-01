@@ -44,7 +44,7 @@ import java.util.Objects;
  **/
 public class PseudoDeviceAddress {
     public final long address;
-    @Nullable
+    @NonNull
     public final byte[] data;
 
     /**
@@ -93,7 +93,7 @@ public class PseudoDeviceAddress {
      * Constructs a PseudoDeviceAddress from externally generated data.
      * @param data Externally generated data (either real address, or should be securely randomly generated)
      */
-    public PseudoDeviceAddress(final byte[] data) {
+    public PseudoDeviceAddress(@NonNull final byte[] data) {
         this.address = decode(data);
         this.data = encode(this.address);
     }
@@ -107,7 +107,7 @@ public class PseudoDeviceAddress {
         this.address = decode(data);
     }
 
-    @Nullable
+    @NonNull
     protected final static byte[] encode(final long value) {
         final Data encoded = new Data();
         encoded.append(new Int64(value));

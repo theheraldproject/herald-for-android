@@ -57,7 +57,7 @@ public class VariantSet {
         map.clear();
     }
 
-    @Nullable
+    @NonNull
     public <T extends DoubleValue> ListManager<T> listManager(final Class<T> variant) {
         ListManager<T> listManager = (ListManager<T>) map.get(variant);
         if (null == listManager) {

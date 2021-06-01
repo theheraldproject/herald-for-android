@@ -429,7 +429,7 @@ public class Data {
 
     /// Decoded string and start/end indices in data byte array
     public final static class DecodedString {
-        @Nullable
+        @NonNull
         public final String value;
         public final int start;
         public final int end;

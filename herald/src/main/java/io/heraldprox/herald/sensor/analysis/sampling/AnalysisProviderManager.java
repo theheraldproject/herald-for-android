@@ -51,7 +51,7 @@ public class AnalysisProviderManager {
         providers.add(provider);
     }
 
-    @Nullable
+    @NonNull
     private synchronized List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
         List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list = lists.get(inputType);
         if (null == list) {
