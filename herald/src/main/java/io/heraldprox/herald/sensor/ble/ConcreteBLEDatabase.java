@@ -8,6 +8,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
@@ -43,13 +46,15 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         delegates.add(delegate);
     }
 
+    @Nullable
     @Override
     public BLEDevice device(final TargetIdentifier targetIdentifier) {
         return database.get(targetIdentifier);
     }
 
+    @Nullable
     @Override
-    public BLEDevice device(final BluetoothDevice bluetoothDevice) {
+    public BLEDevice device(@NonNull final BluetoothDevice bluetoothDevice) {
         final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
         BLEDevice device = database.get(identifier);
         if (null == device) {
@@ -70,8 +75,9 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return device;
     }
 
+    @Nullable
     @Override
-    public BLEDevice device(final ScanResult scanResult) {
+    public BLEDevice device(@NonNull final ScanResult scanResult) {
         // Get device by target identifier
         final BluetoothDevice bluetoothDevice = scanResult.getDevice();
         final TargetIdentifier targetIdentifier = new TargetIdentifier(bluetoothDevice);
@@ -114,7 +120,8 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     }
 
     /// Get pseudo device address for Android devices
-    private PseudoDeviceAddress pseudoDeviceAddress(final ScanResult scanResult) {
+    @Nullable
+    private PseudoDeviceAddress pseudoDeviceAddress(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
         if (null == scanRecord) {
             return null;
@@ -140,8 +147,9 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return null;
     }
 
+    @Nullable
     @Override
-    public BLEDevice device(PayloadData payloadData) {
+    public BLEDevice device(@NonNull PayloadData payloadData) {
         BLEDevice device = null;
         for (BLEDevice candidate : database.values()) {
             if (payloadData.equals(candidate.payloadData())) {
@@ -168,13 +176,14 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return device;
     }
 
+    @NonNull
     @Override
     public List<BLEDevice> devices() {
         return new ArrayList<>(database.values());
     }
 
     @Override
-    public void delete(final BLEDevice device) {
+    public void delete(@Nullable final BLEDevice device) {
         if (null == device) {
             return;
         }
@@ -201,8 +210,9 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         });
     }
 
+    @NonNull
     @Override
-    public PayloadSharingData payloadSharingData(final BLEDevice peer) {
+    public PayloadSharingData payloadSharingData(@NonNull final BLEDevice peer) {
         final RSSI rssi = peer.rssi();
         if (null == rssi) {
             return new PayloadSharingData(new RSSI(127), new Data(new byte[0]));
@@ -242,13 +252,13 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         final List<BLEDevice> devices = new ArrayList<>();
         Collections.sort(unknownDevices, new Comparator<BLEDevice>() {
             @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
+            public int compare(@NonNull BLEDevice d0, @NonNull BLEDevice d1) {
                 return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
             }
         });
         Collections.sort(knownDevices, new Comparator<BLEDevice>() {
             @Override
-            public int compare(BLEDevice d0, BLEDevice d1) {
+            public int compare(@NonNull BLEDevice d0, @NonNull BLEDevice d1) {
                 return Long.compare(d1.lastUpdatedAt.getTime(), d0.lastUpdatedAt.getTime());
             }
         });
@@ -289,7 +299,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     // MARK:- BLEDeviceDelegate
 
     @Override
-    public void device(final BLEDevice device, final BLEDeviceAttribute didUpdate) {
+    public void device(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute didUpdate) {
         queue.execute(new Runnable() {
             @Override
             public void run() {

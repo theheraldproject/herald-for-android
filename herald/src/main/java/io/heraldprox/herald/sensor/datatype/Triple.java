@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 public class Triple<A, B, C> {
     public final A a;
     public final B b;
@@ -15,6 +17,7 @@ public class Triple<A, B, C> {
         this.c = c;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Triple{" +

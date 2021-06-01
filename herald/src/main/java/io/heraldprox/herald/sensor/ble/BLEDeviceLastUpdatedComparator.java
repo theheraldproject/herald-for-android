@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 import java.util.Comparator;
 
 /**
@@ -15,7 +17,7 @@ import java.util.Comparator;
  * devices from receiving requests if using this for methods like immediateSendAll()
  */
 public class BLEDeviceLastUpdatedComparator implements Comparator<BLEDevice> {
-    public int compare(BLEDevice a, BLEDevice b)
+    public int compare(@NonNull BLEDevice a, @NonNull BLEDevice b)
     {
         // Descending order of last updated at (hence reversed logic)
         long bt = b.lastUpdatedAt.getTime();

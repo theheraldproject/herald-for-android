@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.analysis.aggregates.Mode;
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
@@ -32,10 +35,11 @@ public class FowlerBasic<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         mode.map(value);
    }
 
+    @Nullable
     @Override
     public Double reduce() {
         if (0 == coefficient) {

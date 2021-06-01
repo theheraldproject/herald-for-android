@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.data;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -23,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /// CSV log of event time intervals for post event analysis and visualisation
 public class EventTimeIntervalLog extends DefaultSensorDelegate {
+    @NonNull
     private final TextFile textFile;
     private final PayloadData payloadData;
     private final EventType eventType;
@@ -33,13 +36,14 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         detect,read,measure,share,sharedPeer,visit
     }
 
-    public EventTimeIntervalLog(final Context context, final String filename, final PayloadData payloadData, final EventType eventType) {
+    public EventTimeIntervalLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData, final EventType eventType) {
         this.textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
         this.eventType = eventType;
     }
 
-    private String csv(String value) {
+    @NonNull
+    private String csv(@NonNull String value) {
         return TextFile.csv(value);
     }
 
@@ -101,7 +105,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull PayloadData didRead, TargetIdentifier fromTarget) {
         final String payload = didRead.shortName();
         targetIdentifierToPayload.put(fromTarget, payload);
         if (eventType == EventType.read) {
@@ -132,7 +136,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, TargetIdentifier fromTarget) {
         if (eventType == EventType.share) {
             final String payload = targetIdentifierToPayload.get(fromTarget);
             if (null == payload) {

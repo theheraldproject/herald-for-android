@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.Device;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -23,12 +26,15 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
     public final static int payloadLength = 21;
     private final Data commonPayload = new Data();
+    @NonNull
     private final MatchingKey[] matchingKeys;
     // Cache contact identifiers for the day
+    @Nullable
     private Integer day = null;
+    @Nullable
     private ContactIdentifier[] contactIdentifiers = null;
 
-    public ConcreteSimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, SecretKey secretKey) {
+    public ConcreteSimplePayloadDataSupplier(UInt8 protocolAndVersion, UInt16 countryCode, UInt16 stateCode, @NonNull SecretKey secretKey) {
         // Generate common header
         // All data is big endian
         commonPayload.append(protocolAndVersion);
@@ -40,12 +46,14 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
     }
 
     /// Generate a new secret key
+    @NonNull
     public static SecretKey generateSecretKey() {
         return K.secretKey();
     }
 
     /// Generate contact identifiers for a matching key
-    public static ContactIdentifier[] contactIdentifiers(MatchingKey matchingKey) {
+    @NonNull
+    public static ContactIdentifier[] contactIdentifiers(@NonNull MatchingKey matchingKey) {
         final ContactKey[] contactKeys = K.contactKeys(matchingKey);
         final ContactIdentifier[] contactIdentifiers = new ContactIdentifier[contactKeys.length];
         for (int i=contactKeys.length; i-->0;) {
@@ -55,7 +63,8 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
     }
 
     /// Generate contact identifier for time
-    private ContactIdentifier contactIdentifier(Date time) {
+    @Nullable
+    private ContactIdentifier contactIdentifier(@NonNull Date time) {
         final int day = K.day(time);
         final int period = K.period(time);
 
@@ -91,8 +100,9 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
 
     // MARK:- SimplePayloadDataSupplier
 
+    @NonNull
     @Override
-    public PayloadData payload(PayloadTimestamp timestamp, Device device) {
+    public PayloadData payload(@NonNull PayloadTimestamp timestamp, Device device) {
 
         // TODO Add length of data here so it's compliant with the Herald Envelope Standard V1
 
@@ -107,8 +117,9 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
         return payloadData;
     }
 
+    @NonNull
     @Override
-    public List<PayloadData> payload(Data data) {
+    public List<PayloadData> payload(@NonNull Data data) {
         // Split raw data comprising of concatenated payloads into individual payloads
         final List<PayloadData> payloads = new ArrayList<>();
         final byte[] bytes = data.value;

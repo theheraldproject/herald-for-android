@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
 import java.text.SimpleDateFormat;
@@ -24,10 +26,12 @@ public class BatteryLog {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
     private final static TimeInterval updateInterval = TimeInterval.seconds(30);
+    @NonNull
     private final Context context;
+    @NonNull
     private final TextFile textFile;
 
-    public BatteryLog(final Context context, final String filename) {
+    public BatteryLog(@NonNull final Context context, @NonNull final String filename) {
         this.context = context;
         textFile = new TextFile(context, filename);
         if (textFile.empty()) {

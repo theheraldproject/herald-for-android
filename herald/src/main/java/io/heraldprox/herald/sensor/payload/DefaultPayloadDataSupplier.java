@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.payload;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.Device;
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
 import io.heraldprox.herald.sensor.datatype.Data;
@@ -17,13 +20,15 @@ import java.util.List;
 /// Default payload data supplier implementing fixed length payload splitting method.
 public abstract class DefaultPayloadDataSupplier implements PayloadDataSupplier {
 
+    @Nullable
     @Override
     public LegacyPayloadData legacyPayload(PayloadTimestamp timestamp, Device device) {
         return null;
     }
 
+    @NonNull
     @Override
-    public List<PayloadData> payload(Data data) {
+    public List<PayloadData> payload(@NonNull Data data) {
         // Get fixed length payload data
         final PayloadData fixedLengthPayloadData = payload(new PayloadTimestamp(), null);
         final int payloadDataLength = fixedLengthPayloadData.value.length;

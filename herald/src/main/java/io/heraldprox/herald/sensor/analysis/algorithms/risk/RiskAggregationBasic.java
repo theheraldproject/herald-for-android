@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.risk;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
@@ -59,7 +61,7 @@ public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T>
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         nMinusOne = n;
         timeMinusOne = time;
         n = value.value().doubleValue();

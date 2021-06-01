@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 import java.util.Iterator;
@@ -24,6 +27,7 @@ public class IteratorProxy<T extends DoubleValue> implements Iterator<Sample<T>>
         return nextItemSet || moveToNextItem();
     }
 
+    @Nullable
     @Override
     public Sample<T> next() {
         if (!nextItemSet && !moveToNextItem()) {
@@ -33,15 +37,18 @@ public class IteratorProxy<T extends DoubleValue> implements Iterator<Sample<T>>
         return nextItem;
     }
 
+    @NonNull
     @Override
     public IteratorProxy<T> filter(final Filter filter) {
         return new IteratorProxy<>(this, filter);
     }
 
+    @NonNull
     public Summary<T> aggregate(final Aggregate<T> ... aggregates) {
         return toView().aggregate(aggregates);
     }
 
+    @NonNull
     public SampleList<T> toView() {
         return new SampleList<>(this);
     }

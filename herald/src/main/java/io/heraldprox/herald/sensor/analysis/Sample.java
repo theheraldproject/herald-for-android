@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 public class Sample {
     protected long n = 0;
     protected double m1 = 0, m2 = 0, m3 = 0, m4 = 0;
@@ -42,7 +45,7 @@ public class Sample {
         add(new Sample(x, f));
     }
 
-    public void add(final Sample distribution) {
+    public void add(@NonNull final Sample distribution) {
         if (0 == n) {
             n = distribution.n;
             m1 = distribution.m1;
@@ -86,6 +89,7 @@ public class Sample {
         return n;
     }
 
+    @Nullable
     public Double mean() {
         if (n > 0) {
             return m1;
@@ -94,6 +98,7 @@ public class Sample {
         }
     }
 
+    @Nullable
     public Double variance() {
         if (n > 1) {
             return m2 / (n - 1d);
@@ -102,6 +107,7 @@ public class Sample {
         }
     }
 
+    @Nullable
     public Double standardDeviation() {
         if (n > 1) {
             return StrictMath.sqrt(m2 / (n - 1d));
@@ -110,6 +116,7 @@ public class Sample {
         }
     }
 
+    @Nullable
     public Double min() {
         if (n > 0) {
             return min;
@@ -118,6 +125,7 @@ public class Sample {
         }
     }
 
+    @Nullable
     public Double max() {
         if (n > 0) {
             return max;
@@ -127,13 +135,15 @@ public class Sample {
     }
 
     /// Estimate distance between this sample's distribution and another sample's distribution, 1 means identical and 0 means completely different.
-    public Double distance(final Sample sample) {
+    @Nullable
+    public Double distance(@NonNull final Sample sample) {
         return bhattacharyyaDistance(this, sample);
     }
 
     /// Bhattacharyya distance between two distributions estimate  the likelihood that the two distributions are the same.
     /// bhattacharyyaDistance = 1 means the two distributions are identical; value = 0 means they are different.
-    private final static Double bhattacharyyaDistance(final Sample d1, final Sample d2) {
+    @Nullable
+    private final static Double bhattacharyyaDistance(@NonNull final Sample d1, @NonNull final Sample d2) {
         final Double v1 = d1.variance();
         final Double v2 = d2.variance();
         final Double m1 = d1.mean();
@@ -161,6 +171,7 @@ public class Sample {
         return Dbc;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "[count=" + count() + ",mean=" + mean() + ",sd=" + standardDeviation() + ",min=" + min() + ",max=" + max() + "]";

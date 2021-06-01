@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import java.io.ByteArrayOutputStream;
 
 /// Base64 encoding and decoding without relying on Android API 26+
@@ -24,7 +26,8 @@ public class Base64 {
             31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
             48, 49, 50, 51};
 
-    public static String encode(byte[] data) {
+    @NonNull
+    public static String encode(@NonNull byte[] data) {
         final StringBuilder buffer = new StringBuilder();
         int pad = 0;
         int b;
@@ -53,7 +56,8 @@ public class Base64 {
         return buffer.toString();
     }
 
-    public static byte[] decode(String data) {
+    @NonNull
+    public static byte[] decode(@NonNull String data) {
         final byte[] bytes = data.getBytes();
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int b;

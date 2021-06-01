@@ -4,11 +4,13 @@
 
 package io.heraldprox.herald.sensor.data;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 
 public class ConcretePayloadDataFormatter implements PayloadDataFormatter {
     @Override
-    public String shortFormat(PayloadData payloadData) {
+    public String shortFormat(@NonNull PayloadData payloadData) {
         return payloadData.shortName();
     }
 }

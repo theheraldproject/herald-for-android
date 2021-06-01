@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 import java.util.HashSet;
@@ -19,10 +22,12 @@ public class VariantSet {
         this.defaultListSize = defaultListSize;
     }
 
+    @NonNull
     public Set<Class<? extends DoubleValue>> variants() {
         return map.keySet();
     }
 
+    @NonNull
     public Set<SampledID> sampledIDs() {
         final Set<SampledID> sampledIDs = new HashSet<>();
         for (final ListManager<? extends DoubleValue> listManager : map.values()) {
@@ -31,6 +36,7 @@ public class VariantSet {
         return sampledIDs;
     }
 
+    @NonNull
     public <T extends DoubleValue> ListManager<T> add(final Class<T> variant, final int listSize) {
         final ListManager<T> listManager = new ListManager<>(listSize);
         map.put(variant, listManager);
@@ -51,6 +57,7 @@ public class VariantSet {
         map.clear();
     }
 
+    @NonNull
     public <T extends DoubleValue> ListManager<T> listManager(final Class<T> variant) {
         ListManager<T> listManager = (ListManager<T>) map.get(variant);
         if (null == listManager) {
@@ -68,7 +75,7 @@ public class VariantSet {
         return map.size();
     }
 
-    public <T extends DoubleValue> void push(final SampledID sampledID, final Sample<T> sample) {
+    public <T extends DoubleValue> void push(final SampledID sampledID, @NonNull final Sample<T> sample) {
         ((ListManager<T>) listManager(sample.value().getClass())).push(sampledID, sample);
     }
 }

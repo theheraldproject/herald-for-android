@@ -4,12 +4,15 @@
 
 package io.heraldprox.herald.sensor.analysis.views;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.analysis.sampling.Filter;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class Until<T extends DoubleValue> implements Filter<T> {
+    @NonNull
     private final Date before;
     private final long beforeTime;
 
@@ -17,13 +20,13 @@ public class Until<T extends DoubleValue> implements Filter<T> {
         this(new Date(secondsSinceUnixEpoch));
     }
 
-    public Until(final Date before) {
+    public Until(@NonNull final Date before) {
         this.before = before;
         this.beforeTime = before.getTime();
     }
 
     @Override
-    public boolean test(Sample<T> item) {
+    public boolean test(@NonNull Sample<T> item) {
         return item.taken().getTime() <= beforeTime;
     }
 }

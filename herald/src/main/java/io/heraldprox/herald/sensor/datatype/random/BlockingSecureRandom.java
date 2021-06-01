@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -14,6 +16,7 @@ import java.util.Random;
  **/
 public class BlockingSecureRandom extends RandomSource {
 
+    @NonNull
     protected synchronized Random getSecureRandom() {
         // Get new instance of secure random based on a new seed
         final SecureRandom random = new SecureRandom();

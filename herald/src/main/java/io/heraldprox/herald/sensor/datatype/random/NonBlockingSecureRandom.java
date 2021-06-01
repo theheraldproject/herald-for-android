@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.datatype.random;
 
 import android.app.ActivityManager;
 
+import androidx.annotation.NonNull;
+
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -181,7 +183,7 @@ public class NonBlockingSecureRandom extends RandomSource {
     }
 
     @Override
-    public synchronized void nextBytes(final byte[] bytes) {
+    public synchronized void nextBytes(@NonNull final byte[] bytes) {
         // Requirement 1 : Truly random seed
         // CSPRNG must be initialised with a truly random seed to be cryptographically secure.
         // This is achieved by using unpredictable thread scheduling time as entropy data, mixed
@@ -240,7 +242,8 @@ public class NonBlockingSecureRandom extends RandomSource {
      * If the left and right data are of different lengths, the function will return
      * xor(left, right) up to minimum length.
      */
-    public final static Data xor(final Data left, final Data right) {
+    @NonNull
+    public final static Data xor(@NonNull final Data left, @NonNull final Data right) {
 //        if (left.value.length != right.value.length) {
 //            logger.fault("XOR being applied to data of different lengths (left={},right={})", left.value.length, right.value.length);
 //        }

@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.data;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.analysis.Sample;
@@ -22,18 +24,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /// CSV contact log for post event analysis and visualisation
 public class StatisticsLog extends DefaultSensorDelegate {
+    @NonNull
     private final TextFile textFile;
     private final PayloadData payloadData;
     private final Map<TargetIdentifier, String> identifierToPayload = new ConcurrentHashMap<>();
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
     private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
 
-    public StatisticsLog(final Context context, final String filename, final PayloadData payloadData) {
+    public StatisticsLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData) {
         textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
     }
 
-    private String csv(String value) {
+    @NonNull
+    private String csv(@NonNull String value) {
         return TextFile.csv(value);
     }
 
@@ -97,7 +101,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull PayloadData didRead, TargetIdentifier fromTarget) {
         identifierToPayload.put(fromTarget, didRead.shortName());
         add(fromTarget);
     }
@@ -108,7 +112,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, TargetIdentifier fromTarget) {
         for (PayloadData payload : didShare) {
             add(payload.shortName());
         }

@@ -21,7 +21,7 @@ jobs:
           distribution: 'adopt'
           
       - name: Publish to the Maven Central Repository
-        run: ./gradlew publish
+        run: ./gradlew publish --stacktrace --info
         env: 
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}

@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -16,6 +18,7 @@ public class BlockingSecureRandomSingleton extends RandomSource {
     // Using a singleton instance of secure random for all calls
     private final static SecureRandom secureRandom = new SecureRandom();
 
+    @NonNull
     protected synchronized Random getSecureRandomSingleton() {
         // Use optional external entropy to adjust PRNG sequence position by 0-128 bits
         final int skipPositions = (int) (Math.abs(useEntropy()) % 128);

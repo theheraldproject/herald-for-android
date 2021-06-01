@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 import io.heraldprox.herald.sensor.ble.ConcreteBLESensor;
 import io.heraldprox.herald.sensor.data.CalibrationLog;
@@ -22,6 +24,7 @@ import java.util.List;
 
 /// Sensor array for combining multiple detection and tracking methods.
 public class SensorArray implements Sensor {
+    @NonNull
     private final Context context;
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private final List<Sensor> sensorArray = new ArrayList<>();
@@ -29,9 +32,10 @@ public class SensorArray implements Sensor {
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
+    @NonNull
     private final ConcreteBLESensor concreteBleSensor;
 
-    public SensorArray(final Context context, PayloadDataSupplier payloadDataSupplier) {
+    public SensorArray(@NonNull final Context context, @NonNull PayloadDataSupplier payloadDataSupplier) {
         this.context = context;
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);

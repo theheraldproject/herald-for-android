@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.analysis.sampling;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
@@ -14,6 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, Filterable<T> {
+    @NonNull
     private final Sample[] data;
     private int oldestPosition, newestPosition;
 
@@ -23,7 +25,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         this.newestPosition = size;
     }
 
-    public SampleList(final int size, final Sample<T> ... samples) {
+    public SampleList(final int size, @NonNull final Sample<T> ... samples) {
         this.data = new Sample[size];
         this.oldestPosition = size;
         this.newestPosition = size;
@@ -32,7 +34,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         }
     }
 
-    public SampleList(final Sample<T> ... samples) {
+    public SampleList(@NonNull final Sample<T> ... samples) {
         this.data = new Sample[samples.length];
         this.oldestPosition = data.length;
         this.newestPosition = data.length;
@@ -41,11 +43,12 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         }
     }
 
-    public SampleList(final Iterator<Sample<T>> iterator) {
+    public SampleList(@NonNull final Iterator<Sample<T>> iterator) {
         this(toArray(iterator));
     }
 
-    private final static <T> Sample<T>[] toArray(final Iterator<Sample<T>> iterator) {
+    @NonNull
+    private final static <T> Sample<T>[] toArray(@NonNull final Iterator<Sample<T>> iterator) {
         final List<Sample<T>> list = new ArrayList<>();
         while (iterator.hasNext()) {
             list.add(iterator.next());
@@ -87,7 +90,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         return data[index + oldestPosition];
     }
 
-    public void clearBeforeDate(final Date before) {
+    public void clearBeforeDate(@NonNull final Date before) {
         if (oldestPosition == data.length) return;
         while (oldestPosition != newestPosition) {
             if (data[oldestPosition].taken().getTime() < before.getTime()) {
@@ -112,6 +115,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         newestPosition = data.length;
     }
 
+    @Nullable
     public Date latest() {
         if (newestPosition == data.length) {
             return null;
@@ -119,6 +123,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         return data[newestPosition].taken();
     }
 
+    @Nullable
     public T latestValue() {
         if (newestPosition == data.length) {
             return null;
@@ -158,6 +163,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
                 return index < size();
             }
 
+            @Nullable
             @Override
             public Sample<T> next() {
                 try {
@@ -170,11 +176,13 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         };
     }
 
+    @NonNull
     @Override
     public IteratorProxy<T> filter(final Filter filter) {
         return new IteratorProxy<>(iterator(), filter);
     }
 
+    @NonNull
     public String toString() {
         final StringBuilder s = new StringBuilder();
         s.append('[');
@@ -188,7 +196,8 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         return s.toString();
     }
 
-    public Summary<T> aggregate(final Aggregate<T> ... aggregates) {
+    @NonNull
+    public Summary<T> aggregate(@NonNull final Aggregate<T> ... aggregates) {
         int maxRuns = 1;
         for (final Aggregate<T> aggregate : aggregates) {
             if (aggregate.runs() > maxRuns) {

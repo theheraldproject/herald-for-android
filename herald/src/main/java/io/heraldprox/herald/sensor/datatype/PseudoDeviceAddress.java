@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -41,6 +44,7 @@ import java.util.Objects;
  **/
 public class PseudoDeviceAddress {
     public final long address;
+    @NonNull
     public final byte[] data;
 
     /**
@@ -48,7 +52,7 @@ public class PseudoDeviceAddress {
      * @param randomSource The random source to use for PseudoDeviceAddress generation, the
      *                     recommended source is NonBlockingSecureRandom
      */
-    public PseudoDeviceAddress(final RandomSource randomSource) {
+    public PseudoDeviceAddress(@NonNull final RandomSource randomSource) {
         // Bluetooth device address is 48-bit (6 bytes), using the same length to offer the same collision avoidance
         // Recommended random source is NonBlockingSecureRandom
         // - All included random sources obtain truly random entropy data from reliable sources in the application context.
@@ -89,7 +93,7 @@ public class PseudoDeviceAddress {
      * Constructs a PseudoDeviceAddress from externally generated data.
      * @param data Externally generated data (either real address, or should be securely randomly generated)
      */
-    public PseudoDeviceAddress(final byte[] data) {
+    public PseudoDeviceAddress(@NonNull final byte[] data) {
         this.address = decode(data);
         this.data = encode(this.address);
     }
@@ -103,6 +107,7 @@ public class PseudoDeviceAddress {
         this.address = decode(data);
     }
 
+    @NonNull
     protected final static byte[] encode(final long value) {
         final Data encoded = new Data();
         encoded.append(new Int64(value));
@@ -120,7 +125,7 @@ public class PseudoDeviceAddress {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         PseudoDeviceAddress that = (PseudoDeviceAddress) o;
@@ -132,6 +137,7 @@ public class PseudoDeviceAddress {
         return Objects.hash(address);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return Base64.encode(data);

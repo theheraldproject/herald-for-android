@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 public class Tuple<A, B> {
     public final A a;
     public final B b;
@@ -13,6 +15,7 @@ public class Tuple<A, B> {
         this.b = b;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "(" + a + "," + b + ")";

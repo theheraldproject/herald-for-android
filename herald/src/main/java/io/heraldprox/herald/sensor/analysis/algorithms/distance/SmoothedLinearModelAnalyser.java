@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisProvider;
 import io.heraldprox.herald.sensor.analysis.sampling.CallableForNewSample;
 import io.heraldprox.herald.sensor.analysis.sampling.Filter;
@@ -24,6 +26,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
     private final TimeInterval interval;
     private final TimeInterval smoothingWindow;
     private final SmoothedLinearModel model;
+    @NonNull
     private Date lastRan = new Date(0);
     private final Filter<RSSI> valid = new InRange<>(-99, -10);
 
@@ -37,18 +40,20 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         this.model = smoothedLinearModel;
     }
 
+    @NonNull
     @Override
     public Class<RSSI> inputType() {
         return RSSI.class;
     }
 
+    @NonNull
     @Override
     public Class<Distance> outputType() {
         return Distance.class;
     }
 
     @Override
-    public boolean analyse(Date timeNow, SampledID sampled, SampleList<RSSI> input, final SampleList<Distance> output, CallableForNewSample<Distance> callable) {
+    public boolean analyse(@NonNull Date timeNow, SampledID sampled, @NonNull SampleList<RSSI> input, @NonNull final SampleList<Distance> output, @NonNull CallableForNewSample<Distance> callable) {
         // Interval guard
         final TimeInterval secondsSinceLastRan = new TimeInterval(timeNow.secondsSinceUnixEpoch() - lastRan.secondsSinceUnixEpoch());
         if (secondsSinceLastRan.value < interval.value) {

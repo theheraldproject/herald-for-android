@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -30,11 +33,12 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearSelfCalibratedModel");
     private final Distance min, mean;
     private final double maxRssiPercentile, anchorRssiPercentile;
+    @NonNull
     public final RssiHistogram histogram;
     private double maxRssi = -10;
     private Date lastSampleTime = new Date(0);
 
-    public SelfCalibratedModel(final Distance min, final Distance mean, final TimeInterval withinMin, final TimeInterval withinMean, final TextFile textFile) {
+    public SelfCalibratedModel(final Distance min, final Distance mean, @NonNull final TimeInterval withinMin, @NonNull final TimeInterval withinMean, final TextFile textFile) {
         super();
         this.min = min;
         this.mean = mean;
@@ -59,7 +63,7 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
     }
 
     @Override
-    public void map(Sample<T> value) {
+    public void map(@NonNull Sample<T> value) {
         super.map(value);
         if (value.taken().secondsSinceUnixEpoch() > lastSampleTime.secondsSinceUnixEpoch()) {
             histogram.add(value.value().doubleValue());
@@ -67,6 +71,7 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
         }
     }
 
+    @Nullable
     @Override
     public Double reduce() {
         // Update model

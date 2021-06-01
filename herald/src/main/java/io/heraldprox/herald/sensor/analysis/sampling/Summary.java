@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class Summary<T extends DoubleValue> {
@@ -13,7 +16,8 @@ public class Summary<T extends DoubleValue> {
         this.aggregates = aggregates;
     }
 
-    public Double get(final Class<? extends Aggregate> byClass) {
+    @Nullable
+    public Double get(@NonNull final Class<? extends Aggregate> byClass) {
         for (int i=0; i<aggregates.length; i++) {
             if (byClass.isInstance(aggregates[i])) {
                 return aggregates[i].reduce();
@@ -22,6 +26,7 @@ public class Summary<T extends DoubleValue> {
         return null;
     }
 
+    @Nullable
     public Double get(final int index) {
         if (index < 0 || index >= aggregates.length) {
             // Index out of bounds

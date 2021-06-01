@@ -10,6 +10,9 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.SensorDelegate;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -27,12 +30,15 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Motion.ConcreteInertiaSensor");
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
+    @NonNull
     private final Context context;
+    @NonNull
     private final SensorManager sensorManager;
+    @Nullable
     private final Sensor hardwareSensor;
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
-        public void onSensorChanged(SensorEvent event) {
+        public void onSensorChanged(@NonNull SensorEvent event) {
             if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
                 return;
             }
@@ -62,7 +68,7 @@ public class ConcreteInertiaSensor implements InertiaSensor {
         }
     };
 
-    public ConcreteInertiaSensor(final Context context) {
+    public ConcreteInertiaSensor(@NonNull final Context context) {
         this.context = context;
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         this.hardwareSensor = (null == sensorManager ? null : sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));

@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+
 import java.util.Random;
 
 /**
@@ -14,6 +16,7 @@ import java.util.Random;
 public class NonBlockingPRNG extends RandomSource {
     private long getRandomLongLastCalledAt = System.nanoTime();
 
+    @NonNull
     private synchronized Random getRandom() {
         // Use unpredictable time between calls to add entropy
         final long timestamp = System.nanoTime();

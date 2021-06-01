@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Int64;
 
@@ -16,7 +19,7 @@ public class SampledID implements Comparable<SampledID> {
         this.value = value;
     }
 
-    public SampledID(Data data) {
+    public SampledID(@NonNull Data data) {
         final Data hashValue = new Data();
         hashValue.append(new Int64(0));
         for (int i=0, j=0; i<data.value.length; i++, j++) {
@@ -29,7 +32,7 @@ public class SampledID implements Comparable<SampledID> {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         SampledID sampledID = (SampledID) o;
@@ -41,13 +44,14 @@ public class SampledID implements Comparable<SampledID> {
         return Objects.hash(value);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return Long.toString(value);
     }
 
     @Override
-    public int compareTo(SampledID o) {
+    public int compareTo(@NonNull SampledID o) {
         return Long.compare(value, o.value);
     }
 }
