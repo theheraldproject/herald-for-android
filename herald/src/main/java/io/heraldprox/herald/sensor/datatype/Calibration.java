@@ -12,11 +12,13 @@ import java.util.Objects;
 /// Calibration data for interpreting proximity value between sensor and target, e.g. Transmit power for BLE.
 public class Calibration {
     /// Unit of measurement, e.g. transmit power
+    @NonNull
     public final CalibrationMeasurementUnit unit;
     /// Measured value, e.g. transmit power in BLE advert
+    @NonNull
     public final Double value;
 
-    public Calibration(CalibrationMeasurementUnit unit, Double value) {
+    public Calibration(@NonNull final CalibrationMeasurementUnit unit, @NonNull final Double value) {
         this.unit = unit;
         this.value = value;
     }

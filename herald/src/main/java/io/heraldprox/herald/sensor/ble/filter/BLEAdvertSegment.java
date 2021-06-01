@@ -9,12 +9,15 @@ import androidx.annotation.NonNull;
 import io.heraldprox.herald.sensor.datatype.Data;
 
 public class BLEAdvertSegment {
+    @NonNull
     public final BLEAdvertSegmentType type;
     public final int dataLength;
+    @NonNull
     public final byte[] data; // BIG ENDIAN (network order) AT THIS POINT
+    @NonNull
     public final Data raw;
 
-    public BLEAdvertSegment(BLEAdvertSegmentType type, int dataLength, byte[] data, Data raw) {
+    public BLEAdvertSegment(@NonNull final BLEAdvertSegmentType type, final int dataLength, @NonNull final byte[] data, @NonNull final Data raw) {
         this.type = type;
         this.dataLength = dataLength;
         this.data = data;

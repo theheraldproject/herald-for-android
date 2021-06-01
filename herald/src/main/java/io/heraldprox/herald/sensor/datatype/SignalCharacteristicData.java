@@ -41,6 +41,7 @@ public class SignalCharacteristicData {
      */
     @Nullable
     public static RSSI decodeWriteRSSI(@Nullable final Data data) {
+        //noinspection ConstantConditions
         if (null == data || null == data.value) {
             return null;
         }
@@ -80,6 +81,7 @@ public class SignalCharacteristicData {
      */
     @Nullable
     public static PayloadData decodeWritePayload(@Nullable final Data data) {
+        //noinspection ConstantConditions
         if (null == data || null == data.value) {
             return null;
         }
@@ -135,6 +137,7 @@ public class SignalCharacteristicData {
      */
     @Nullable
     public static PayloadSharingData decodeWritePayloadSharing(@Nullable final Data data) {
+        //noinspection ConstantConditions
         if (null == data || null == data.value) {
             return null;
         }
@@ -184,6 +187,7 @@ public class SignalCharacteristicData {
     /// Decode immediate send data bundle
     @Nullable
     public static ImmediateSendData decodeImmediateSend(@Nullable final Data data) {
+        //noinspection ConstantConditions
         if (null == data || null == data.value) {
             return null;
         }
@@ -212,7 +216,7 @@ public class SignalCharacteristicData {
 
     /// Detect signal characteristic data bundle type
     @NonNull
-    public static SignalCharacteristicDataType detect(@NonNull Data data) {
+    public static SignalCharacteristicDataType detect(@NonNull final Data data) {
         switch (signalDataActionCode(data.value)) {
             case BLESensorConfiguration.signalCharacteristicActionWriteRSSI:
                 return SignalCharacteristicDataType.rssi;
@@ -227,7 +231,7 @@ public class SignalCharacteristicData {
         }
     }
 
-    private static byte signalDataActionCode(@Nullable byte[] signalData) {
+    private static byte signalDataActionCode(@Nullable final byte[] signalData) {
         if (null == signalData || 0 == signalData.length) {
             return 0;
         }
@@ -235,7 +239,7 @@ public class SignalCharacteristicData {
     }
 
     @Nullable
-    private static Short int16(@NonNull byte[] data, int index) {
+    private static Short int16(@NonNull final byte[] data, final int index) {
         if (index < data.length - 1) {
             final ByteBuffer byteBuffer = ByteBuffer.wrap(data);
             byteBuffer.order(ByteOrder.LITTLE_ENDIAN);

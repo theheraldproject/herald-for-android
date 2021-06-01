@@ -13,12 +13,12 @@ import java.util.Objects;
 public class Distance implements DoubleValue {
     public final double value;
 
-    public Distance(double value) {
+    public Distance(final double value) {
         this.value = value;
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Distance distance = (Distance) o;

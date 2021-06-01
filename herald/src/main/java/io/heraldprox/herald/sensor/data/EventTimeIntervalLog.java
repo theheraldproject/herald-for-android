@@ -27,7 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EventTimeIntervalLog extends DefaultSensorDelegate {
     @NonNull
     private final TextFile textFile;
+    @NonNull
     private final PayloadData payloadData;
+    @NonNull
     private final EventType eventType;
     private final Map<TargetIdentifier, String> targetIdentifierToPayload = new ConcurrentHashMap<>();
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
@@ -36,18 +38,18 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         detect,read,measure,share,sharedPeer,visit
     }
 
-    public EventTimeIntervalLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData, final EventType eventType) {
+    public EventTimeIntervalLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData, @NonNull final EventType eventType) {
         this.textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
         this.eventType = eventType;
     }
 
     @NonNull
-    private String csv(@NonNull String value) {
+    private String csv(@NonNull final String value) {
         return TextFile.csv(value);
     }
 
-    private void add(String payload) {
+    private void add(@NonNull final String payload) {
         final Date time = payloadToTime.get(payload);
         final Sample sample = payloadToSample.get(payload);
         if (null == time || null == sample) {
@@ -66,14 +68,14 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         final List<String> payloadList = new ArrayList<>();
         final String event = csv(eventType.name());
         final String centralPayload = csv(payloadData.shortName());
-        for (String payload : payloadToSample.keySet()) {
+        for (final String payload : payloadToSample.keySet()) {
             if (payload.equals(payloadData.shortName())) {
                 continue;
             }
             payloadList.add(payload);
         }
         Collections.sort(payloadList);
-        for (String payload : payloadList) {
+        for (final String payload : payloadList) {
             final Sample sample = payloadToSample.get(payload);
             if (null == sample) {
                 continue;
@@ -105,7 +107,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, @NonNull PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
         final String payload = didRead.shortName();
         targetIdentifierToPayload.put(fromTarget, payload);
         if (eventType == EventType.read) {
@@ -114,7 +116,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect) {
         if (eventType == EventType.detect) {
             final String payload = targetIdentifierToPayload.get(didDetect);
             if (null == payload) {
@@ -125,7 +127,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
         if (eventType == EventType.measure) {
             final String payload = targetIdentifierToPayload.get(fromTarget);
             if (null == payload) {
@@ -136,7 +138,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
         if (eventType == EventType.share) {
             final String payload = targetIdentifierToPayload.get(fromTarget);
             if (null == payload) {
@@ -146,6 +148,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         } else if (eventType == EventType.sharedPeer) {
             for (final PayloadData sharedPeer : didShare) {
                 final String payload = sharedPeer.shortName();
+                //noinspection ConstantConditions
                 if (null == payload) {
                     return;
                 }
@@ -155,9 +158,10 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
         if (eventType == EventType.visit) {
             final String payload = payloadData.shortName();
+            //noinspection ConstantConditions
             if (null == payload) {
                 return;
             }

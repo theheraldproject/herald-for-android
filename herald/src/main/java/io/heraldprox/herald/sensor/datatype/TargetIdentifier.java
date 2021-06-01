@@ -15,9 +15,10 @@ import java.util.UUID;
 /// Ephemeral identifier for detected target (e.g. smartphone, beacon, place).
 // This is likely to be an UUID but using String for variable identifier length.
 public class TargetIdentifier {
+    @NonNull
     public final String value;
 
-    public TargetIdentifier(final String value) {
+    public TargetIdentifier(@NonNull final String value) {
         this.value = value;
     }
 
@@ -28,12 +29,12 @@ public class TargetIdentifier {
     }
 
     /// Create target identifier based on bluetooth device address
-    public TargetIdentifier(@NonNull BluetoothDevice bluetoothDevice) {
+    public TargetIdentifier(@NonNull final BluetoothDevice bluetoothDevice) {
         this(bluetoothDevice.getAddress());
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         TargetIdentifier that = (TargetIdentifier) o;

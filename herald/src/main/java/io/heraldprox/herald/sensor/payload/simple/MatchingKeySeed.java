@@ -4,12 +4,14 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 
 /// Matching key seed
 public class MatchingKeySeed extends Data {
 
-    public MatchingKeySeed(Data value) {
+    public MatchingKeySeed(@NonNull final Data value) {
         super(value);
     }
 }

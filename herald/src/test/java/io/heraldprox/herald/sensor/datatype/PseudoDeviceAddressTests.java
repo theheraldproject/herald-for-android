@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class PseudoDeviceAddressTests {
@@ -124,7 +123,7 @@ public class PseudoDeviceAddressTests {
     }
 
     @Test
-    public void testDataRange() throws Exception {
+    public void testDataRange() {
         // Variable data length shouldn't cause exception
         // Address data should be 6 bytes regardless of original data
         for (int i=0; i<512; i++) {

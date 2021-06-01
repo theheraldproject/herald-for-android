@@ -13,12 +13,14 @@ import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("ConstantConditions")
 public class DataTests {
 
     @Test
@@ -76,7 +78,7 @@ public class DataTests {
             final String base64String = expected.base64EncodedString();
             assertNotNull(base64String);
             if (length > 0) {
-                assertTrue(!base64String.isEmpty());
+                assertFalse(base64String.isEmpty());
             }
             final Data actual = new Data(base64String);
             assertArrayEquals(expected.value, actual.value);
@@ -94,7 +96,7 @@ public class DataTests {
             final String hexString = expected.hexEncodedString();
             assertNotNull(hexString);
             if (length > 0) {
-                assertTrue(!hexString.isEmpty());
+                assertFalse(hexString.isEmpty());
             }
             final Data actual = Data.fromHexEncodedString(hexString);
             assertArrayEquals(expected.value, actual.value);
@@ -119,7 +121,7 @@ public class DataTests {
             final String base64String = expected.base64EncodedString();
             assertNotNull(base64String);
             if (length > 0) {
-                assertTrue(!base64String.isEmpty());
+                assertFalse(base64String.isEmpty());
             }
             assertEquals(base64String, expected.description());
         }
@@ -226,7 +228,7 @@ public class DataTests {
             final String hexString = expected.hexEncodedString();
             assertNotNull(hexString);
             if (length > 0) {
-                assertTrue(!hexString.isEmpty());
+                assertFalse(hexString.isEmpty());
             }
             assertEquals(hexString, expected.toString());
         }

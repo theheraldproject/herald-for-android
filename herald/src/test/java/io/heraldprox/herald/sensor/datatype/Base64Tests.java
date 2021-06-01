@@ -9,8 +9,7 @@ import org.junit.Test;
 import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -27,7 +26,7 @@ public class Base64Tests {
             final String base64String = Base64.encode(data);
             assertNotNull(base64String);
             if (length > 0) {
-                assertTrue(!base64String.isEmpty());
+                assertFalse(base64String.isEmpty());
             }
             final byte[] actual = Base64.decode(base64String);
             assertArrayEquals(data, actual);
@@ -45,7 +44,7 @@ public class Base64Tests {
             final String base64String = Base64.encode(data);
             assertNotNull(base64String);
             if (length > 0) {
-                assertTrue(!base64String.isEmpty());
+                assertFalse(base64String.isEmpty());
             }
             final String base64StringWithInvalidCharacter = "!@£$%^&*()" + base64String + "!@£$%^&*()";
             final byte[] actual = Base64.decode(base64StringWithInvalidCharacter);

@@ -5,23 +5,24 @@
 package io.heraldprox.herald.sensor.analysis.sampling;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class ConcreteAnalysisDelegate<T extends DoubleValue> implements AnalysisDelegate<T> {
+    @NonNull
     private final Class<T> inputType;
     @NonNull
     private final ListManager<T> listManager;
     @NonNull
     private final SampleList<T> sampleList;
 
-    public ConcreteAnalysisDelegate(final Class<T> inputType, final int listSize) {
+    public ConcreteAnalysisDelegate(@NonNull final Class<T> inputType, final int listSize) {
         this.inputType = inputType;
         this.listManager = new ListManager<>(listSize);
         this.sampleList = new SampleList<>(listSize);
     }
 
+    @NonNull
     @Override
     public Class<T> inputType() {
         return inputType;
@@ -38,13 +39,13 @@ public class ConcreteAnalysisDelegate<T extends DoubleValue> implements Analysis
         return sampleList;
     }
 
-    @Nullable
-    public SampleList<T> samples(final SampledID sampledID) {
+    @NonNull
+    public SampleList<T> samples(@NonNull final SampledID sampledID) {
         return listManager.list(sampledID);
     }
 
     @Override
-    public void newSample(SampledID sampled, Sample<T> item) {
+    public void newSample(@NonNull final SampledID sampled, @NonNull final Sample<T> item) {
         listManager.push(sampled, item);
         sampleList.push(item);
     }

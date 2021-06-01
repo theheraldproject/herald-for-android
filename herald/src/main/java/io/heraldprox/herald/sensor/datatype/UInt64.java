@@ -19,12 +19,12 @@ public class UInt64 implements DoubleValue {
     public final static UInt64 max = new UInt64(Long.MAX_VALUE);
     public final long value;
 
-    public UInt64(long value) {
-        this.value = (value < 0 ? 0 : (value > Long.MAX_VALUE ? Long.MAX_VALUE : value));
+    public UInt64(final long value) {
+        this.value = (value < 0 ? 0 : value);
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         UInt64 uInt64 = (UInt64) o;

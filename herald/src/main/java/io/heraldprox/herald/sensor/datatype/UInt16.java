@@ -16,12 +16,12 @@ public class UInt16 implements DoubleValue {
     public final static UInt16 max = new UInt16(65535);
     public final int value;
 
-    public UInt16(int value) {
-        this.value = (value < 0 ? 0 : (value > 65535 ? 65535 : value));
+    public UInt16(final int value) {
+        this.value = (value < 0 ? 0 : Math.min(value, 65535));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         UInt16 uInt16 = (UInt16) o;

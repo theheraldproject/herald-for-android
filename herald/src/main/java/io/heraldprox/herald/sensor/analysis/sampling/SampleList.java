@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+@SuppressWarnings("unchecked")
 public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, Filterable<T> {
     @NonNull
     private final Sample[] data;
@@ -48,25 +49,26 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
     }
 
     @NonNull
-    private final static <T> Sample<T>[] toArray(@NonNull final Iterator<Sample<T>> iterator) {
+    private static <T> Sample<T>[] toArray(@NonNull final Iterator<Sample<T>> iterator) {
         final List<Sample<T>> list = new ArrayList<>();
         while (iterator.hasNext()) {
             list.add(iterator.next());
         }
+        //noinspection SuspiciousToArrayCall,ToArrayCallWithZeroLengthArrayArgument
         return (Sample<T>[]) list.toArray(new Sample[list.size()]);
     }
 
-    public void push(final Sample<T> sample) {
+    public void push(@NonNull final Sample<T> sample) {
         incrementNewest();
         data[newestPosition] = sample;
     }
 
-    public void push(final Date taken, final T value) {
-        push(new Sample<T>(taken, value));
+    public void push(@NonNull final Date taken, @NonNull final T value) {
+        push(new Sample<>(taken, value));
     }
 
-    public void push(final long secondsSinceUnixEpoch, final T value) {
-        push(new Sample<T>(new Date(secondsSinceUnixEpoch), value));
+    public void push(final long secondsSinceUnixEpoch, @NonNull final T value) {
+        push(new Sample<>(new Date(secondsSinceUnixEpoch), value));
     }
 
     public int size() {
@@ -79,6 +81,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         return (1 + newestPosition) + (data.length - oldestPosition);
     }
 
+    @Nullable
     public Sample<T> get(final int index) {
         if (newestPosition >= oldestPosition) {
             return data[index + oldestPosition];
@@ -120,12 +123,18 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
         if (newestPosition == data.length) {
             return null;
         }
+        if (null == data[newestPosition]) {
+            return null;
+        }
         return data[newestPosition].taken();
     }
 
     @Nullable
     public T latestValue() {
         if (newestPosition == data.length) {
+            return null;
+        }
+        if (null == data[newestPosition]) {
             return null;
         }
         return (T) data[newestPosition].value();
@@ -167,6 +176,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
             @Override
             public Sample<T> next() {
                 try {
+                    //noinspection UnnecessaryLocalVariable
                     final Sample<T> value = get(index++);
                     return value;
                 } catch (Throwable e) {
@@ -178,7 +188,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
 
     @NonNull
     @Override
-    public IteratorProxy<T> filter(final Filter filter) {
+    public IteratorProxy<T> filter(@NonNull final Filter filter) {
         return new IteratorProxy<>(iterator(), filter);
     }
 
@@ -190,7 +200,10 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
             if (i > 0) {
                 s.append(" ,");
             }
-            s.append(get(i).toString());
+            final Sample<T> sample = get(i);
+            if (sample != null) {
+                s.append(sample.toString());
+            }
         }
         s.append(']');
         return s.toString();
@@ -210,9 +223,7 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
                 aggregate.beginRun(run);
             }
 
-            final Iterator<Sample<T>> iterator = iterator();
-            while (iterator.hasNext()) {
-                final Sample<T> sample = iterator.next();
+            for (final Sample<T> sample : this) {
                 for (final Aggregate<T> aggregate : aggregates) {
                     aggregate.map(sample);
                 }

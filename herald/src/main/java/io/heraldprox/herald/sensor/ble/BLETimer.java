@@ -84,7 +84,7 @@ public class BLETimer {
     };
 
     @SuppressLint("WakelockTimeout")
-    public BLETimer(@NonNull Context context) {
+    public BLETimer(@NonNull final Context context) {
         final PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Sensor:BLETimer");
         wakeLock.acquire(); // Deliberate use wakelock forever and actively manage sleep time so as not to waste battery
@@ -122,7 +122,7 @@ public class BLETimer {
     }
 
     /// Add delegate for time notification
-    public void add(BLETimerDelegate delegate) {
+    public void add(@NonNull final BLETimerDelegate delegate) {
         delegates.add(delegate);
     }
 }

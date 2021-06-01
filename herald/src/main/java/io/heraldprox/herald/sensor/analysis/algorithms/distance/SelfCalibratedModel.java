@@ -31,14 +31,16 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 ///   self-calibration based on observed values.
 public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearModel<T> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearSelfCalibratedModel");
+    @NonNull
     private final Distance min, mean;
     private final double maxRssiPercentile, anchorRssiPercentile;
     @NonNull
     public final RssiHistogram histogram;
     private double maxRssi = -10;
+    @NonNull
     private Date lastSampleTime = new Date(0);
 
-    public SelfCalibratedModel(final Distance min, final Distance mean, @NonNull final TimeInterval withinMin, @NonNull final TimeInterval withinMean, final TextFile textFile) {
+    public SelfCalibratedModel(@NonNull final Distance min, @NonNull final Distance mean, @NonNull final TimeInterval withinMin, @NonNull final TimeInterval withinMean, @Nullable final TextFile textFile) {
         super();
         this.min = min;
         this.mean = mean;
@@ -63,7 +65,7 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         super.map(value);
         if (value.taken().secondsSinceUnixEpoch() > lastSampleTime.secondsSinceUnixEpoch()) {
             histogram.add(value.value().doubleValue());

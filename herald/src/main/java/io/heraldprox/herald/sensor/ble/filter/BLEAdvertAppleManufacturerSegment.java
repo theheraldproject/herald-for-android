@@ -11,10 +11,12 @@ import io.heraldprox.herald.sensor.datatype.Data;
 public class BLEAdvertAppleManufacturerSegment {
     public final int type;
     public final int reportedLength;
+    @NonNull
     public final byte[] data; // BIG ENDIAN (network order) AT THIS POINT
+    @NonNull
     public final Data raw;
 
-    public BLEAdvertAppleManufacturerSegment(int type, int reportedLength, byte[] dataBigEndian, Data raw) {
+    public BLEAdvertAppleManufacturerSegment(final int type, final int reportedLength, @NonNull final byte[] dataBigEndian, @NonNull final Data raw) {
         this.type = type;
         this.reportedLength = reportedLength;
         this.data = dataBigEndian;

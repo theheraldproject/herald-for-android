@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -103,23 +104,23 @@ public class AppDelegate extends Application implements SensorDelegate {
     // MARK:- SensorDelegate for logging proximity detection events
 
     @Override
-    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+    public void sensor(@NonNull SensorType sensor, @NonNull TargetIdentifier didDetect) {
         Log.i(tag, sensor.name() + ",didDetect=" + didDetect);
     }
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull PayloadData didRead, @NonNull TargetIdentifier fromTarget) {
         Log.i(tag, sensor.name() + ",didRead=" + didRead.shortName() + ",fromTarget=" + fromTarget);
         parsePayload("didRead", sensor, didRead, fromTarget);
     }
 
     @Override
-    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull ImmediateSendData didReceive, @NonNull TargetIdentifier fromTarget) {
         Log.i(tag, sensor.name() + ",didReceive=" + didReceive.data.base64EncodedString() + ",fromTarget=" + fromTarget);
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull List<PayloadData> didShare, @NonNull TargetIdentifier fromTarget) {
         final List<String> payloads = new ArrayList<>(didShare.size());
         for (PayloadData payloadData : didShare) {
             payloads.add(payloadData.shortName());
@@ -131,22 +132,22 @@ public class AppDelegate extends Application implements SensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
         Log.i(tag, sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget);
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Location didVisit) {
         Log.i(tag, sensor.name() + ",didVisit=" + ((null == didVisit) ? "" : didVisit.description()));
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget, @NonNull PayloadData withPayload) {
         Log.i(tag, sensor.name() + ",didMeasure=" + didMeasure.description() + ",fromTarget=" + fromTarget + ",withPayload=" + withPayload.shortName());
     }
 
     @Override
-    public void sensor(SensorType sensor, SensorState didUpdateState) {
+    public void sensor(@NonNull SensorType sensor, @NonNull SensorState didUpdateState) {
         Log.i(tag, sensor.name() + ",didUpdateState=" + didUpdateState.name());
     }
 

@@ -13,12 +13,14 @@ import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class AnalysisRunner {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "AnalysisRunner");
+    @NonNull
     private final AnalysisProviderManager analysisProviderManager;
+    @NonNull
     private final AnalysisDelegateManager analysisDelegateManager;
     @NonNull
     private final VariantSet variantSet;
 
-    public AnalysisRunner(final AnalysisProviderManager analysisProviderManager, final AnalysisDelegateManager analysisDelegateManager, final int defaultListSize) {
+    public AnalysisRunner(@NonNull final AnalysisProviderManager analysisProviderManager, @NonNull final AnalysisDelegateManager analysisDelegateManager, final int defaultListSize) {
         this.analysisDelegateManager = analysisDelegateManager;
         this.analysisProviderManager = analysisProviderManager;
         this.variantSet = new VariantSet(defaultListSize);
@@ -29,7 +31,7 @@ public class AnalysisRunner {
         return variantSet;
     }
 
-    public <T extends DoubleValue> void newSample(SampledID sampled, @NonNull Sample<T> item) {
+    public <T extends DoubleValue> void newSample(@NonNull final SampledID sampled, @NonNull final Sample<T> item) {
         variantSet.push(sampled, item);
     }
 
@@ -37,7 +39,7 @@ public class AnalysisRunner {
         run(new Date());
     }
 
-    public void run(Date timeNow) {
+    public void run(@NonNull final Date timeNow) {
         for (final SampledID sampled : variantSet.sampledIDs()) {
             analysisProviderManager.analyse(timeNow, sampled, variantSet, analysisDelegateManager);
         }

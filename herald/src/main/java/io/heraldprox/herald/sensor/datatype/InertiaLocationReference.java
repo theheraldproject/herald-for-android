@@ -11,7 +11,7 @@ import androidx.annotation.Nullable;
 public class InertiaLocationReference implements LocationReference {
     public final double x, y, z, magnitude;
 
-    public InertiaLocationReference(@Nullable Double x, @Nullable Double y, @Nullable Double z) {
+    public InertiaLocationReference(@Nullable final Double x, @Nullable final Double y, @Nullable final Double z) {
         this.x = (null == x ? 0 : x);
         this.y = (null == y ? 0 : y);
         this.z = (null == z ? 0 : z);

@@ -19,7 +19,7 @@ public class InRange<T extends DoubleValue> implements Filter<T> {
     }
 
     @Override
-    public boolean test(@NonNull Sample<T> item) {
+    public boolean test(@NonNull final Sample<T> item) {
         return item.value().doubleValue() >= min && item.value().doubleValue() <= max;
     }
 }

@@ -11,9 +11,8 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
+@SuppressWarnings("unchecked")
 public class Since<T extends DoubleValue> implements Filter<T> {
-    @NonNull
-    private final Date after;
     private final long afterTime;
 
     public Since(final long secondsSinceUnixEpoch) {
@@ -21,17 +20,16 @@ public class Since<T extends DoubleValue> implements Filter<T> {
     }
 
     public Since(@NonNull final Date after) {
-        this.after = after;
         this.afterTime = after.getTime();
     }
 
     @NonNull
-    public final static <T extends DoubleValue> Since<T> recent(final long inLastSeconds) {
+    public static <T extends DoubleValue> Since<T> recent(final long inLastSeconds) {
         return new Since(new Date().secondsSinceUnixEpoch() - inLastSeconds);
     }
 
     @Override
-    public boolean test(@NonNull Sample<T> item) {
+    public boolean test(@NonNull final Sample<T> item) {
         return item.taken().getTime() >= afterTime;
     }
 }

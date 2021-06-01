@@ -24,8 +24,8 @@ public class Int64Tests {
         // Zero
         assertEquals(0, new Int64(0).value);
         // Clamping
-        assertEquals(Int64.min.value, new Int64((long) Int64.min.value).value);
-        assertEquals(Int64.max.value, new Int64((long) Int64.max.value).value);
+        assertEquals(Int64.min.value, new Int64(Int64.min.value).value);
+        assertEquals(Int64.max.value, new Int64(Int64.max.value).value);
         // String
         assertNotNull(Int64.min.toString());
         assertNotNull(Int64.max.toString());

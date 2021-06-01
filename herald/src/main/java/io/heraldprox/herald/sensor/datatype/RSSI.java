@@ -20,12 +20,12 @@ import java.util.Objects;
 public class RSSI implements DoubleValue {
     public final double value;
 
-    public RSSI(double value) {
+    public RSSI(final double value) {
         this.value = value;
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         RSSI rssi = (RSSI) o;

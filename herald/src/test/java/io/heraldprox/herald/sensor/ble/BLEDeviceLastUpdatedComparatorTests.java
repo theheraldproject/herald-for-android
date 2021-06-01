@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.RSSI;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
@@ -14,7 +16,6 @@ import java.util.TreeSet;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
 
 public class BLEDeviceLastUpdatedComparatorTests {
 
@@ -22,7 +23,7 @@ public class BLEDeviceLastUpdatedComparatorTests {
     public void testCorrectOrder() throws Exception {
         BLEDeviceDelegate dummyDelegate = new BLEDeviceDelegate() {
             @Override
-            public void device(BLEDevice device, BLEDeviceAttribute didUpdate) {
+            public void device(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute didUpdate) {
                 // do nothing
             }
         };

@@ -9,11 +9,14 @@ import androidx.annotation.NonNull;
 import io.heraldprox.herald.sensor.datatype.Data;
 
 public class BLEAdvertServiceData {
+    @NonNull
     public final byte[] service;
+    @NonNull
     public final byte[] data; // BIG ENDIAN (network order) AT THIS POINT
+    @NonNull
     public final Data raw;
 
-    public BLEAdvertServiceData(final byte[] service, final byte[] dataBigEndian, final Data raw) {
+    public BLEAdvertServiceData(@NonNull final byte[] service, @NonNull final byte[] dataBigEndian, @NonNull final Data raw) {
         this.service = service;
         this.data = dataBigEndian;
         this.raw = raw;

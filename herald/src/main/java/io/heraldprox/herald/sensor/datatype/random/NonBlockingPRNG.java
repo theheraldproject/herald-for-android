@@ -28,6 +28,7 @@ public class NonBlockingPRNG extends RandomSource {
         // the Math.random() function.
         final int skipRandomSequence = (int) Math.abs(entropyFromCallTime % 128);
         for (int i=skipRandomSequence; i-->0;) {
+            //noinspection ResultOfMethodCallIgnored
             Math.random();
         }
         // Create a new instance of Random with seed from Math.random() to increase search space
@@ -51,7 +52,7 @@ public class NonBlockingPRNG extends RandomSource {
     }
 
     @Override
-    public void nextBytes(final byte[] bytes) {
+    public void nextBytes(@NonNull final byte[] bytes) {
         getRandom().nextBytes(bytes);
     }
 }

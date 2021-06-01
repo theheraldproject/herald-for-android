@@ -9,10 +9,11 @@ import androidx.annotation.NonNull;
 import java.util.List;
 
 public class BLEScanResponseData {
-    public int dataLength;
-    public List<BLEAdvertSegment> segments;
+    public final int dataLength;
+    @NonNull
+    public final List<BLEAdvertSegment> segments;
 
-    public BLEScanResponseData(int dataLength, List<BLEAdvertSegment> segments) {
+    public BLEScanResponseData(final int dataLength, @NonNull final List<BLEAdvertSegment> segments) {
         this.dataLength = dataLength;
         this.segments = segments;
     }

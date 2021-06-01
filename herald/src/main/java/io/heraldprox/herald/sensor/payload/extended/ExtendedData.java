@@ -1,5 +1,7 @@
 package io.heraldprox.herald.sensor.payload.extended;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Float16;
 import io.heraldprox.herald.sensor.datatype.Int16;
@@ -14,16 +16,17 @@ import io.heraldprox.herald.sensor.datatype.UInt8;
 
 public interface ExtendedData {
     boolean hasData();
-    void addSection(UInt8 code, UInt8 value);
-    void addSection(UInt8 code, UInt16 value);
-    void addSection(UInt8 code, UInt32 value);
-    void addSection(UInt8 code, UInt64 value);
-    void addSection(UInt8 code, Int8 value);
-    void addSection(UInt8 code, Int16 value);
-    void addSection(UInt8 code, Int32 value);
-    void addSection(UInt8 code, Int64 value);
-    void addSection(UInt8 code, Float16 value);
-    void addSection(UInt8 code, String value);
-    void addSection(UInt8 code, Data value);
+    void addSection(@NonNull final UInt8 code, @NonNull final UInt8 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final UInt16 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final UInt32 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final UInt64 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Int8 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Int16 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Int32 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Int64 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Float16 value);
+    void addSection(@NonNull final UInt8 code, @NonNull final String value);
+    void addSection(@NonNull final UInt8 code, @NonNull final Data value);
+    @NonNull
     PayloadData payload();
 }

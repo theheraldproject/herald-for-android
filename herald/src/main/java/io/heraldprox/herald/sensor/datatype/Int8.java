@@ -16,12 +16,12 @@ public class Int8 implements DoubleValue {
     public final static Int8 max = new Int8(Byte.MAX_VALUE);
     public final int value;
 
-    public Int8(int value) {
+    public Int8(final int value) {
         this.value = (value < Byte.MIN_VALUE ? Byte.MIN_VALUE : (value > Byte.MAX_VALUE ? Byte.MAX_VALUE : value));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Int8 uInt8 = (Int8) o;

@@ -43,7 +43,7 @@ public class CalibrationLog extends DefaultSensorDelegate {
     }
 
     @NonNull
-    private static String csv(@NonNull String value) {
+    private static String csv(@NonNull final String value) {
         return TextFile.csv(value);
     }
 
@@ -51,12 +51,12 @@ public class CalibrationLog extends DefaultSensorDelegate {
 
 
     @Override
-    public void sensor(SensorType sensor, @NonNull Proximity didMeasure, TargetIdentifier fromTarget, @NonNull PayloadData withPayload) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
         textFile.write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
     }
 
     @Override
-    public void sensor(SensorType sensor, @NonNull Location didVisit) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
         if (didVisit.value instanceof InertiaLocationReference) {
             final InertiaLocationReference reference = (InertiaLocationReference) didVisit.value;
             textFile.write(timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);

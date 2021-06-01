@@ -24,25 +24,26 @@ public class DetectionLog extends DefaultSensorDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
     @NonNull
     private final TextFile textFile;
+    @NonNull
     private final PayloadData payloadData;
     private final String deviceName = android.os.Build.MODEL;
     private final String deviceOS = Integer.toString(android.os.Build.VERSION.SDK_INT);
     private final Map<String, String> payloads = new ConcurrentHashMap<>();
     private final PayloadDataFormatter payloadDataFormatter;
 
-    public DetectionLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData, PayloadDataFormatter payloadDataFormatter) {
+    public DetectionLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData, @NonNull final PayloadDataFormatter payloadDataFormatter) {
         textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
         this.payloadDataFormatter = payloadDataFormatter;
         write();
     }
 
-    public DetectionLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData) {
+    public DetectionLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
     }
 
     @NonNull
-    private String csv(@NonNull String value) {
+    private String csv(@NonNull final String value) {
         return TextFile.csv(value);
     }
 
@@ -56,14 +57,14 @@ public class DetectionLog extends DefaultSensorDelegate {
         content.append(',');
         content.append(csv(payloadDataFormatter.shortFormat(payloadData)));
         final List<String> payloadList = new ArrayList<>(payloads.size());
-        for (String payload : payloads.keySet()) {
+        for (final String payload : payloads.keySet()) {
             if (payload.equals(payloadDataFormatter.shortFormat(payloadData))) {
                 continue;
             }
             payloadList.add(payload);
         }
         Collections.sort(payloadList);
-        for (String payload : payloadList) {
+        for (final String payload : payloadList) {
             content.append(',');
             content.append(payload);
         }
@@ -76,7 +77,7 @@ public class DetectionLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, @NonNull TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
         if (null == payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value)) {
             logger.debug("didRead (payload={})", payloadDataFormatter.shortFormat(payloadData));
             write();
@@ -84,8 +85,8 @@ public class DetectionLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, @NonNull TargetIdentifier fromTarget) {
-        for (PayloadData payloadData : didShare) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
+        for (final PayloadData payloadData : didShare) {
             if (null == payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value)) {
                 logger.debug("didShare (payload={})", payloadDataFormatter.shortFormat(payloadData));
                 write();

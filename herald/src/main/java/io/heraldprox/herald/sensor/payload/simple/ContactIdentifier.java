@@ -4,16 +4,18 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 
 /// Contact identifier
 public class ContactIdentifier extends Data {
 
-    public ContactIdentifier(Data value) {
+    public ContactIdentifier(@NonNull final Data value) {
         super(value);
     }
 
-    public ContactIdentifier(byte repeating, int count) {
+    public ContactIdentifier(final byte repeating, final int count) {
         super(repeating, count);
     }
 }

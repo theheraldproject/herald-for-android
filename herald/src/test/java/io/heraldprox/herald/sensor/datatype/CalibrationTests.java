@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
+@SuppressWarnings("ConstantConditions")
 public class CalibrationTests {
 
     @Test

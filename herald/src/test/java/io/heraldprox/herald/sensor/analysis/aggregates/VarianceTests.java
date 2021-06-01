@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("ConstantConditions")
 public class VarianceTests {
 
     @Test
@@ -48,7 +49,7 @@ public class VarianceTests {
             assertNotNull(variance.reduce());
             sumSquaredDelta += ((i - mean) * (i - mean));
             count++;
-            assertEquals(sumSquaredDelta / (count - 1), variance.reduce().doubleValue(), Double.MIN_VALUE);
+            assertEquals(sumSquaredDelta / (count - 1), variance.reduce(), Double.MIN_VALUE);
         }
     }
 

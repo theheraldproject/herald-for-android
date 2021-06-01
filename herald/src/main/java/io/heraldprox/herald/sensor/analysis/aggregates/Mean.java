@@ -22,12 +22,12 @@ public class Mean<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void beginRun(int thisRun) {
+    public void beginRun(final int thisRun) {
         run = thisRun;
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         if (run > 1) return;
         sum += value.value().doubleValue();
         count++;

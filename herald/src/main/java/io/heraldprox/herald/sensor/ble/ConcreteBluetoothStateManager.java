@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -22,8 +21,9 @@ import io.heraldprox.herald.sensor.datatype.BluetoothState;
  */
 public class ConcreteBluetoothStateManager implements BluetoothStateManager {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBluetoothStateManager");
-    @Nullable
-    private BluetoothState state = null;
+    @NonNull
+    private BluetoothState state;
+    @SuppressWarnings("FieldCanBeLocal")
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, @NonNull Intent intent) {
@@ -59,7 +59,7 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
      * 
      * @param context The Herald execution Context. Used to register the BLE Receiver against.
      */
-    public ConcreteBluetoothStateManager(@NonNull Context context) {
+    public ConcreteBluetoothStateManager(@NonNull final Context context) {
         state = state();
 
         final IntentFilter intentFilter = new IntentFilter();
@@ -67,9 +67,10 @@ public class ConcreteBluetoothStateManager implements BluetoothStateManager {
         context.registerReceiver(broadcastReceiver, intentFilter);
     }
 
-    @Nullable
+    @NonNull
     @Override
     public BluetoothState state() {
+        //noinspection ConstantConditions
         if (null == state) {
             final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (null == bluetoothAdapter) {

@@ -5,7 +5,6 @@
 package io.heraldprox.herald.sensor.analysis.sampling;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
@@ -19,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("unchecked")
 public class AnalysisProviderManager {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "AnalysisProviderManager");
     private final Set<Class<? extends DoubleValue>> outputTypes = new HashSet<>();
@@ -52,7 +52,7 @@ public class AnalysisProviderManager {
     }
 
     @NonNull
-    private synchronized List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list(final Class<? extends DoubleValue> inputType) {
+    private synchronized List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list(@NonNull final Class<? extends DoubleValue> inputType) {
         List<AnalysisProvider<? extends DoubleValue, ? extends DoubleValue>> list = lists.get(inputType);
         if (null == list) {
             list = new ArrayList<>(1);
@@ -62,12 +62,12 @@ public class AnalysisProviderManager {
     }
 
     @NonNull
-    private synchronized <U extends DoubleValue> CallableForNewSample<U> callable(final Class<U> type, @NonNull final AnalysisDelegateManager delegates) {
+    private synchronized <U extends DoubleValue> CallableForNewSample<U> callable(@NonNull final Class<U> type, @NonNull final AnalysisDelegateManager delegates) {
         CallableForNewSample<? extends DoubleValue> callable = callables.get(type);
         if (null == callable) {
             callable = new CallableForNewSample<U>() {
                 @Override
-                public void newSample(SampledID sampled, @NonNull Sample<U> item) {
+                public void newSample(@NonNull final SampledID sampled, @NonNull final Sample<U> item) {
                     delegates.newSample(sampled, item);
                 }
             };
@@ -76,7 +76,8 @@ public class AnalysisProviderManager {
         return (CallableForNewSample<U>) callable;
     }
 
-    public <T extends DoubleValue, U extends DoubleValue> boolean analyse(final Date timeNow, final SampledID sampled, @NonNull final VariantSet variantSet, @NonNull final AnalysisDelegateManager delegates) {
+    @SuppressWarnings("UnusedReturnValue")
+    public <T extends DoubleValue, U extends DoubleValue> boolean analyse(@NonNull final Date timeNow, @NonNull final SampledID sampled, @NonNull final VariantSet variantSet, @NonNull final AnalysisDelegateManager delegates) {
         boolean update = false;
         for (final AnalysisProvider<? extends DoubleValue, ? extends DoubleValue> provider : providers) {
             final SampleList<T> input = (SampleList<T>) variantSet.listManager(provider.inputType(), sampled);

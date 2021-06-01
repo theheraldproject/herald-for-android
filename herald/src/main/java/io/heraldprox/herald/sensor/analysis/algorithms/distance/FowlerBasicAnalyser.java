@@ -5,7 +5,6 @@
 package io.heraldprox.herald.sensor.analysis.algorithms.distance;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.analysis.aggregates.Mode;
 import io.heraldprox.herald.sensor.analysis.aggregates.Variance;
@@ -22,12 +21,13 @@ import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.RSSI;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
+@SuppressWarnings("unchecked")
 public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
     @NonNull
     private final TimeInterval interval;
     @NonNull
     private final FowlerBasic basic;
-    @Nullable
+    @NonNull
     private Date lastRan = new Date(0);
 
     private final Filter<RSSI> valid = new InRange<>(-99, -10);
@@ -54,7 +54,7 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
     }
 
     @Override
-    public boolean analyse(@NonNull Date timeNow, SampledID sampled, @NonNull SampleList<RSSI> src, @NonNull final SampleList<Distance> output, @NonNull CallableForNewSample<Distance> callable) {
+    public boolean analyse(@NonNull final Date timeNow, @NonNull final SampledID sampled, @NonNull final SampleList<RSSI> src, @NonNull final SampleList<Distance> output, @NonNull final CallableForNewSample<Distance> callable) {
         // Interval guard
         if (lastRan.secondsSinceUnixEpoch() + interval.value >= timeNow.secondsSinceUnixEpoch()) {
             return false;
@@ -77,6 +77,9 @@ public class FowlerBasicAnalyser implements AnalysisProvider<RSSI, Distance> {
             return false;
         }
         final Date latestTime = values.latest();
+        if (null == latestTime) {
+            return false;
+        }
         lastRan = latestTime;
         final Sample<Distance> newSample = new Sample<>(latestTime, new Distance(distance));
         output.push(newSample);

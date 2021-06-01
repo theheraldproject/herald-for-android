@@ -31,13 +31,16 @@ public class BLEDevice extends Device {
     @Nullable
     private PseudoDeviceAddress pseudoDeviceAddress = null;
     /// Delegate for listening to attribute updates events.
+    @NonNull
     private final BLEDeviceDelegate delegate;
     /// Android Bluetooth device object for interacting with this device.
     @Nullable
     private BluetoothDevice peripheral = null;
     /// Bluetooth device connection state.
+    @NonNull
     private BLEDeviceState state = BLEDeviceState.disconnected;
     /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
+    @NonNull
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
     /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     @Nullable
@@ -85,6 +88,7 @@ public class BLEDevice extends Device {
     private String deviceName = null;
 
     /// Track connection timestamps
+    @SuppressWarnings("FieldCanBeLocal")
     @Nullable
     private Date lastDiscoveredAt = null;
     @Nullable
@@ -101,6 +105,7 @@ public class BLEDevice extends Device {
     @Nullable
     private Date lastWritePayloadSharingAt = null;
 
+    @NonNull
     public TimeInterval timeIntervalSinceConnected() {
         if (state() != BLEDeviceState.connected) {
             return TimeInterval.zero;
@@ -113,7 +118,9 @@ public class BLEDevice extends Device {
 
     /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
     /// This is also used by immediateSendAll to choose targets
+    @NonNull
     public TimeInterval timeIntervalSinceLastUpdate() {
+        //noinspection ConstantConditions
         if (null == lastUpdatedAt) {
             return TimeInterval.never;
         }
@@ -132,7 +139,7 @@ public class BLEDevice extends Device {
                 "]";
     }
 
-    public BLEDevice(TargetIdentifier identifier, BLEDeviceDelegate delegate) {
+    public BLEDevice(@NonNull final TargetIdentifier identifier, @NonNull final BLEDeviceDelegate delegate) {
         super(identifier);
         this.delegate = delegate;
     }
@@ -142,7 +149,7 @@ public class BLEDevice extends Device {
         return pseudoDeviceAddress;
     }
 
-    public void pseudoDeviceAddress(PseudoDeviceAddress pseudoDeviceAddress) {
+    public void pseudoDeviceAddress(@Nullable final PseudoDeviceAddress pseudoDeviceAddress) {
         if (null == this.pseudoDeviceAddress || !this.pseudoDeviceAddress.equals(pseudoDeviceAddress)) {
             this.pseudoDeviceAddress = pseudoDeviceAddress;
             lastUpdatedAt = new Date();
@@ -154,18 +161,19 @@ public class BLEDevice extends Device {
         return peripheral;
     }
 
-    public void peripheral(BluetoothDevice peripheral) {
+    public void peripheral(@Nullable final BluetoothDevice peripheral) {
         if (this.peripheral != peripheral) {
             this.peripheral = peripheral;
             lastUpdatedAt = new Date();
         }
     }
 
+    @NonNull
     public BLEDeviceState state() {
         return state;
     }
 
-    public void state(BLEDeviceState state) {
+    public void state(@NonNull final BLEDeviceState state) {
         this.state = state;
         lastUpdatedAt = new Date();
         if (state == BLEDeviceState.connected) {
@@ -174,11 +182,12 @@ public class BLEDevice extends Device {
         delegate.device(this, BLEDeviceAttribute.state);
     }
 
+    @NonNull
     public BLEDeviceOperatingSystem operatingSystem() {
         return operatingSystem;
     }
 
-    public void operatingSystem(BLEDeviceOperatingSystem operatingSystem) {
+    public void operatingSystem(@NonNull final BLEDeviceOperatingSystem operatingSystem) {
         lastUpdatedAt = new Date();
         // Set ignore timer
         if (operatingSystem == BLEDeviceOperatingSystem.ignore) {
@@ -207,6 +216,7 @@ public class BLEDevice extends Device {
         if (null == ignoreUntil) {
             return false;
         }
+        //noinspection RedundantIfStatement
         if (new Date().getTime() < ignoreUntil.getTime()) {
             return true;
         }
@@ -218,13 +228,14 @@ public class BLEDevice extends Device {
         return payloadData;
     }
 
-    public void payloadData(PayloadData payloadData) {
+    public void payloadData(@Nullable final PayloadData payloadData) {
         this.payloadData = payloadData;
         lastPayloadDataUpdate = new Date();
         lastUpdatedAt = lastPayloadDataUpdate;
         delegate.device(this, BLEDeviceAttribute.payloadData);
     }
 
+    @NonNull
     public TimeInterval timeIntervalSinceLastPayloadDataUpdate() {
         if (null == lastPayloadDataUpdate) {
             return TimeInterval.never;
@@ -232,7 +243,7 @@ public class BLEDevice extends Device {
         return new TimeInterval((new Date().getTime() - lastPayloadDataUpdate.getTime()) / 1000);
     }
 
-    public void immediateSendData(Data immediateSendData) {
+    public void immediateSendData(@Nullable final Data immediateSendData) {
         this.immediateSendData = immediateSendData;
     }
 
@@ -246,13 +257,13 @@ public class BLEDevice extends Device {
         return rssi;
     }
 
-    public void rssi(RSSI rssi) {
+    public void rssi(@Nullable final RSSI rssi) {
         this.rssi = rssi;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.rssi);
     }
 
-    public void legacyPayloadCharacteristic(BluetoothGattCharacteristic characteristic) {
+    public void legacyPayloadCharacteristic(@Nullable final BluetoothGattCharacteristic characteristic) {
         this.legacyPayloadCharacteristic = characteristic;
     }
 
@@ -266,7 +277,7 @@ public class BLEDevice extends Device {
         return txPower;
     }
 
-    public void txPower(BLE_TxPower txPower) {
+    public void txPower(@Nullable final BLE_TxPower txPower) {
         this.txPower = txPower;
         lastUpdatedAt = new Date();
         delegate.device(this, BLEDeviceAttribute.txPower);
@@ -277,7 +288,7 @@ public class BLEDevice extends Device {
         if (null == txPower) {
             return null;
         }
-        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, Double.valueOf(txPower.value));
+        return new Calibration(CalibrationMeasurementUnit.BLETransmitPower, (double) txPower.value);
     }
 
     public boolean receiveOnly() {
@@ -302,7 +313,7 @@ public class BLEDevice extends Device {
         return signalCharacteristic;
     }
 
-    public void signalCharacteristic(BluetoothGattCharacteristic characteristic) {
+    public void signalCharacteristic(@Nullable final BluetoothGattCharacteristic characteristic) {
         this.signalCharacteristic = characteristic;
         lastUpdatedAt = new Date();
     }
@@ -312,7 +323,7 @@ public class BLEDevice extends Device {
         return payloadCharacteristic;
     }
 
-    public void payloadCharacteristic(BluetoothGattCharacteristic characteristic) {
+    public void payloadCharacteristic(@Nullable final BluetoothGattCharacteristic characteristic) {
         this.payloadCharacteristic = characteristic;
         lastUpdatedAt = new Date();
     }
@@ -322,7 +333,7 @@ public class BLEDevice extends Device {
     @Nullable
     public BluetoothGattCharacteristic modelCharacteristic() { return modelCharacteristic; }
 
-    public void modelCharacteristic(BluetoothGattCharacteristic modelCharacteristic) {
+    public void modelCharacteristic(@Nullable final BluetoothGattCharacteristic modelCharacteristic) {
         this.modelCharacteristic = modelCharacteristic;
         lastUpdatedAt = new Date();
     }
@@ -332,7 +343,7 @@ public class BLEDevice extends Device {
     @Nullable
     public BluetoothGattCharacteristic deviceNameCharacteristic() { return deviceNameCharacteristic; }
 
-    public void deviceNameCharacteristic(BluetoothGattCharacteristic deviceNameCharacteristic) {
+    public void deviceNameCharacteristic(@Nullable final BluetoothGattCharacteristic deviceNameCharacteristic) {
         this.deviceNameCharacteristic = deviceNameCharacteristic;
         lastUpdatedAt = new Date();
     }
@@ -340,7 +351,7 @@ public class BLEDevice extends Device {
     @Nullable
     public String deviceName() { return deviceName; }
 
-    public void deviceName(String deviceName) {
+    public void deviceName(@Nullable final String deviceName) {
         this.deviceName = deviceName;
         lastUpdatedAt = new Date();
     }
@@ -348,7 +359,7 @@ public class BLEDevice extends Device {
     @Nullable
     public String model() { return model; }
 
-    public void model(String model) {
+    public void model(@Nullable final String model) {
         this.model = model;
         lastUpdatedAt = new Date();
     }
@@ -363,6 +374,7 @@ public class BLEDevice extends Device {
         lastWritePayloadAt = lastUpdatedAt;
     }
 
+    @NonNull
     public TimeInterval timeIntervalSinceLastWritePayload() {
         if (null == lastWritePayloadAt) {
             return TimeInterval.never;
@@ -375,6 +387,7 @@ public class BLEDevice extends Device {
         lastWriteRssiAt = lastUpdatedAt;
     }
 
+    @NonNull
     public TimeInterval timeIntervalSinceLastWriteRssi() {
         if (null == lastWriteRssiAt) {
             return TimeInterval.never;
@@ -387,6 +400,7 @@ public class BLEDevice extends Device {
         lastWritePayloadSharingAt = lastUpdatedAt;
     }
 
+    @NonNull
     public TimeInterval timeIntervalSinceLastWritePayloadSharing() {
         if (null == lastWritePayloadSharingAt) {
             return TimeInterval.never;
@@ -394,11 +408,12 @@ public class BLEDevice extends Device {
         return new TimeInterval((new Date().getTime() - lastWritePayloadSharingAt.getTime()) / 1000);
     }
 
+    @NonNull
     public TimeInterval timeIntervalUntilIgnoreExpires() {
         if (null == ignoreUntil) {
             return TimeInterval.zero;
         }
-        if (ignoreUntil.getTime() == Long.MAX_VALUE) {
+        if (Long.MAX_VALUE == ignoreUntil.getTime()) {
             return TimeInterval.never;
         }
         return new TimeInterval((ignoreUntil.getTime() - new Date().getTime()) / 1000);
@@ -412,7 +427,7 @@ public class BLEDevice extends Device {
         return null != signalCharacteristic && null != payloadCharacteristic;
     }
 
-    public void scanRecord(ScanRecord scanRecord) {
+    public void scanRecord(@Nullable final ScanRecord scanRecord) {
         this.scanRecord = scanRecord;
     }
 

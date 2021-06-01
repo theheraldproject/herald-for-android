@@ -16,10 +16,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("ConstantConditions")
 public class BLEDeviceFilterTest {
 
     @Test
-    public void testHexTransform() throws Exception {
+    public void testHexTransform() {
         final Random random = new Random(0);
         for (int i = 0; i < 1000; i++) {
             final byte[] expected = new byte[i];
@@ -31,7 +32,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhoneX_F() throws Exception {
+    public void testExtractMessages_iPhoneX_F() {
         final Data raw = Data.fromHexEncodedString("02011A020A0C0BFF4C001006071EA3DD89E014FF4C0001000000000000000000002000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(2, messages.size());
@@ -44,7 +45,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iOS12() throws Exception {
+    public void testExtractMessages_iOS12() {
         final Data raw = Data.fromHexEncodedString("02011A14FF4C0001000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -55,7 +56,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhoneX_J() throws Exception {
+    public void testExtractMessages_iPhoneX_J() {
         final Data raw = Data.fromHexEncodedString("02011A020A0C0BFF4C0010060C1E4FDE4DF714FF4C0001000000000000000000002000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(2, messages.size());
@@ -68,7 +69,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_MacBookPro_F() throws Exception {
+    public void testExtractMessages_MacBookPro_F() {
         final Data raw = Data.fromHexEncodedString("0201060AFF4C001005421C1E616A000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -80,7 +81,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhoneSE1_with_Herald() throws Exception {
+    public void testExtractMessages_iPhoneSE1_with_Herald() {
         // iPhoneSE 1st gen w/ Herald
         final Data raw = Data.fromHexEncodedString("02011a020a0c11079bfd5bd672451e80d3424647af328142");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
@@ -88,7 +89,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhoneSE1_Background() throws Exception {
+    public void testExtractMessages_iPhoneSE1_Background() {
         // iPhoneSE 1st gen background
         final Data raw = Data.fromHexEncodedString("02011a020a0c14ff4c000100000000000000000000200000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
@@ -100,7 +101,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhoneX_A() throws Exception {
+    public void testExtractMessages_iPhoneX_A() {
         // iPhoneX
         final Data raw = Data.fromHexEncodedString("1eff4c001219006d17255505df2aec6ef580be0ddeba8bb034c996de5b0200");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
@@ -113,7 +114,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhone7_A() throws Exception {
+    public void testExtractMessages_iPhone7_A() {
         // iPhone7
         final Data raw = Data.fromHexEncodedString("0bff4c001006061a396363ce");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
@@ -126,7 +127,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_iPhone_nRFApp() throws Exception {
+    public void testExtractMessages_iPhone_nRFApp() {
         // nRFConnect app running on iPhone - a Valid device
         final Data raw = Data.fromHexEncodedString("1bff4c000c0e00c857ac085510515d52cf3862211006551eee51497a");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
@@ -143,7 +144,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_AppleTV() throws Exception {
+    public void testExtractMessages_AppleTV() {
         final Data raw = Data.fromHexEncodedString("02011a020a0c0aff4c00100508141bba69");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -153,7 +154,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_Coincidence() throws Exception {
+    public void testExtractMessages_Coincidence() {
         final Data raw = Data.fromHexEncodedString("02011a020a0c0aff4c0010050814ff4c00");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -163,7 +164,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_MultipleAppleSegments() throws Exception {
+    public void testExtractMessages_MultipleAppleSegments() {
         final Data raw = Data.fromHexEncodedString("02011a0dff4c0010050814123456100101");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(2, messages.size());
@@ -175,7 +176,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_LegacyZeroOne() throws Exception {
+    public void testExtractMessages_LegacyZeroOne() {
         final Data raw = Data.fromHexEncodedString("02011a020a0c0aff4c001005031c8ba89d14ff4c000100200000000000000000000000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(2, messages.size());
@@ -187,7 +188,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_MacbookPro_A() throws Exception {
+    public void testExtractMessages_MacbookPro_A() {
         final Data raw = Data.fromHexEncodedString("02011a0aff4c001005031c0b4cac");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -197,14 +198,14 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testExtractMessages_MacbookProUnderflow() throws Exception {
+    public void testExtractMessages_MacbookProUnderflow() {
         final Data raw = Data.fromHexEncodedString("02011a0aff4c001005031c0b4c");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertNull(messages);
     }
 
     @Test
-    public void testExtractMessages_MacbookProOverflow() throws Exception {
+    public void testExtractMessages_MacbookProOverflow() {
         final Data raw = Data.fromHexEncodedString("02011a0aff4c001005031c0b4cac02011a0aff4c00100503");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(1, messages.size());
@@ -215,7 +216,7 @@ public class BLEDeviceFilterTest {
 
 
     @Test
-    public void testCompilePatterns() throws Exception {
+    public void testCompilePatterns() {
         final List<BLEDeviceFilter.FilterPattern> filterPatterns = BLEDeviceFilter.compilePatterns(new String[]{"^10....04", "^10....14"});
         assertEquals(2, filterPatterns.size());
         assertNotNull(BLEDeviceFilter.match(filterPatterns, "10060C044FDE4DF7"));
@@ -235,7 +236,7 @@ public class BLEDeviceFilterTest {
     }
 
     @Test
-    public void testMatch_iPhoneX_F() throws Exception {
+    public void testMatch_iPhoneX_F() {
         final Data raw = Data.fromHexEncodedString("02011A020A0C0BFF4C001006071EA3DD89E014FF4C0001000000000000000000002000000000000000000000000000000000000000000000000000000000");
         final List<Data> messages = BLEDeviceFilter.extractMessages(raw.value);
         assertEquals(2, messages.size());

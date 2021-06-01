@@ -21,29 +21,25 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
-import java.util.TimeZone;
 
 /// Log of interactions for recording encounters (time, proximity, and identity).
 /// This is can be used as basis for maintaining a persistent log
 /// of encounters for on-device or centralised matching.
 public class Interactions extends DefaultSensorDelegate {
+    @SuppressWarnings("FieldCanBeLocal")
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Analysis.EncounterLog");
     @Nullable
     private final TextFile textFile;
-    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     @NonNull
     private List<Encounter> encounters = new ArrayList<>();
 
     public Interactions() {
         textFile = null;
-        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     public Interactions(@NonNull final Context context, @NonNull final String filename) {
@@ -62,7 +58,7 @@ public class Interactions extends DefaultSensorDelegate {
         }
     }
 
-    public synchronized void append(@NonNull Encounter encounter) {
+    public synchronized void append(@NonNull final Encounter encounter) {
         if (textFile != null) {
             textFile.write(encounter.csvString());
         }
@@ -71,7 +67,7 @@ public class Interactions extends DefaultSensorDelegate {
 
     /// Get encounters from start date (inclusive) to end date (exclusive)
     @NonNull
-    public synchronized List<Encounter> subdata(@NonNull Date start, @NonNull Date end) {
+    public synchronized List<Encounter> subdata(@NonNull final Date start, @NonNull final Date end) {
         final long startTime = start.getTime();
         final long endTime = end.getTime();
         final List<Encounter> subdata = new ArrayList<>();
@@ -89,10 +85,10 @@ public class Interactions extends DefaultSensorDelegate {
 
     /// Get all encounters from start date (inclusive)
     @NonNull
-    public synchronized List<Encounter> subdata(@NonNull Date start) {
+    public synchronized List<Encounter> subdata(@NonNull final Date start) {
         final long startTime = start.getTime();
         final List<Encounter> subdata = new ArrayList<>();
-        for (Encounter encounter : encounters) {
+        for (final Encounter encounter : encounters) {
             if (null == encounter.timestamp) {
                 continue;
             }
@@ -105,10 +101,10 @@ public class Interactions extends DefaultSensorDelegate {
     }
 
     /// Remove all log records before date (exclusive). Use this function to implement data retention policy.
-    public synchronized void remove(@NonNull Date before) {
+    public synchronized void remove(@NonNull final Date before) {
         final StringBuilder content = new StringBuilder();
         final List<Encounter> subdata = subdata(before);
-        for (Encounter encounter : subdata) {
+        for (final Encounter encounter : subdata) {
             content.append(encounter.csvString());
             content.append("\n");
         }
@@ -121,7 +117,7 @@ public class Interactions extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
         final Encounter encounter = new Encounter(didMeasure, withPayload);
         if (encounter.isValid()) {
             append(encounter);
@@ -136,11 +132,14 @@ public class Interactions extends DefaultSensorDelegate {
     /// for each payload.
     public final static class InteractionsForTime {
         public final Date time;
+        @NonNull
         public final Map<PayloadData,List<Proximity>> context;
-        public InteractionsForTime(Date time, Map<PayloadData,List<Proximity>> context) {
+
+        public InteractionsForTime(@NonNull final Date time, @NonNull final Map<PayloadData,List<Proximity>> context) {
             this.time = time;
             this.context = context;
         }
+
         @NonNull
         @Override
         public String toString() {
@@ -150,17 +149,22 @@ public class Interactions extends DefaultSensorDelegate {
                     '}';
         }
     }
+
     @NonNull
-    public final static List<InteractionsForTime> reduceByTime(@NonNull List<Encounter> encounters) {
+    public static List<InteractionsForTime> reduceByTime(@NonNull final List<Encounter> encounters) {
         return reduceByTime(encounters, TimeInterval.minute);
     }
+
     @NonNull
-    public final static List<InteractionsForTime> reduceByTime(@NonNull List<Encounter> encounters, @NonNull TimeInterval duration) {
+    public static List<InteractionsForTime> reduceByTime(@NonNull final List<Encounter> encounters, @NonNull final TimeInterval duration) {
         final List<InteractionsForTime> result = new ArrayList<>();
         final long divisor = duration.value * 1000;
         long currentTimeWindow = 0;
         Map<PayloadData,List<Proximity>> context = new HashMap<>();
-        for (Encounter encounter : encounters) {
+        for (final Encounter encounter : encounters) {
+            if (null == encounter.timestamp) {
+                continue;
+            }
             final long timeWindow = (encounter.timestamp.getTime() / divisor) * divisor;
             if (timeWindow != currentTimeWindow) {
                 if (!context.isEmpty()) {
@@ -186,14 +190,19 @@ public class Interactions extends DefaultSensorDelegate {
     /// and summary information, including last seen at time, total duration of exposure, and distribution
     /// of proximity (RSSI) values.
     public final static class InteractionsForTarget {
+        @NonNull
         public final Date lastSeenAt;
+        @NonNull
         public final TimeInterval duration;
+        @NonNull
         public final Sample proximity;
-        public InteractionsForTarget(Date lastSeenAt, TimeInterval duration, Sample proximity) {
+
+        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Sample proximity) {
             this.lastSeenAt = lastSeenAt;
             this.duration = duration;
             this.proximity = proximity;
         }
+
         @NonNull
         @Override
         public String toString() {
@@ -204,14 +213,18 @@ public class Interactions extends DefaultSensorDelegate {
                     '}';
         }
     }
+
     @NonNull
-    public final static Map<PayloadData, InteractionsForTarget> reduceByTarget(@NonNull List<Encounter> encounters) {
+    public static Map<PayloadData, InteractionsForTarget> reduceByTarget(@NonNull final List<Encounter> encounters) {
         final Map<PayloadData, InteractionsForTarget> targets = new HashMap<>();
-        for (Encounter encounter : encounters) {
+        for (final Encounter encounter : encounters) {
+            if (null == encounter.timestamp || null == encounter.proximity || null == encounter.payload) {
+                continue;
+            }
             if (encounter.proximity.unit != ProximityMeasurementUnit.RSSI) {
                 continue;
             }
-            InteractionsForTarget triple = targets.get(encounter.payload);
+            final InteractionsForTarget triple = targets.get(encounter.payload);
             if (null == triple) {
                 // One encounter is assumed to be at least 1 second minimum
                 final Sample proximity = new Sample(encounter.proximity.value, 1);
@@ -235,19 +248,23 @@ public class Interactions extends DefaultSensorDelegate {
 
     /// Histogram of exposure offers an esimate of exposure, while avoiding resolution of actual payload identity.
     @NonNull
-    public final static Map<Double,TimeInterval> reduceByProximity(@NonNull List<Encounter> encounters) {
+    public static Map<Double,TimeInterval> reduceByProximity(@NonNull final List<Encounter> encounters) {
         return reduceByProximity(encounters, ProximityMeasurementUnit.RSSI, 1d);
     }
+
     @NonNull
-    public final static Map<Double,TimeInterval> reduceByProximity(@NonNull List<Encounter> encounters, ProximityMeasurementUnit unit, Double bin) {
+    public static Map<Double,TimeInterval> reduceByProximity(@NonNull final List<Encounter> encounters, @NonNull final ProximityMeasurementUnit unit, @NonNull final Double bin) {
         final Map<PayloadData,Date> targets = new HashMap<>();
         final Map<Double,TimeInterval> histogram = new HashMap<>();
-        for (Encounter encounter : encounters) {
+        for (final Encounter encounter : encounters) {
+            if (null == encounter.timestamp || null == encounter.proximity || null == encounter.payload) {
+                continue;
+            }
             if (encounter.proximity.unit != unit) {
                 continue;
             }
             final Double value = Math.round(encounter.proximity.value / bin) * bin;
-            Date lastSeenAt = targets.get(encounter.payload);
+            final Date lastSeenAt = targets.get(encounter.payload);
             if (null == lastSeenAt) {
                 // One encounter is assumed to be at least 1 second minimum
                 final TimeInterval timeInterval = histogram.get(value);

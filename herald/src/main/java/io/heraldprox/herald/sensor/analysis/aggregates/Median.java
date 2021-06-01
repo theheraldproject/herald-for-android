@@ -26,12 +26,12 @@ public class Median<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void beginRun(int thisRun) {
+    public void beginRun(final int thisRun) {
         run = thisRun;
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         if (run > 1) return;
         add(value.value().doubleValue());
     }
@@ -48,7 +48,7 @@ public class Median<T extends DoubleValue> implements Aggregate<T> {
         maxHeap.clear();
     }
 
-    private void add(double value) {
+    private void add(final double value) {
         if (minHeap.size() == maxHeap.size()) {
             maxHeap.offer(value);
             minHeap.offer(maxHeap.poll());

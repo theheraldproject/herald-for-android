@@ -42,7 +42,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     // Record payload data to enable de-duplication
     private final Map<PayloadData, Date> didReadPayloadData = new ConcurrentHashMap<>();
 
-    public ConcreteBLESensor(@NonNull Context context, PayloadDataSupplier payloadDataSupplier) {
+    public ConcreteBLESensor(@NonNull final Context context, @NonNull final PayloadDataSupplier payloadDataSupplier) {
         final BluetoothStateManager bluetoothStateManager = new ConcreteBluetoothStateManager(context);
         final BLEDatabase database = new ConcreteBLEDatabase();
         final BLETimer timer = new BLETimer(context);
@@ -53,7 +53,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     }
 
     @Override
-    public void add(SensorDelegate delegate) {
+    public void add(@NonNull final SensorDelegate delegate) {
         delegates.add(delegate);
         transmitter.add(delegate);
         receiver.add(delegate);
@@ -73,11 +73,11 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         receiver.stop();
     }
 
-    public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
+    public boolean immediateSend(@NonNull final Data data, @NonNull final TargetIdentifier targetIdentifier) {
         return receiver.immediateSend(data, targetIdentifier);
     }
 
-    public boolean immediateSendAll(Data data) {
+    public boolean immediateSendAll(@NonNull final Data data) {
         return receiver.immediateSendAll(data);
     }
 
@@ -89,7 +89,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
-                for (SensorDelegate delegate : delegates) {
+                for (final SensorDelegate delegate : delegates) {
                     delegate.sensor(SensorType.BLE, device.identifier);
                 }
             }
@@ -97,19 +97,19 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     }
 
     @Override
-    public void bleDatabaseDidUpdate(@NonNull final BLEDevice device, @NonNull BLEDeviceAttribute attribute) {
+    public void bleDatabaseDidUpdate(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute attribute) {
         switch (attribute) {
             case rssi: {
                 final RSSI rssi = device.rssi();
                 if (null == rssi) {
                     return;
                 }
-                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, (double) rssi.value, device.calibration());
+                final Proximity proximity = new Proximity(ProximityMeasurementUnit.RSSI, rssi.value, device.calibration());
                 logger.debug("didMeasure (device={},payloadData={},proximity={})", device, device.payloadData(), proximity.description());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {
-                        for (SensorDelegate delegate : delegates) {
+                        for (final SensorDelegate delegate : delegates) {
                             delegate.sensor(SensorType.BLE, proximity, device.identifier);
                         }
                     }
@@ -121,7 +121,7 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {
-                        for (SensorDelegate delegate : delegates) {
+                        for (final SensorDelegate delegate : delegates) {
                             delegate.sensor(SensorType.BLE, proximity, device.identifier, payloadData);
                         }
                     }
@@ -136,24 +136,24 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                 // De-duplicate payload in recent time
                 if (BLESensorConfiguration.filterDuplicatePayloadData != TimeInterval.never) {
                     final long removePayloadDataBefore = new Date().getTime() - BLESensorConfiguration.filterDuplicatePayloadData.millis();
-                    for (Map.Entry<PayloadData, Date> entry : didReadPayloadData.entrySet()) {
+                    for (final Map.Entry<PayloadData, Date> entry : didReadPayloadData.entrySet()) {
                         if (entry.getValue().getTime() < removePayloadDataBefore) {
                             didReadPayloadData.remove(entry.getKey());
                         }
                     }
                     final Date lastReportedAt = didReadPayloadData.get(payloadData);
                     if (null != lastReportedAt) {
-                        logger.debug("didRead, filtered duplicate (device={},payloadData={},lastReportedAt={})", device, device.payloadData().shortName(), lastReportedAt);
+                        logger.debug("didRead, filtered duplicate (device={},payloadData={},lastReportedAt={})", device, payloadData.shortName(), lastReportedAt);
                         return;
                     }
                     didReadPayloadData.put(payloadData, new Date());
                 }
                 // Notify delegates
-                logger.debug("didRead (device={},payloadData={})", device, device.payloadData().shortName());
+                logger.debug("didRead (device={},payloadData={})", device, payloadData.shortName());
                 operationQueue.execute(new Runnable() {
                     @Override
                     public void run() {
-                        for (SensorDelegate delegate : delegates) {
+                        for (final SensorDelegate delegate : delegates) {
                             delegate.sensor(SensorType.BLE, payloadData, device.identifier);
                         }
                     }
@@ -166,14 +166,14 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     }
 
     @Override
-    public void bleDatabaseDidDelete(@NonNull BLEDevice device) {
+    public void bleDatabaseDidDelete(@NonNull final BLEDevice device) {
         logger.debug("didDelete (device={})", device.identifier);
     }
 
     // MARK:- BluetoothStateManagerDelegate
 
     @Override
-    public void bluetoothStateManager(BluetoothState didUpdateState) {
+    public void bluetoothStateManager(@NonNull final BluetoothState didUpdateState) {
         logger.debug("didUpdateState (state={})", didUpdateState);
         SensorState sensorState = SensorState.off;
         if (didUpdateState == BluetoothState.poweredOn) {

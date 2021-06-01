@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("ConstantConditions")
 public class EncounterTests {
 
     @Test
@@ -20,8 +21,8 @@ public class EncounterTests {
         final Encounter expected = new Encounter(null, null, null);
         final Encounter actual = new Encounter(expected.csvString());
         assertEquals(expected.timestamp, actual.timestamp);
-        assertEquals(expected.proximity, actual.timestamp);
-        assertEquals(expected.payload, actual.timestamp);
+        assertEquals(expected.proximity, actual.proximity);
+        assertEquals(0, actual.payload.value.length);
         assertFalse(expected.isValid());
         assertFalse(actual.isValid());
     }
@@ -54,7 +55,7 @@ public class EncounterTests {
             final byte[] data = new byte[i];
             random.nextBytes(data);
             final PayloadData payloadData = new PayloadData(data);
-            final Date timestamp = new Date((random.nextLong() % (3000 * 365 * 24 * 60 * 60)) * 1000);
+            final Date timestamp = new Date((random.nextLong() % 1000) * 1000);
             final Encounter expected = new Encounter(proximity, payloadData, timestamp);
             final Encounter actual = new Encounter(expected.csvString());
             assertEquals(expected.timestamp.getTime(), actual.timestamp.getTime());
@@ -75,7 +76,7 @@ public class EncounterTests {
             final byte[] data = new byte[i];
             random.nextBytes(data);
             final PayloadData payloadData = new PayloadData(data);
-            final Date timestamp = new Date((random.nextLong() % (3000 * 365 * 24 * 60 * 60)) * 1000);
+            final Date timestamp = new Date(Math.abs(random.nextLong() % 1000) * 1000);
             final Encounter expected = new Encounter(proximity, payloadData, timestamp);
             final Encounter actual = new Encounter(expected.csvString());
             assertEquals(expected.timestamp.getTime(), actual.timestamp.getTime());

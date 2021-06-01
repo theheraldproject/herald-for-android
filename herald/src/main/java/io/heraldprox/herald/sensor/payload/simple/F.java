@@ -21,7 +21,7 @@ public class F {
      * Cryptographic hash function : SHA256
      */
     @Nullable
-    protected final static Data hash(@NonNull final Data data) {
+    protected static Data hash(@NonNull final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);
@@ -35,14 +35,16 @@ public class F {
     /**
      * Truncation function : Delete second half of data
      */
-    protected final static Data truncate(@NonNull final Data data) {
+    @Nullable
+    protected static Data truncate(@NonNull final Data data) {
         return truncate(data, data.value.length / 2);
     }
 
     /**
      * Truncation function : Retain first n bytes of data
      */
-    protected final static Data truncate(@NonNull final Data data, int n) {
+    @Nullable
+    protected static Data truncate(@NonNull final Data data, final int n) {
         return data.subdata(0, n);
     }
 
@@ -50,7 +52,7 @@ public class F {
      * XOR function : Compute left xor right, assumes left and right are the same length
      */
     @NonNull
-    protected final static Data xor(@NonNull final Data left, @NonNull final Data right) {
+    protected static Data xor(@NonNull final Data left, @NonNull final Data right) {
         final byte[] leftByteArray = left.value;
         final byte[] rightByteArray = right.value;
         final byte[] resultByteArray = new byte[left.value.length];

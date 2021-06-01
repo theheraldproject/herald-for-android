@@ -4,7 +4,6 @@
 
 package io.heraldprox.herald.sensor.ble.filter;
 
-import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
 
 import java.util.HashMap;
@@ -38,34 +37,35 @@ public enum BLEAdvertSegmentType {
     private static final Map<String, BLEAdvertSegmentType> BY_LABEL = new HashMap<>();
     private static final Map<Integer, BLEAdvertSegmentType> BY_CODE = new HashMap<>();
     static {
-        for (BLEAdvertSegmentType e : values()) {
+        for (final BLEAdvertSegmentType e : values()) {
             BY_LABEL.put(e.label, e);
             BY_CODE.put(e.code, e);
         }
     }
 
+    @NonNull
     public final String label;
     public final int code;
 
-    private BLEAdvertSegmentType(String label, int code) {
+    BLEAdvertSegmentType(@NonNull final String label, final int code) {
         this.label = label;
         this.code = code;
     }
 
-    @Nullable
-    public static BLEAdvertSegmentType typeFor(int code) {
-        BLEAdvertSegmentType type = BY_CODE.get(code);
+    @NonNull
+    public static BLEAdvertSegmentType typeFor(final int code) {
+        final BLEAdvertSegmentType type = BY_CODE.get(code);
         if (null == type) {
-            return BY_LABEL.get("unknown");
+            return BLEAdvertSegmentType.unknown;
         }
         return type;
     }
 
     @NonNull
-    public static BLEAdvertSegmentType typeFor(String commonName) {
-        BLEAdvertSegmentType type = BY_LABEL.get(commonName);
+    public static BLEAdvertSegmentType typeFor(@NonNull final String commonName) {
+        final BLEAdvertSegmentType type = BY_LABEL.get(commonName);
         if (null == type) {
-            return BY_LABEL.get("unknown");
+            return BLEAdvertSegmentType.unknown;
         }
         return type;
     }

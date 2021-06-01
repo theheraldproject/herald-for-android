@@ -4,9 +4,12 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public interface Filterable<T extends DoubleValue> {
 
-    IteratorProxy<T> filter(Filter<T> filter);
+    @NonNull
+    IteratorProxy<T> filter(@NonNull final Filter<T> filter);
 }

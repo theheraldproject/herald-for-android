@@ -28,13 +28,14 @@ public class RssiHistogram extends DefaultSensorDelegate {
     private final double[] transform;
     @Nullable
     private final TextFile textFile;
+    @NonNull
     private final TimeInterval updatePeriod;
     @NonNull
     private Date lastUpdateTime = new Date(0);
     private long samples = 0;
 
     /// Accumulate histogram of RSSI for value range [min, max] and auto-write profile to storage at regular intervals
-    public RssiHistogram(final int min, final int max, final TimeInterval updatePeriod, @Nullable final TextFile textFile) {
+    public RssiHistogram(final int min, final int max, @NonNull final TimeInterval updatePeriod, @Nullable final TextFile textFile) {
         this.min = min;
         this.max = max;
         this.histogram = new long[max - min + 1];
@@ -55,12 +56,13 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(SensorType sensor, @NonNull Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, final @NonNull TargetIdentifier fromTarget) {
         // Guard for data collection until histogram reaches maximum count
         if (Long.MAX_VALUE == samples) {
             return;
         }
         // Guard for RSSI measurements only
+        //noinspection ConstantConditions
         if (didMeasure.unit != ProximityMeasurementUnit.RSSI || null == didMeasure.value) {
             return;
         }
@@ -100,7 +102,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
         samples = 0;
     }
 
-    public int samplePercentile(double percentile) {
+    public int samplePercentile(final double percentile) {
         if (0 == samples) {
             return (int) Math.round(min + (max - min) * percentile);
         }
@@ -113,12 +115,12 @@ public class RssiHistogram extends DefaultSensorDelegate {
         return max;
     }
 
-    public double normalisedPercentile(double percentile) {
+    public double normalisedPercentile(final double percentile) {
         return normalise(samplePercentile(percentile));
     }
 
     /// Read profile data from storage, this replaces existing in-memory profile
-    public void read(@NonNull TextFile textFile) {
+    public void read(@NonNull final TextFile textFile) {
         clear();
         final String content = textFile.contentsOf();
         for (final String row : content.split("\n")) {
@@ -150,7 +152,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     }
 
     /// Write profile data to storage
-    public void write(@NonNull TextFile textFile) {
+    public void write(@NonNull final TextFile textFile) {
         final String content = toCsv();
         textFile.overwrite(content);
     }
@@ -158,7 +160,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
     // MARK: - Histogram equalisation
 
     /// Compute cumulative distribution function (CDF) of histogram
-    private static void cumulativeDistributionFunction(@NonNull final long[] histogram, final long[] cdf) {
+    private static void cumulativeDistributionFunction(@NonNull final long[] histogram, @NonNull final long[] cdf) {
         long sum = 0;
         for (int i = 0; i < histogram.length; i++) {
             cdf[i] = (sum += histogram[i]);
@@ -184,7 +186,7 @@ public class RssiHistogram extends DefaultSensorDelegate {
 //    }
 
     /// Compute transformation table for normalising histogram to maximise its dynamic range
-    private static void normalisation(@NonNull final long[] cdf, final double[] transform) {
+    private static void normalisation(@NonNull final long[] cdf, @NonNull final double[] transform) {
         final double sum = cdf[cdf.length - 1];
         final long max = cdf.length - 1;
         if (sum > 0) {

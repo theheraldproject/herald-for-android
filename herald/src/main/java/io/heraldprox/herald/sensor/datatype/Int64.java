@@ -16,12 +16,12 @@ public class Int64 implements DoubleValue {
     public final static Int64 max = new Int64(Long.MAX_VALUE);
     public final long value;
 
-    public Int64(long value) {
-        this.value = (value < Long.MIN_VALUE ? Long.MIN_VALUE : (value > Long.MAX_VALUE ? Long.MAX_VALUE : value));
+    public Int64(final long value) {
+        this.value = value;
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Int64 uInt64 = (Int64) o;

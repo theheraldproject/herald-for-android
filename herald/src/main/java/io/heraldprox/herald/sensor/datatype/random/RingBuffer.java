@@ -8,23 +8,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 
-import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
-import io.heraldprox.herald.sensor.analysis.sampling.Filter;
-import io.heraldprox.herald.sensor.analysis.sampling.Filterable;
-import io.heraldprox.herald.sensor.analysis.sampling.IteratorProxy;
-import io.heraldprox.herald.sensor.analysis.sampling.Sample;
-import io.heraldprox.herald.sensor.analysis.sampling.Summary;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
-import io.heraldprox.herald.sensor.datatype.Date;
-import io.heraldprox.herald.sensor.datatype.DoubleValue;
-import io.heraldprox.herald.sensor.datatype.Int32;
 
 /**
  * Ring buffer for gathering (entropy) data indefinitely, discarding the oldest data to limit
@@ -109,11 +96,11 @@ public class RingBuffer {
     }
 
     public synchronized byte pop() {
-        if (size() == 0) {
+        if (0 == size()) {
             return 0;
         }
         final byte value = get(0);
-        if (size() == 1) {
+        if (1 == size()) {
             clear();
         } else {
             oldestPosition++;
@@ -158,7 +145,7 @@ public class RingBuffer {
         if (newestPosition == data.length) {
             // just gone past the end of the container
             newestPosition = 0;
-            if (oldestPosition == 0) {
+            if (0 == oldestPosition) {
                 ++oldestPosition; // erases oldest if not already removed
             }
         }
@@ -183,7 +170,7 @@ public class RingBuffer {
      */
     @Nullable
     public synchronized Data hash() {
-        if (size() == 0) {
+        if (0 == size()) {
             return null;
         }
         try {

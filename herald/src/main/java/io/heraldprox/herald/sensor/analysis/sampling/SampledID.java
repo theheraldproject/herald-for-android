@@ -15,11 +15,11 @@ import java.util.Objects;
 public class SampledID implements Comparable<SampledID> {
     public final long value;
 
-    public SampledID(long value) {
+    public SampledID(final long value) {
         this.value = value;
     }
 
-    public SampledID(@NonNull Data data) {
+    public SampledID(@NonNull final Data data) {
         final Data hashValue = new Data();
         hashValue.append(new Int64(0));
         for (int i=0, j=0; i<data.value.length; i++, j++) {
@@ -28,11 +28,12 @@ public class SampledID implements Comparable<SampledID> {
             }
             hashValue.value[j] = (byte) (hashValue.value[j] ^ data.value[i]);
         }
+        //noinspection ConstantConditions
         this.value = hashValue.int64(0).value;
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         SampledID sampledID = (SampledID) o;
@@ -51,7 +52,7 @@ public class SampledID implements Comparable<SampledID> {
     }
 
     @Override
-    public int compareTo(@NonNull SampledID o) {
+    public int compareTo(@NonNull final SampledID o) {
         return Long.compare(value, o.value);
     }
 }

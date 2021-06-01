@@ -4,7 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 public interface Filter<T> {
 
-    boolean test(Sample<T> item);
+    boolean test(@NonNull final Sample<T> item);
 }

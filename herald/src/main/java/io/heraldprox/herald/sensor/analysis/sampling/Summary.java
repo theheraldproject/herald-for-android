@@ -10,9 +10,10 @@ import androidx.annotation.Nullable;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class Summary<T extends DoubleValue> {
+    @NonNull
     private final Aggregate<T>[] aggregates;
 
-    public Summary(Aggregate<T> ... aggregates) {
+    public Summary(@NonNull final Aggregate<T> ... aggregates) {
         this.aggregates = aggregates;
     }
 

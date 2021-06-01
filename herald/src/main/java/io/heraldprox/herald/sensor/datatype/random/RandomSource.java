@@ -56,7 +56,7 @@ public abstract class RandomSource {
      * @param value BLE MAC address of target device, only the hex digits [0-9A-Z] are used
      */
     public synchronized void addEntropy(@Nullable final String value) {
-        if (value == null) {
+        if (null == value) {
             return;
         }
         // Add target identifier and detection time as entropy data
@@ -64,7 +64,8 @@ public abstract class RandomSource {
         // Add address hex value as entropy
         // Using Locale.US to force ASCII string conversion
         final String hexAddress = value.toUpperCase(Locale.US).replaceAll("[^0-9A-F]", "");
-        if (hexAddress == null || hexAddress.isEmpty()) {
+        //noinspection ConstantConditions
+        if (null == hexAddress || hexAddress.isEmpty()) {
             return;
         }
         entropyData.append(new Data(hexAddress.getBytes(StandardCharsets.UTF_8)));
@@ -82,7 +83,7 @@ public abstract class RandomSource {
     protected synchronized long useEntropy() {
         // Hash function may fail if SHA-256 is not available, or there is no entropy data.
         Data hash = entropy.hash();
-        if (hash == null || hash.value.length < 8) {
+        if (null == hash || hash.value.length < 8) {
             // Revert to elapsed time alone as entropy source. Hash function will always succeed.
             final Data data = new Data();
             data.append(new Int64(lastUseEntropyTimestamp ^ System.nanoTime()));
@@ -90,6 +91,7 @@ public abstract class RandomSource {
         }
         lastUseEntropyTimestamp = System.nanoTime();
         entropy.clear();
+        //noinspection ConstantConditions
         return hash.uint64(0).value;
     }
 
@@ -109,7 +111,7 @@ public abstract class RandomSource {
      *
      * @param bytes Fill byte array with random data.
      */
-    public abstract void nextBytes(final byte[] bytes);
+    public abstract void nextBytes(@NonNull final byte[] bytes);
 
     /**
      * Get random int value from random source.
@@ -119,6 +121,7 @@ public abstract class RandomSource {
     public int nextInt() {
         final Data data = new Data(new byte[4]);
         nextBytes(data.value);
+        //noinspection ConstantConditions
         return data.int32(0).value;
     }
 
@@ -130,6 +133,7 @@ public abstract class RandomSource {
     public long nextLong() {
         final Data data = new Data(new byte[8]);
         nextBytes(data.value);
+        //noinspection ConstantConditions
         return data.int64(0).value;
     }
 
@@ -140,7 +144,7 @@ public abstract class RandomSource {
      * must be supported in all Java implementations.
      */
     @NonNull
-    protected final static Data hash(@NonNull final Data data) {
+    protected static Data hash(@NonNull final Data data) {
         try {
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
             final byte[] hash = sha.digest(data.value);

@@ -27,17 +27,17 @@ public class Encounter {
     @Nullable
     public PayloadData payload = null;
 
-    public Encounter(Proximity didMeasure, PayloadData withPayload, Date timestamp) {
+    public Encounter(@Nullable final Proximity didMeasure, @Nullable final PayloadData withPayload, @Nullable final Date timestamp) {
         this.timestamp = timestamp;
         this.proximity = didMeasure;
         this.payload = withPayload;
     }
 
-    public Encounter(Proximity didMeasure, PayloadData withPayload) {
+    public Encounter(@Nullable final Proximity didMeasure, @Nullable final PayloadData withPayload) {
         this(didMeasure, withPayload, new Date());
     }
 
-    public Encounter(@NonNull String row) {
+    public Encounter(@NonNull final String row) {
         final String[] fields = row.split(",", -1);
         if (!(fields.length >= 6)) {
             return;
@@ -76,9 +76,13 @@ public class Encounter {
     @NonNull
     public String csvString() {
         final String f0 = (null == timestamp ? "" : dateFormatter.format(timestamp));
+        //noinspection ConstantConditions
         final String f1 = (null == proximity || null == proximity.value ? "" : proximity.value.toString());
+        //noinspection ConstantConditions
         final String f2 = (null == proximity || null == proximity.unit ? "" : proximity.unit.name());
+        //noinspection ConstantConditions
         final String f3 = (null == proximity || null == proximity.calibration || null == proximity.calibration.value ? "" : proximity.calibration.value.toString());
+        //noinspection ConstantConditions
         final String f4 = (null == proximity || null == proximity.calibration || null == proximity.calibration.unit ? "" : proximity.calibration.unit.name());
         final String f5 = (null == payload ? "" : payload.base64EncodedString());
         return f0 + "," + f1 + "," + f2 + "," + f3 + "," + f4 + "," + f5;

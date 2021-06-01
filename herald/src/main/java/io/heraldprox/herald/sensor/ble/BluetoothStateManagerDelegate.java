@@ -4,8 +4,11 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.BluetoothState;
 
 public interface BluetoothStateManagerDelegate {
-    void bluetoothStateManager(BluetoothState didUpdateState);
+
+    void bluetoothStateManager(@NonNull final BluetoothState didUpdateState);
 }

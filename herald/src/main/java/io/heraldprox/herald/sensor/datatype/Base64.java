@@ -27,7 +27,7 @@ public class Base64 {
             48, 49, 50, 51};
 
     @NonNull
-    public static String encode(@NonNull byte[] data) {
+    public static String encode(@NonNull final byte[] data) {
         final StringBuilder buffer = new StringBuilder();
         int pad = 0;
         int b;
@@ -57,13 +57,14 @@ public class Base64 {
     }
 
     @NonNull
-    public static byte[] decode(@NonNull String data) {
+    public static byte[] decode(@NonNull final String data) {
         final byte[] bytes = data.getBytes();
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int b;
         int num;
         int c;
         for (int i = 0; i < bytes.length; ) {
+            //noinspection UnusedAssignment
             b = 0;
             if (bytes[i] >=0 && bytes[i] < decodeTable.length && decodeTable[bytes[i]] != -1) {
                 b = (decodeTable[bytes[i]] & 0xFF) << 18;

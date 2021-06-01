@@ -72,8 +72,8 @@ public class Sample {
                     * (n * n - n * distribution.n + distribution.n * distribution.n) / (combined.n * combined.n * combined.n);
             combined.m4 += 6.0 * delta2 * (n * n * distribution.m2 + distribution.n * distribution.n * m2)
                     / (combined.n * combined.n) + 4.0 * delta * (n * distribution.m3 - distribution.n * m3) / combined.n;
-            combined.min = (min < distribution.min ? min : distribution.min);
-            combined.max = (max > distribution.max ? max : distribution.max);
+            combined.min = Math.min(min, distribution.min);
+            combined.max = Math.max(max, distribution.max);
 
             n = combined.n;
             m1 = combined.m1;
@@ -143,7 +143,7 @@ public class Sample {
     /// Bhattacharyya distance between two distributions estimate  the likelihood that the two distributions are the same.
     /// bhattacharyyaDistance = 1 means the two distributions are identical; value = 0 means they are different.
     @Nullable
-    private final static Double bhattacharyyaDistance(@NonNull final Sample d1, @NonNull final Sample d2) {
+    private static Double bhattacharyyaDistance(@NonNull final Sample d1, @NonNull final Sample d2) {
         final Double v1 = d1.variance();
         final Double v2 = d2.variance();
         final Double m1 = d1.mean();
@@ -153,19 +153,17 @@ public class Sample {
         }
 
         if (0 == v1 && 0 == v2) {
-            if (m1 == m2) {
+            if (m1.equals(m2)) {
                 return 1.0;
             } else {
                 return 0.0;
             }
         }
 
-        final Double sd1 = Math.sqrt(v1);
-        final Double sd2 = Math.sqrt(v2);
-        if (null == sd1 || null == sd2) {
-            return null;
-        }
+        final double sd1 = Math.sqrt(v1);
+        final double sd2 = Math.sqrt(v2);
 
+        //noinspection UnnecessaryLocalVariable
         final double Dbc = Math.sqrt((2.0 * sd1 * sd2) / (v1 + v2))
                 * Math.exp(-1.0 / 4.0 * (Math.pow((m1 - m2), 2) / (v1 + v2)));
         return Dbc;
