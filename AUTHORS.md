@@ -2,7 +2,7 @@
 
 ## Project Leads
 
-Adam Fowler - TSC Chair 2020-2021 - https://github.com/adamfowleruk - adamf@vmware.com
+Adam Fowler - TSC Chair 2020-2021 - https://github.com/adamfowleruk - adamf@vmware.com adam@adamfowler.org
 
 ## Developers
 

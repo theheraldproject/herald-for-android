@@ -14,3 +14,8 @@
 .cxx
 git-template
 herald/javadoc
+
+# Annoying Java in Visual Studio Code created artifacts
+.project
+.settings
+.classpath

@@ -1,9 +1,0 @@
-//  Copyright 2020-2021 Herald Project Contributors
-//  SPDX-License-Identifier: Apache-2.0
-//
-
-package com.vmware.herald.sensor.ble;
-
-public enum BLEDeviceOperatingSystem {
-    android_tbc, android, ios_tbc, ios, ignore, shared, unknown
-}
