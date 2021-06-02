@@ -12,12 +12,12 @@ public class Sample<T> {
     private final Date taken;
     private final T value;
 
-    public Sample(final Date taken, final T value) {
+    public Sample(@NonNull final Date taken, @NonNull final T value) {
         this.taken = taken;
         this.value = value;
     }
 
-    public Sample(final long secondsSinceUnixEpoch, final T value) {
+    public Sample(final long secondsSinceUnixEpoch, @NonNull final T value) {
         this.taken = new Date(secondsSinceUnixEpoch);
         this.value = value;
     }
@@ -27,15 +27,17 @@ public class Sample<T> {
         this.value = other.value;
     }
 
-    public Sample(final T value) {
+    public Sample(@NonNull final T value) {
         this.taken = new Date();
         this.value = value;
     }
 
+    @NonNull
     public Date taken() {
         return taken;
     }
 
+    @NonNull
     public T value() {
         return value;
     }
@@ -47,7 +49,7 @@ public class Sample<T> {
     }
 
     @NonNull
-    public final static <T> Class<?> valueType(@NonNull final Sample<T> sample) {
+    public static <T> Class<?> valueType(@NonNull final Sample<T> sample) {
         return sample.value.getClass();
     }
 }

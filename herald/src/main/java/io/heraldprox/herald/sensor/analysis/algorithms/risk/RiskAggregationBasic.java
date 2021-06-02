@@ -15,11 +15,11 @@ import io.heraldprox.herald.sensor.datatype.DoubleValue;
 /// NOT FOR PRODUCTION EPIDEMIOLOGICAL USE - SAMPLE ONLY!!!
 public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T> {
     private int run = 1;
-    private double timeScale;
-    private double distanceScale;
-    private double minimumDistanceClamp;
-    private double minimumRiskScoreAtClamp;
-    private double logScale;
+    private final double timeScale;
+    private final double distanceScale;
+    private final double minimumDistanceClamp;
+    private final double minimumRiskScoreAtClamp;
+    private final double logScale;
     private double nMinusOne; // distance of n-1
     private double n; // distance of n
     private long timeMinusOne; // time of n-1
@@ -49,7 +49,7 @@ public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T>
     }
 
     @Override
-    public void beginRun(int thisRun) {
+    public void beginRun(final int thisRun) {
         run = thisRun;
         if (1 == run) {
             // clear run temporaries
@@ -73,8 +73,8 @@ public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T>
         if (-1.0 != nMinusOne) {
             // we have two values with which to calculate
             // using nMinusOne and n, and calculate interim risk score addition
-            double dist = distanceScale * n;
-            double t = timeScale * (time - timeMinusOne); // seconds
+            final double dist = distanceScale * n;
+            final double t = timeScale * (time - timeMinusOne); // seconds
 
             double riskSlice = minimumRiskScoreAtClamp; // assume < clamp distance
             if (dist > minimumDistanceClamp) {

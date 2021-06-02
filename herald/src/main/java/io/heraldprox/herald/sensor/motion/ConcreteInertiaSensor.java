@@ -31,14 +31,12 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     @NonNull
-    private final Context context;
-    @NonNull
     private final SensorManager sensorManager;
     @Nullable
     private final Sensor hardwareSensor;
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
-        public void onSensorChanged(@NonNull SensorEvent event) {
+        public void onSensorChanged(@NonNull final SensorEvent event) {
             if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER) {
                 return;
             }
@@ -59,17 +57,15 @@ public class ConcreteInertiaSensor implements InertiaSensor {
                 });
             } catch (Throwable e) {
                 logger.fault("onSensorChanged failed to get sensor data", e);
-                return;
             }
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        public void onAccuracyChanged(@NonNull final Sensor sensor, final int accuracy) {
         }
     };
 
     public ConcreteInertiaSensor(@NonNull final Context context) {
-        this.context = context;
         this.sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         this.hardwareSensor = (null == sensorManager ? null : sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
         if (null == sensorManager) {
@@ -82,13 +78,14 @@ public class ConcreteInertiaSensor implements InertiaSensor {
     }
 
     @Override
-    public void add(SensorDelegate delegate) {
+    public void add(@NonNull final SensorDelegate delegate) {
         delegates.add(delegate);
     }
 
     @Override
     public void start() {
         // Get sensor manager
+        //noinspection ConstantConditions
         if (null == sensorManager) {
             logger.fault("start, sensor manager unavailable");
             return;
@@ -106,6 +103,7 @@ public class ConcreteInertiaSensor implements InertiaSensor {
 
     @Override
     public void stop() {
+        //noinspection ConstantConditions
         if (null == sensorManager) {
             logger.fault("stop, sensor manager unavailable");
             return;

@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.payload.test;
 
+import androidx.annotation.NonNull;
+
 import org.junit.Test;
 
 import io.heraldprox.herald.sensor.ble.BLEDevice;
@@ -18,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("ConstantConditions")
 public class TestPayloadDataSupplierTests {
 
     @Test
@@ -46,7 +49,7 @@ public class TestPayloadDataSupplierTests {
         final TestPayloadDataSupplier testPayloadDataSupplier = new TestPayloadDataSupplier(5, 7);
         final BLEDevice bleDevice = new BLEDevice(new TargetIdentifier("test"), new BLEDeviceDelegate() {
             @Override
-            public void device(BLEDevice device, BLEDeviceAttribute didUpdate) {
+            public void device(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute didUpdate) {
             }
         });
         bleDevice.rssi(new RSSI(-10));

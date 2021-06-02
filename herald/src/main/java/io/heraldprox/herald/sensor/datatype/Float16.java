@@ -15,7 +15,7 @@ public class Float16 implements DoubleValue {
     @NonNull
     public final Data bigEndian;
 
-    public Float16(float value) {
+    public Float16(final float value) {
         this.value = value;
         final ByteBuffer byteBuffer = ByteBuffer.allocate(2);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -23,7 +23,7 @@ public class Float16 implements DoubleValue {
         this.bigEndian = new Data(byteBuffer.array());
     }
 
-    public Float16(@NonNull Data bigEndian) {
+    public Float16(@NonNull final Data bigEndian) {
         this.bigEndian = bigEndian;
         final ByteBuffer byteBuffer = ByteBuffer.wrap(bigEndian.value);
         byteBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -32,7 +32,7 @@ public class Float16 implements DoubleValue {
     }
 
     /// Float value to Float16 where the last 16 bits of integer value contains Float16
-    private static int float16(float values) {
+    private static int float16(final float values) {
         final int bits = Float.floatToIntBits(values);
         final int sign = bits >>> 16 & 0x8000;
         int val = (bits & 0x7fffffff) + 0x1000;
@@ -55,7 +55,7 @@ public class Float16 implements DoubleValue {
         return sign | ((bits & 0x7fffff | 0x800000) + (0x800000 >>> val - 102) >>> 126 - val);
     }
 
-    private static float valueOf(int hbits) {
+    private static float valueOf(final int hbits) {
         int mant = hbits & 0x03ff;
         int exp = hbits & 0x7c00;
         if (0x7c00 == exp) {

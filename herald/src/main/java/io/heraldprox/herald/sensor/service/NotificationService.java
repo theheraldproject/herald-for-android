@@ -17,20 +17,19 @@ import androidx.annotation.Nullable;
 public class NotificationService {
     @Nullable
     private static NotificationService shared = null;
-    @Nullable
-    private static Application application = null;
+    @NonNull
     private final Context context;
     private int notificationId;
+    @Nullable
     private Notification notification;
 
     private NotificationService(@NonNull final Application application) {
-        this.application = application;
         this.context = application.getApplicationContext();
     }
 
     /// Get shared global instance of notification service
-    @Nullable
-    public final static NotificationService shared(@NonNull final Application application) {
+    @NonNull
+    public static NotificationService shared(@NonNull final Application application) {
         if (null == shared) {
             shared = new NotificationService(application);
         }
@@ -38,7 +37,7 @@ public class NotificationService {
     }
 
     /// Start foreground service to enable background scan
-    public void startForegroundService(Notification notification, int notificationId) {
+    public void startForegroundService(@NonNull final Notification notification, final int notificationId) {
         this.notification = notification;
         this.notificationId = notificationId;
 

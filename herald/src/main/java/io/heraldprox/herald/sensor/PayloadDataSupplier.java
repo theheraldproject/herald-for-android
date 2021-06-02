@@ -18,13 +18,13 @@ import java.util.List;
 public interface PayloadDataSupplier {
     /// Legacy payload supplier callback - for those transitioning their apps to Herald. Note: Device may be null if Payload in use is same for all receivers
     @Nullable
-    LegacyPayloadData legacyPayload(PayloadTimestamp timestamp, Device device);
+    LegacyPayloadData legacyPayload(@NonNull final PayloadTimestamp timestamp, @Nullable final Device device);
 
     /// Get payload for given timestamp. Use this for integration with any payload generator, e.g. BeaconCodes or SonarBroadcastPayloadService
     @NonNull
-    PayloadData payload(PayloadTimestamp timestamp, Device device);
+    PayloadData payload(@NonNull final PayloadTimestamp timestamp, @Nullable final Device device);
 
     /// Parse raw data into payloads
     @NonNull
-    List<PayloadData> payload(Data data);
+    List<PayloadData> payload(@NonNull final Data data);
 }

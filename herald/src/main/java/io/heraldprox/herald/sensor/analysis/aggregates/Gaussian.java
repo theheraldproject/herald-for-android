@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.analysis.aggregates;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
@@ -21,16 +22,17 @@ public class Gaussian<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void beginRun(int thisRun) {
+    public void beginRun(final int thisRun) {
         run = thisRun;
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         if (run > 1) return;
         model.add(value.value().doubleValue());
     }
 
+    @Nullable
     @Override
     public Double reduce() {
         return model.mean();

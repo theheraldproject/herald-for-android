@@ -19,30 +19,30 @@ public class TimeInterval implements DoubleValue {
     public static final TimeInterval zero = new TimeInterval(0);
     public static final TimeInterval never = new TimeInterval(Long.MAX_VALUE);
 
-    public TimeInterval(long seconds) {
+    public TimeInterval(final long seconds) {
         this.value = seconds;
     }
 
-    public TimeInterval(@NonNull Date date) {
+    public TimeInterval(@NonNull final Date date) {
         this.value = date.getTime() / 1000;
     }
 
-    public TimeInterval(@NonNull Date from, @NonNull Date to) {
+    public TimeInterval(@NonNull final Date from, @NonNull final Date to) {
         this.value = (to.getTime() - from.getTime()) / 1000;
     }
 
     @NonNull
-    public static TimeInterval hours(long hours) {
+    public static TimeInterval hours(final long hours) {
         return new TimeInterval(hour.value * hours);
     }
 
     @NonNull
-    public static TimeInterval minutes(long minutes) {
+    public static TimeInterval minutes(final long minutes) {
         return new TimeInterval(minute.value * minutes);
     }
 
     @NonNull
-    public static TimeInterval seconds(long seconds) {
+    public static TimeInterval seconds(final long seconds) {
         return new TimeInterval(seconds);
     }
 
@@ -51,7 +51,7 @@ public class TimeInterval implements DoubleValue {
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         TimeInterval that = (TimeInterval) o;

@@ -7,20 +7,21 @@ package io.heraldprox.herald.sensor.datatype;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /// Raw byte array data
 public class Data {
     private final static char[] hexChars = "0123456789ABCDEF".toCharArray();
-    @Nullable
-    public byte[] value = null;
+    @NonNull
+    public byte[] value;
 
     public Data() {
         this(new byte[0]);
     }
 
-    public Data(@Nullable byte[] value) {
+    public Data(@NonNull final byte[] value) {
+        //noinspection ConstantConditions
         if (null == value) {
             this.value = new byte[0];
             return;
@@ -38,7 +39,7 @@ public class Data {
         this.value = value;
     }
 
-    public Data(byte repeating, int count) {
+    public Data(final byte repeating, final int count) {
         if (count < 0) {
             this.value = new byte[0];
             return;
@@ -49,7 +50,7 @@ public class Data {
         }
     }
 
-    public Data(@Nullable String base64EncodedString) {
+    public Data(@Nullable final String base64EncodedString) {
         if (null == base64EncodedString) {
             this.value = new byte[0];
             return;
@@ -64,6 +65,7 @@ public class Data {
 
     @NonNull
     public String hexEncodedString() {
+        //noinspection ConstantConditions
         if (null == value || 0 == value.length) {
             return "";
         }
@@ -78,7 +80,7 @@ public class Data {
     }
 
     @NonNull
-    public final static Data fromHexEncodedString(@Nullable String hexEncodedString) {
+    public static Data fromHexEncodedString(@Nullable final String hexEncodedString) {
         if (null == hexEncodedString) {
             return new Data();
         }
@@ -98,7 +100,7 @@ public class Data {
 
     /// Get subdata from offset to end
     @Nullable
-    public Data subdata(int offset) {
+    public Data subdata(final int offset) {
         if (offset >= 0 && offset < value.length) {
             final byte[] offsetValue = new byte[value.length - offset];
             System.arraycopy(value, offset, offsetValue, 0, offsetValue.length);
@@ -110,7 +112,7 @@ public class Data {
 
     /// Get subdata from offset to offset + length
     @Nullable
-    public Data subdata(int offset, int length) {
+    public Data subdata(final int offset, final int length) {
         if (offset >= 0 && offset < value.length && offset + length <= value.length) {
             final byte[] offsetValue = new byte[length];
             System.arraycopy(value, offset, offsetValue, 0, length);
@@ -121,14 +123,14 @@ public class Data {
     }
 
     /// Append data to end of this data.
-    public void append(@Nullable Data data) {
+    public void append(@Nullable final Data data) {
         if (null == data) {
             return;
         }
         append(data.value);
     }
 
-    private void append(@Nullable byte[] data) {
+    private void append(@Nullable final byte[] data) {
         if (null == data) {
             return;
         }
@@ -139,7 +141,7 @@ public class Data {
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Data data = (Data) o;
@@ -360,7 +362,7 @@ public class Data {
     }
 
     @Nullable
-    public Float16 float16(int index) {
+    public Float16 float16(final int index) {
         if (index < 0 || index + 1 >= value.length) {
             return null;
         }
@@ -377,6 +379,7 @@ public class Data {
     }
 
     /// Encode string as data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
+    @SuppressWarnings("UnusedReturnValue")
     public boolean append(@Nullable final String value) {
         if (null == value) {
             return false;
@@ -384,13 +387,14 @@ public class Data {
         return append(value, StringLengthEncodingOption.UINT8);
     }
 
-    public boolean append(@Nullable final String value, @Nullable final StringLengthEncodingOption encoding) {
+    public boolean append(@Nullable final String value, @NonNull final StringLengthEncodingOption encoding) {
+        //noinspection ConstantConditions
         if (null == value || null == encoding) {
             return false;
         }
-        byte[] data = null;
+        byte[] data;
         try {
-            data = value.getBytes("UTF-8");
+            data = value.getBytes(StandardCharsets.UTF_8);
         } catch (Throwable e) {
             return false;
         }
@@ -495,6 +499,7 @@ public class Data {
                 break;
             }
         }
+        //noinspection ConstantConditions
         if (start > Integer.MAX_VALUE || end > Integer.MAX_VALUE) {
             return null;
         }
@@ -505,7 +510,7 @@ public class Data {
             return null;
         }
         try {
-            final String string = new String(value, (int) start, (int) (end - start), Charset.forName("UTF-8"));
+            final String string = new String(value, (int) start, (int) (end - start), StandardCharsets.UTF_8);
             return new DecodedString(string, (int) start, (int) end);
         } catch (Throwable e) {
             return null;

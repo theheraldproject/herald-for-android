@@ -17,11 +17,20 @@ import java.util.Comparator;
  * devices from receiving requests if using this for methods like immediateSendAll()
  */
 public class BLEDeviceLastUpdatedComparator implements Comparator<BLEDevice> {
-    public int compare(@NonNull BLEDevice a, @NonNull BLEDevice b)
-    {
+
+    public int compare(@NonNull final BLEDevice a, @NonNull final BLEDevice b) {
+        // BLEDevice.lastUpdatedAt is @NonNull
+        // This is optional logic if BLEDevice.lastUpdatedAt becomes @Nullable
+//        if (null == a.lastUpdatedAt && null == b.lastUpdatedAt) {
+//            return 0;
+//        } else if (null == a.lastUpdatedAt && null != b.lastUpdatedAt) {
+//            return 1;
+//        } else if (null != a.lastUpdatedAt && null == b.lastUpdatedAt) {
+//            return -1;
+//        }
         // Descending order of last updated at (hence reversed logic)
-        long bt = b.lastUpdatedAt.getTime();
-        long at = a.lastUpdatedAt.getTime();
+        final long bt = b.lastUpdatedAt.getTime();
+        final long at = a.lastUpdatedAt.getTime();
         if (bt > at) {
             return 1;
         }

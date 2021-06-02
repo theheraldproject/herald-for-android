@@ -17,19 +17,22 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("ConstantConditions")
 public class ConcreteExtendedDataV1Tests {
     @Test
     public void testInitialExtendedDataHasNoData() {
         ConcreteExtendedDataV1 extendedData = new ConcreteExtendedDataV1();
-        assertEquals(false, extendedData.hasData());
+        assertFalse(extendedData.hasData());
     }
 
     @Test
     public void testExtendedDataWithPayloadHasData() {
         PayloadData payloadData = new PayloadData(new byte[] {0,1});
         ConcreteExtendedDataV1 extendedData = new ConcreteExtendedDataV1(payloadData);
-        assertEquals(true, extendedData.hasData());
+        assertTrue(extendedData.hasData());
     }
 
     @Test

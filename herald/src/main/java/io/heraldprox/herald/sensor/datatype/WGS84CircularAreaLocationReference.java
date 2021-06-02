@@ -8,9 +8,10 @@ import androidx.annotation.NonNull;
 
 /// GPS coordinates and region radius, e.g. latitude and longitude in decimal format and radius in meters.
 public class WGS84CircularAreaLocationReference implements LocationReference {
+    @NonNull
     public final Double latitude, longitude, altitude, radius;
 
-    public WGS84CircularAreaLocationReference(Double latitude, Double longitude, Double altitude, Double radius) {
+    public WGS84CircularAreaLocationReference(@NonNull final Double latitude, @NonNull final Double longitude, @NonNull final Double altitude, @NonNull final Double radius) {
         this.latitude = latitude;
         this.longitude = longitude;
         this.altitude = altitude;

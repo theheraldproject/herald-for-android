@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -18,34 +20,34 @@ import java.util.List;
 public abstract class DefaultSensorDelegate implements SensorDelegate {
 
     @Override
-    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect) {
     }
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
     }
 
     @Override
-    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final ImmediateSendData didReceive, @NonNull final TargetIdentifier fromTarget) {
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
     }
 
     @Override
-    public void sensor(SensorType sensor, SensorState didUpdateState) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final SensorState didUpdateState) {
     }
 }

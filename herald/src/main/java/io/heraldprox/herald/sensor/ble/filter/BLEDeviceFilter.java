@@ -50,9 +50,12 @@ public class BLEDeviceFilter {
 
     // Pattern for filtering device based on message content
     public final static class FilterPattern {
+        @NonNull
         public final String regularExpression;
+        @NonNull
         public final Pattern pattern;
-        public FilterPattern(final String regularExpression, final Pattern pattern) {
+
+        public FilterPattern(@NonNull final String regularExpression, @NonNull final Pattern pattern) {
             this.regularExpression = regularExpression;
             this.pattern = pattern;
         }
@@ -60,9 +63,12 @@ public class BLEDeviceFilter {
 
     // Match of a filter pattern
     public final static class MatchingPattern {
+        @NonNull
         public final FilterPattern filterPattern;
+        @NonNull
         public final String message;
-        public MatchingPattern(FilterPattern filterPattern, String message) {
+
+        public MatchingPattern(@NonNull final FilterPattern filterPattern, @NonNull final String message) {
             this.filterPattern = filterPattern;
             this.message = message;
         }
@@ -76,7 +82,7 @@ public class BLEDeviceFilter {
 
     /// BLE device filter for matching devices against BLESensorConfiguration.deviceFilterFeaturePatterns
     /// and writing advert data to file for analysis.
-    public BLEDeviceFilter(final Context context, final String file) {
+    public BLEDeviceFilter(@Nullable final Context context, @Nullable final String file) {
         this(context, file, BLESensorConfiguration.deviceFilterFeaturePatterns);
     }
 
@@ -114,7 +120,7 @@ public class BLEDeviceFilter {
                 if (matcher.find()) {
                     return filterPattern;
                 }
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
         return null;
@@ -128,6 +134,7 @@ public class BLEDeviceFilter {
         for (final String regularExpression : regularExpressions) {
             try {
                 final Pattern pattern = Pattern.compile(regularExpression, Pattern.CASE_INSENSITIVE);
+                //noinspection ConstantConditions
                 if (null != regularExpression && !regularExpression.isEmpty() && null != pattern) {
                     final FilterPattern filterPattern = new FilterPattern(regularExpression, pattern);
                     filterPatterns.add(filterPattern);
@@ -143,28 +150,32 @@ public class BLEDeviceFilter {
 
     /// Extract messages from manufacturer specific data
     @Nullable
-    protected final static List<Data> extractMessages(@Nullable final byte[] rawScanRecordData) {
+    protected static List<Data> extractMessages(@Nullable final byte[] rawScanRecordData) {
         // Parse raw scan record data in scan response data
         if (null == rawScanRecordData || 0 == rawScanRecordData.length) {
             return null;
         }
         final BLEScanResponseData bleScanResponseData = BLEAdvertParser.parseScanResponse(rawScanRecordData, 0);
         // Parse scan response data into manufacturer specific data
+        //noinspection ConstantConditions
         if (null == bleScanResponseData || null == bleScanResponseData.segments || bleScanResponseData.segments.isEmpty()) {
             return null;
         }
         final List<BLEAdvertManufacturerData> bleAdvertManufacturerDataList = BLEAdvertParser.extractManufacturerData(bleScanResponseData.segments);
         // Parse manufacturer specific data into messages
+        //noinspection ConstantConditions
         if (null == bleAdvertManufacturerDataList || bleAdvertManufacturerDataList.isEmpty()) {
             return null;
         }
         final List<BLEAdvertAppleManufacturerSegment> bleAdvertAppleManufacturerSegments = BLEAdvertParser.extractAppleManufacturerSegments(bleAdvertManufacturerDataList);
         // Convert segments to messages
+        //noinspection ConstantConditions
         if (null == bleAdvertAppleManufacturerSegments || bleAdvertAppleManufacturerSegments.isEmpty()) {
             return null;
         }
         final List<Data> messages = new ArrayList<>(bleAdvertAppleManufacturerSegments.size());
-        for (BLEAdvertAppleManufacturerSegment segment : bleAdvertAppleManufacturerSegments) {
+        for (final BLEAdvertAppleManufacturerSegment segment : bleAdvertAppleManufacturerSegments) {
+            //noinspection ConstantConditions
             if (null != segment && null != segment.raw && segment.raw.value.length > 0) {
                 messages.add(segment.raw);
             }
@@ -205,7 +216,7 @@ public class BLEDeviceFilter {
             return;
         }
         // Update ignore yes/no counts for feature data
-        for (Data featureData : featureList) {
+        for (final Data featureData : featureList) {
             ShouldIgnore shouldIgnore = samples.get(featureData);
             if (null == shouldIgnore) {
                 shouldIgnore = new ShouldIgnore();
@@ -235,6 +246,7 @@ public class BLEDeviceFilter {
             stringBuilder.append(device.identifier.value);
             stringBuilder.append(',');
             if (null != device.rssi()) {
+                //noinspection ConstantConditions
                 stringBuilder.append(device.rssi().value);
             }
             stringBuilder.append(',');
@@ -255,12 +267,13 @@ public class BLEDeviceFilter {
 
     /// Match filter patterns against data items, returning the first match
     @Nullable
-    protected final static MatchingPattern match(@Nullable final List<FilterPattern> patternList, @Nullable final Data rawData) {
+    protected static MatchingPattern match(@Nullable final List<FilterPattern> patternList, @Nullable final Data rawData) {
         // No pattern to match against
         if (null == patternList || patternList.isEmpty()) {
             return null;
         }
         // Empty raw data
+        //noinspection ConstantConditions
         if (null == rawData || null == rawData.value || 0 == rawData.value.length) {
             return null;
         }
@@ -269,7 +282,7 @@ public class BLEDeviceFilter {
         if (null == messages || messages.isEmpty()) {
             return null;
         }
-        for (Data message : messages) {
+        for (final Data message : messages) {
             if (null == message) {
                 continue;
             }
@@ -303,6 +316,7 @@ public class BLEDeviceFilter {
             final Data rawData = new Data(bytes);
             // Attempt to match
             final MatchingPattern matchingPattern = match(filterPatterns, rawData);
+            //noinspection ConstantConditions
             if (null == matchingPattern || null == matchingPattern.filterPattern ||
                     null == matchingPattern.filterPattern.pattern ||
                     null == matchingPattern.filterPattern.regularExpression ||
@@ -330,7 +344,7 @@ public class BLEDeviceFilter {
         if (null == featureList) {
             return false;
         }
-        for (Data featureData : featureList) {
+        for (final Data featureData : featureList) {
             // Get training example statistics
             final ShouldIgnore shouldIgnore = samples.get(featureData);
             // Do not ignore device based on unknown feature data

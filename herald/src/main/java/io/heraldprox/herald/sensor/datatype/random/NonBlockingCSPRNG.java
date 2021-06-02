@@ -6,8 +6,6 @@ package io.heraldprox.herald.sensor.datatype.random;
 
 import androidx.annotation.NonNull;
 
-import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.util.Random;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
@@ -70,12 +68,13 @@ public class NonBlockingCSPRNG extends RandomSource {
         //       time scale as the source time keeper is based on an infinite CPU loop that samples
         //       current time at millisecond scale, quantized to 500ms scale.
         final long entropyFromElapsedTime = System.nanoTime() ^ getRandomLastCalledAt;
+        getRandomLastCalledAt = System.nanoTime();
         // - 1B. Entropy from system up time which is determined by when the Java virtual machine
         //       was initialised. This is truly random as the app can be started or restarted at
         //       any time. Using Math.random() as proxy, because this static function is backed by
         //       a singleton instance of Random() which is initialised with System.nanoTime() on
         //       system start. The initialisation also applies scrambling to derive the seed.
-        final long entropyFromSystemUpTime = Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFl);
+        final long entropyFromSystemUpTime = Double.doubleToLongBits(Math.random() * 0xFFFFFFFFFFFFFFFFL);
         // - 1C. Entropy from external sources that are likely to have been derived from disparate
         //       SecureRandom instances. Use addEntropy() to incorporate detected BLE MAC addresses.
         final long entropyFromExternalSources = useEntropy();
@@ -109,6 +108,7 @@ public class NonBlockingCSPRNG extends RandomSource {
         //       the same random seed. This increases the search space that make an attack
         //       impractical given limited observations.
         final int index = randomSeedSource.nextInt(randomSeedSourceDataHash.value.length - 8);
+        //noinspection ConstantConditions
         final long randomSeed = randomSeedSourceDataHash.int64(index).value;
         // - 2D. Create a non-blocking PRNG for one-time use where the seed has been derived from
         //       truly random events, and via a cryptographic hash function to protect the source
@@ -123,7 +123,7 @@ public class NonBlockingCSPRNG extends RandomSource {
     }
 
     @Override
-    public synchronized void nextBytes(final byte[] bytes) {
+    public synchronized void nextBytes(@NonNull final byte[] bytes) {
         getCSPRNG().nextBytes(bytes);
     }
 
@@ -134,7 +134,8 @@ public class NonBlockingCSPRNG extends RandomSource {
         // Get 2048 bits of random data from the CSPRNG
         random.nextBytes(nextLongSourceData.value);
         // Truncate random data to derive random long value, using the CSPRNG to select index
-        final int index = (int) random.nextInt(nextLongSourceData.value.length - 4);
+        final int index = random.nextInt(nextLongSourceData.value.length - 4);
+        //noinspection UnnecessaryLocalVariable,ConstantConditions
         final int randomValue = nextLongSourceData.int32(index).value;
 //        if (manualDebugMode) {
 //            logger.debug("nextInt (value={},index={},hash={})", randomValue, index, nextLongSourceData.hexEncodedString());
@@ -149,7 +150,8 @@ public class NonBlockingCSPRNG extends RandomSource {
         // Get 2048 bits of random data from the CSPRNG
         random.nextBytes(nextLongSourceData.value);
         // Truncate random data to derive random long value, using the CSPRNG to select index
-        final int index = (int) random.nextInt(nextLongSourceData.value.length - 8);
+        final int index = random.nextInt(nextLongSourceData.value.length - 8);
+        //noinspection UnnecessaryLocalVariable,ConstantConditions
         final long randomValue = nextLongSourceData.int64(index).value;
 //        if (manualDebugMode) {
 //            logger.debug("nextLong (value={},index={},hash={})", randomValue, index, nextLongSourceData.hexEncodedString());

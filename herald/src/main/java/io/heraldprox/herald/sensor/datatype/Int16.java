@@ -16,12 +16,12 @@ public class Int16 implements DoubleValue {
     public final static Int16 max = new Int16(Short.MAX_VALUE);
     public final int value;
 
-    public Int16(int value) {
+    public Int16(final int value) {
         this.value = (value < Short.MIN_VALUE ? Short.MIN_VALUE : (value > Short.MAX_VALUE ? Short.MAX_VALUE : value));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Int16 uInt16 = (Int16) o;

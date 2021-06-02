@@ -16,12 +16,12 @@ public class UInt8 implements DoubleValue {
     public final static UInt8 max = new UInt8(255);
     public final int value;
 
-    public UInt8(int value) {
-        this.value = (value < 0 ? 0 : (value > 255 ? 255 : value));
+    public UInt8(final int value) {
+        this.value = (value < 0 ? 0 : Math.min(value, 255));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         UInt8 uInt8 = (UInt8) o;

@@ -6,5 +6,5 @@ package io.heraldprox.herald.sensor.datatype;
 
 /// Generic callback function
 public interface Callback<T> {
-    void accept(T value);
+    void accept(final T value);
 }

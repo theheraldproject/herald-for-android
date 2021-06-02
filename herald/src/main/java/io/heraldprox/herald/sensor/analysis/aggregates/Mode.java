@@ -16,8 +16,7 @@ import java.util.Map;
 
 public class Mode<T extends DoubleValue> implements Aggregate<T> {
     private int run = 1;
-    @NonNull
-    private Map<Double,Counter> counts = new HashMap<>();
+    private final Map<Double,Counter> counts = new HashMap<>();
     private final static class Counter {
         public long value = 1;
     }
@@ -28,14 +27,14 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void beginRun(int thisRun) {
+    public void beginRun(final int thisRun) {
         run = thisRun;
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         if (run > 1) return;
-        Counter counter = counts.get(value.value().doubleValue());
+        final Counter counter = counts.get(value.value().doubleValue());
         if (null == counter) {
             counts.put(value.value().doubleValue(), new Counter());
         } else {
@@ -51,7 +50,7 @@ public class Mode<T extends DoubleValue> implements Aggregate<T> {
         }
         double largest = 0;
         long largestCount = 0;
-        for (Map.Entry<Double,Counter> entry : counts.entrySet()) {
+        for (final Map.Entry<Double,Counter> entry : counts.entrySet()) {
             if (entry.getValue().value > largestCount || (entry.getValue().value == largestCount && entry.getKey() > largest)) {
                 largest = entry.getKey();
                 largestCount = entry.getValue().value;

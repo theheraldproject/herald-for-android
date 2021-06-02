@@ -29,9 +29,10 @@ public class ContactLog extends DefaultSensorDelegate {
     }
     @NonNull
     private final TextFile textFile;
+    @NonNull
     private final PayloadDataFormatter payloadDataFormatter;
 
-    public ContactLog(@NonNull final Context context, @NonNull final String filename, PayloadDataFormatter payloadDataFormatter) {
+    public ContactLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadDataFormatter payloadDataFormatter) {
         textFile = new TextFile(context, filename);
         this.payloadDataFormatter = payloadDataFormatter;
         if (textFile.empty()) {
@@ -49,24 +50,24 @@ public class ContactLog extends DefaultSensorDelegate {
     }
 
     @NonNull
-    private String csv(@NonNull String value) {
+    private String csv(@NonNull final String value) {
         return TextFile.csv(value);
     }
 
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull TargetIdentifier didDetect) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect) {
         textFile.write(timestamp() + "," + sensor.name() + "," + csv(didDetect.value) + ",1,,,,,");
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, PayloadData didRead, @NonNull TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
         textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(payloadDataFormatter.shortFormat(didRead)));
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull List<PayloadData> didShare, @NonNull TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
         final String prefix = timestamp() + "," + sensor.name() + "," + csv(fromTarget.value);
         for (PayloadData payloadData : didShare) {
             textFile.write(prefix + ",,,,4,," + csv(payloadDataFormatter.shortFormat(payloadData)));
@@ -74,12 +75,12 @@ public class ContactLog extends DefaultSensorDelegate {
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
         textFile.write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,,3,,," + csv(didMeasure.description()));
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull Location didVisit) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
         textFile.write(timestamp() + "," + sensor.name() + ",,,,,,5," + csv(didVisit.description()));
     }
 }

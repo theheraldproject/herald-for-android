@@ -26,19 +26,20 @@ public class ForegroundService extends Service {
     }
 
     @Override
-    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+    public int onStartCommand(@Nullable final Intent intent, final int flags, final int startId) {
         logger.debug("onStartCommand");
 
         if (null != intent) {
-            String action = intent.getAction();
-
-            switch (action) {
-                case ACTION_START:
-                    this.startForegroundService();
-                    break;
-                case ACTION_STOP:
-                    this.stopForegroundService();
-                    break;
+            final String action = intent.getAction();
+            if  (action != null) {
+                switch (action) {
+                    case ACTION_START:
+                        this.startForegroundService();
+                        break;
+                    case ACTION_STOP:
+                        this.stopForegroundService();
+                        break;
+                }
             }
         }
 
@@ -53,14 +54,17 @@ public class ForegroundService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
+    public IBinder onBind(final Intent intent) {
         return null;
     }
 
     private void startForegroundService() {
         logger.debug("starting foreground service");
         final NotificationService notificationService = NotificationService.shared(getApplication());
-        startForeground(notificationService.getForegroundServiceNotificationId(), notificationService.getForegroundServiceNotification());
+        //noinspection ConstantConditions
+        if (notificationService != null) {
+            startForeground(notificationService.getForegroundServiceNotificationId(), notificationService.getForegroundServiceNotification());
+        }
     }
 
     private void stopForegroundService() {

@@ -12,8 +12,6 @@ import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class Until<T extends DoubleValue> implements Filter<T> {
-    @NonNull
-    private final Date before;
     private final long beforeTime;
 
     public Until(final long secondsSinceUnixEpoch) {
@@ -21,12 +19,11 @@ public class Until<T extends DoubleValue> implements Filter<T> {
     }
 
     public Until(@NonNull final Date before) {
-        this.before = before;
         this.beforeTime = before.getTime();
     }
 
     @Override
-    public boolean test(@NonNull Sample<T> item) {
+    public boolean test(@NonNull final Sample<T> item) {
         return item.taken().getTime() <= beforeTime;
     }
 }

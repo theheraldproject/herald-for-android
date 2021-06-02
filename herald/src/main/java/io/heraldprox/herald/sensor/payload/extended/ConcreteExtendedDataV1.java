@@ -1,7 +1,6 @@
 package io.heraldprox.herald.sensor.payload.extended;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Float16;
@@ -19,13 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ConcreteExtendedDataV1 implements ExtendedData {
+    @NonNull
     private final PayloadData payloadData;
 
     public ConcreteExtendedDataV1() {
         payloadData = new PayloadData();
     }
 
-    public ConcreteExtendedDataV1(PayloadData unparsedData) {
+    public ConcreteExtendedDataV1(@NonNull final PayloadData unparsedData) {
         payloadData = unparsedData;
     }
 
@@ -35,7 +35,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable UInt8 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final UInt8 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -45,7 +46,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable UInt16 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final UInt16 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -55,7 +57,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable UInt32 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final UInt32 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -65,7 +68,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable UInt64 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final UInt64 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -75,7 +79,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Int8 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Int8 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -85,7 +90,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Int16 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Int16 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -95,7 +101,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Int32 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Int32 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -105,7 +112,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Int64 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Int64 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -115,7 +123,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Float16 value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Float16 value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -125,7 +134,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable String value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final String value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -135,7 +145,8 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
     }
 
     @Override
-    public void addSection(@Nullable UInt8 code, @Nullable Data value) {
+    public void addSection(@NonNull final UInt8 code, @NonNull final Data value) {
+        //noinspection ConstantConditions
         if (null == code || null == value) {
             return;
         }
@@ -144,6 +155,7 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
         payloadData.append(value);
     }
 
+    @NonNull
     @Override
     public PayloadData payload() {
         return payloadData;
@@ -161,22 +173,26 @@ public class ConcreteExtendedDataV1 implements ExtendedData {
                 continue;
             }
             // read code
-            UInt8 code = payloadData.uint8(pos);
+            final UInt8 code = payloadData.uint8(pos);
             pos = pos + 1;
             // read length
             UInt8 length = payloadData.uint8(pos);
             pos = pos + 1;
             // sanity check length
-            if (pos + length.value > payloadData.value.length) {
+            if (length != null && pos + length.value > payloadData.value.length) {
                 length = new UInt8(payloadData.value.length - pos);
             }
             // extract data
-            Data data = payloadData.subdata(pos, length.value);
+            if (length != null) {
+                final Data data = payloadData.subdata(pos, length.value);
 
-            sections.add(new ConcreteExtendedDataSectionV1(code, length, data));
+                if (code != null && data != null) {
+                    sections.add(new ConcreteExtendedDataSectionV1(code, length, data));
+                }
 
-            // repeat
-            pos = pos + length.value;
+                // repeat
+                pos = pos + length.value;
+            }
         }
 
         return sections;

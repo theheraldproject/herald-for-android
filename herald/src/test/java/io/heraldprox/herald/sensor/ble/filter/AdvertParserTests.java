@@ -20,7 +20,7 @@ public class AdvertParserTests {
     // MARK: Low level individual parsing functions
 
     @Test
-    public void testDataSubsetBigEndian() throws Exception {
+    public void testDataSubsetBigEndian() {
         byte[] data = new byte[]{0,1,5,6,7,8,12,13,14};
         assertEquals(5, data[2]);
         assertEquals(6, data[3]);
@@ -36,7 +36,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndian() throws Exception {
+    public void testDataSubsetLittleEndian() {
         byte[] data = new byte[]{0,1,5,6,7,8,12,13,14};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data,2,4);
         assertNotNull(result);
@@ -48,7 +48,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianOverflow() throws Exception {
+    public void testDataSubsetBigEndianOverflow() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataBigEndian(data,2,4);
         assertNotNull(result);
@@ -56,7 +56,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndianOverflow() throws Exception {
+    public void testDataSubsetLittleEndianOverflow() {
         byte[] data = new byte[]{0, 1, 5, 6, 7};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data, 2, 4);
         assertNotNull(result);
@@ -64,7 +64,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianLowIndex() throws Exception {
+    public void testDataSubsetBigEndianLowIndex() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataBigEndian(data,-1,4);
         assertNotNull(result);
@@ -72,7 +72,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndianLowIndex() throws Exception {
+    public void testDataSubsetLittleEndianLowIndex() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data,-1,4);
         assertNotNull(result);
@@ -80,7 +80,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianHighIndex() throws Exception {
+    public void testDataSubsetBigEndianHighIndex() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataBigEndian(data,5,4);
         assertNotNull(result);
@@ -88,7 +88,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndianHighIndex() throws Exception {
+    public void testDataSubsetLittleEndianHighIndex() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data,5,4);
         assertNotNull(result);
@@ -96,7 +96,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianLargeLength() throws Exception {
+    public void testDataSubsetBigEndianLargeLength() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataBigEndian(data,2,4);
         assertNotNull(result);
@@ -104,7 +104,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndianLargeLength() throws Exception {
+    public void testDataSubsetLittleEndianLargeLength() {
         byte[] data = new byte[]{0,1,5,6,7};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data,2,4);
         assertNotNull(result);
@@ -112,7 +112,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianEmptyData() throws Exception {
+    public void testDataSubsetBigEndianEmptyData() {
         byte[] data = new byte[]{};
         byte[] result = BLEAdvertParser.subDataBigEndian(data,0,1);
         assertNotNull(result);
@@ -120,7 +120,7 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetLittleEndianEmptyData() throws Exception {
+    public void testDataSubsetLittleEndianEmptyData() {
         byte[] data = new byte[]{};
         byte[] result = BLEAdvertParser.subDataLittleEndian(data,0,1);
         assertNotNull(result);
@@ -128,14 +128,14 @@ public class AdvertParserTests {
     }
 
     @Test
-    public void testDataSubsetBigEndianNullData() throws Exception {
+    public void testDataSubsetBigEndianNullData() {
         byte[] result = BLEAdvertParser.subDataBigEndian(null,0,1);
         assertNotNull(result);
         assertEquals(0, result.length);
     }
 
     @Test
-    public void testDataSubsetLittleNullEmptyData() throws Exception {
+    public void testDataSubsetLittleNullEmptyData() {
         byte[] result = BLEAdvertParser.subDataLittleEndian(null,0,1);
         assertNotNull(result);
         assertEquals(0, result.length);
@@ -144,7 +144,7 @@ public class AdvertParserTests {
     // MARK: HIGH LEVEL FULL PACKET METHODS
 
     @Test
-    public void testAppleTVFG() throws Exception {
+    public void testAppleTVFG() {
         byte[] data = new byte[]{2, 1, 26, 2, 10, 8,
                 (byte)0x0c, (byte)0xff, (byte)0x4c, (byte)0x00,
                 (byte)0x10, (byte)0x07, (byte)0x33,

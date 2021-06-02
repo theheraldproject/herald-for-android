@@ -4,16 +4,18 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 
 /// Secret key
 public class SecretKey extends Data {
 
-    public SecretKey(byte[] value) {
+    public SecretKey(@NonNull final byte[] value) {
         super(value);
     }
 
-    public SecretKey(byte repeating, int count) {
+    public SecretKey(final byte repeating, final int count) {
         super(repeating, count);
     }
 }

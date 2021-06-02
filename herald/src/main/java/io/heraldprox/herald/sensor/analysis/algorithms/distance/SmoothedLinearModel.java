@@ -50,7 +50,6 @@ import io.heraldprox.herald.sensor.datatype.DoubleValue;
 ///   range of interest (1 - 8m).
 public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModel");
-    private int run = 1;
     private final Median<T> median = new Median<>();
     protected double intercept;
     protected double coefficient;
@@ -82,13 +81,12 @@ public class SmoothedLinearModel<T extends DoubleValue> implements Aggregate<T> 
     }
 
     @Override
-    public void beginRun(int thisRun) {
-        run = thisRun;
+    public void beginRun(final int thisRun) {
         median.beginRun(thisRun);
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         median.map(value);
     }
 

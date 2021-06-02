@@ -4,7 +4,10 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 public class ImmediateSendData {
+    @NonNull
     public final Data data;
 
     /**
@@ -12,7 +15,7 @@ public class ImmediateSendData {
      *
      * @param data Data being send using immediateSend (app specific format).
      */
-    public ImmediateSendData(final Data data) {
+    public ImmediateSendData(@NonNull final Data data) {
         this.data = data;
     }
 }

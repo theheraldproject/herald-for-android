@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
+import androidx.annotation.NonNull;
+
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -27,7 +29,8 @@ import io.heraldprox.herald.sensor.data.SensorLogger;
  **/
 public class BlockingSecureRandomNIST extends BlockingSecureRandom {
 
-    private final Random getSecureRandomNIST() {
+    @NonNull
+    private Random getSecureRandomNIST() {
         try {
             // Obtain SHA1PRNG specifically where possible for NIST SP800-90A compliance.
             // Ignoring Android recommendation to use "new SecureRandom()" because that
@@ -60,7 +63,7 @@ public class BlockingSecureRandomNIST extends BlockingSecureRandom {
     }
 
     @Override
-    public void nextBytes(final byte[] bytes) {
+    public void nextBytes(@NonNull final byte[] bytes) {
         getSecureRandomNIST().nextBytes(bytes);
     }
 }

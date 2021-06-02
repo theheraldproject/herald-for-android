@@ -9,7 +9,6 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandom;
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomNIST;
@@ -21,17 +20,17 @@ import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings("SameParameterValue")
 public class RandomSourceTests {
 
     /**
      * Get a list of all random sources for testing.
      * @return
      */
-    private final List<RandomSource> randomSources() {
+    private List<RandomSource> randomSources() {
+        //noinspection UnnecessaryLocalVariable
         final List<RandomSource> randomSources = Arrays.asList(
                 new NonBlockingPRNG(),
                 new NonBlockingCSPRNG(),
@@ -180,7 +179,7 @@ public class RandomSourceTests {
      * @param samples Number of samples, in multiples of 256 bytes
      * @return Histogram of random values for assessing distribution
      */
-    private final static long[] histogramOfSequence(RandomSource randomSource, long samples) {
+    private static long[] histogramOfSequence(RandomSource randomSource, long samples) {
         final byte[] randomData = new byte[256];
         final long[] histogram = new long[256];
         int index;
@@ -203,7 +202,7 @@ public class RandomSourceTests {
      * @param samples Number of samples
      * @return Histogram of random values for assessing distribution
      */
-    private final static long[] histogramOfValue(RandomSource randomSource, long samples) {
+    private static long[] histogramOfValue(RandomSource randomSource, long samples) {
         final byte[] randomData = new byte[1];
         final long[] histogram = new long[256];
         int index;
@@ -221,7 +220,8 @@ public class RandomSourceTests {
      * @param samples
      * @return Average time per call in nanoseconds
      */
-    private final static long nextLongPerformance(RandomSource randomSource, long samples) {
+    @SuppressWarnings("UnusedReturnValue")
+    private static long nextLongPerformance(RandomSource randomSource, long samples) {
         final long timeStart = System.nanoTime();
         for (long n=samples; n-->0;) {
             randomSource.nextLong();
@@ -237,7 +237,7 @@ public class RandomSourceTests {
      * @param histogram
      * @return Mean absolute error as percentage of mean value, where 0 means perfectly uniform, and 1 means non-uniform.
      */
-    private final static double isUniformDistribution(final long[] histogram) {
+    private static double isUniformDistribution(final long[] histogram) {
         // Calculate mean
         long samples = 0;
         for (long frequency : histogram) {
@@ -249,7 +249,7 @@ public class RandomSourceTests {
         for (long frequency : histogram) {
             error += Math.abs(frequency - mean);
         }
-        error /= (double) histogram.length;
+        error /= histogram.length;
         // Report error as percentage of mean
         return (samples > 0 ? error / mean : 0);
     }

@@ -4,12 +4,14 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.Data;
 
 /// Contact key
 public class ContactKey extends Data {
 
-    public ContactKey(Data value) {
+    public ContactKey(@NonNull final Data value) {
         super(value);
     }
 }

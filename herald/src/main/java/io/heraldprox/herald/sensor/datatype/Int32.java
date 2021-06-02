@@ -16,12 +16,12 @@ public class Int32 implements DoubleValue {
     public final static Int32 max = new Int32(Integer.MAX_VALUE);
     public final int value;
 
-    public Int32(long value) {
+    public Int32(final long value) {
         this.value = (int) (value < Integer.MIN_VALUE ? Integer.MIN_VALUE : (value > Integer.MAX_VALUE ? Integer.MAX_VALUE : value));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         Int32 uInt32 = (Int32) o;

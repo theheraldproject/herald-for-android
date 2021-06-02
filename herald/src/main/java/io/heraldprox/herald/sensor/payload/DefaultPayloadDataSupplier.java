@@ -22,13 +22,13 @@ public abstract class DefaultPayloadDataSupplier implements PayloadDataSupplier 
 
     @Nullable
     @Override
-    public LegacyPayloadData legacyPayload(PayloadTimestamp timestamp, Device device) {
+    public LegacyPayloadData legacyPayload(@NonNull final PayloadTimestamp timestamp, @Nullable final Device device) {
         return null;
     }
 
     @NonNull
     @Override
-    public List<PayloadData> payload(@NonNull Data data) {
+    public List<PayloadData> payload(@NonNull final Data data) {
         // Get fixed length payload data
         final PayloadData fixedLengthPayloadData = payload(new PayloadTimestamp(), null);
         final int payloadDataLength = fixedLengthPayloadData.value.length;

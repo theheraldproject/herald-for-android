@@ -4,13 +4,17 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public interface AnalysisDelegate<T extends DoubleValue> extends CallableForNewSample<T> {
 
+    @NonNull
     Class<T> inputType();
 
     void reset();
 
+    @NonNull
     SampleList<T> samples();
 }

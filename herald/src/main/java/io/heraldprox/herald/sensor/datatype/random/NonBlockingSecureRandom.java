@@ -4,26 +4,15 @@
 
 package io.heraldprox.herald.sensor.datatype.random;
 
-import android.app.ActivityManager;
-
 import androidx.annotation.NonNull;
 
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
-import io.heraldprox.herald.sensor.datatype.Int32;
-import io.heraldprox.herald.sensor.datatype.Int64;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
-import io.heraldprox.herald.sensor.payload.simple.F;
 
 /**
  * Non-blocking cryptographically secure random source based on a combination of a time-based
@@ -83,6 +72,7 @@ public class NonBlockingSecureRandom extends RandomSource {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Datatype.NonBlockingSecureRandom");
     // Internal state is replaced at regular intervals
     private final int seedBits;
+    @NonNull
     private final TimeInterval reseedInterval;
     private final AtomicBoolean reseedInProgress = new AtomicBoolean(false);
     private long nextReseedTimestamp = 0;
@@ -97,7 +87,7 @@ public class NonBlockingSecureRandom extends RandomSource {
      * @param seedBits Number of random bits for seeding the internal state, and also mixing with current state on state update.
      * @param reseedInterval Time between complete internal state replacement.
      */
-    public NonBlockingSecureRandom(final int seedBits, final TimeInterval reseedInterval) {
+    public NonBlockingSecureRandom(final int seedBits, @NonNull final TimeInterval reseedInterval) {
         this.seedBits = seedBits;
         this.reseedInterval = reseedInterval;
         // Initialise internal state, this is a short blocking operation
@@ -233,6 +223,7 @@ public class NonBlockingSecureRandom extends RandomSource {
             bytes[i] = randomByteBlock.value[0];
             // Hashing the remaining bytes mixed with part of the ephemeral random seed to generate
             // the next block
+            //noinspection ConstantConditions
             randomByteBlock = hash(xor(ephemeralRandomSeedSuffix, randomByteBlock.subdata(1)));
         }
     }
@@ -243,7 +234,7 @@ public class NonBlockingSecureRandom extends RandomSource {
      * xor(left, right) up to minimum length.
      */
     @NonNull
-    public final static Data xor(@NonNull final Data left, @NonNull final Data right) {
+    public static Data xor(@NonNull final Data left, @NonNull final Data right) {
 //        if (left.value.length != right.value.length) {
 //            logger.fault("XOR being applied to data of different lengths (left={},right={})", left.value.length, right.value.length);
 //        }

@@ -4,11 +4,14 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 /// Delegate for receiving registry create/update/delete events
 public interface BLEDatabaseDelegate {
-    void bleDatabaseDidCreate(BLEDevice device);
 
-    void bleDatabaseDidUpdate(BLEDevice device, BLEDeviceAttribute attribute);
+    void bleDatabaseDidCreate(@NonNull final BLEDevice device);
 
-    void bleDatabaseDidDelete(BLEDevice device);
+    void bleDatabaseDidUpdate(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute attribute);
+
+    void bleDatabaseDidDelete(@NonNull final BLEDevice device);
 }

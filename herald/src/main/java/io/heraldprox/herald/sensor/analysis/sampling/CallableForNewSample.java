@@ -4,7 +4,9 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+
 public interface CallableForNewSample<T> {
 
-    void newSample(SampledID sampled, Sample<T> item);
+    void newSample(@NonNull final SampledID sampled, @NonNull final Sample<T> item);
 }

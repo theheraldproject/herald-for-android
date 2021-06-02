@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, TargetIdentifier didDetect) {
+    public void sensor(@NonNull SensorType sensor, @NonNull TargetIdentifier didDetect) {
         this.didDetect++;
         if (foreground) {
             final String text = Long.toString(this.didDetect);
@@ -317,7 +317,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(SensorType sensor, PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull PayloadData didRead, @NonNull TargetIdentifier fromTarget) {
         this.didRead++;
         targetIdentifiers.put(fromTarget, didRead);
         Target target = payloads.get(didRead);
@@ -340,7 +340,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(SensorType sensor, List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull List<PayloadData> didShare, @NonNull TargetIdentifier fromTarget) {
         this.didShare++;
         final Date now = new Date();
         for (PayloadData didRead : didShare) {
@@ -366,7 +366,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
         this.didMeasure++;
         final PayloadData didRead = targetIdentifiers.get(fromTarget);
         if (didRead != null) {
@@ -400,7 +400,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(SensorType sensor, ImmediateSendData didReceive, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull SensorType sensor, @NonNull ImmediateSendData didReceive, @NonNull TargetIdentifier fromTarget) {
         this.didReceive++;
         final PayloadData didRead = new PayloadData(didReceive.data.value);
         if (didRead != null) {
@@ -425,17 +425,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(SensorType sensor, Location didVisit) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Location didVisit) {
         // Not used
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget, @NonNull PayloadData withPayload) {
         // High level integration API is not used as the test app is using the low level API to present all the detection events.
     }
 
     @Override
-    public void sensor(SensorType sensor, SensorState didUpdateState) {
+    public void sensor(@NonNull SensorType sensor, @NonNull SensorState didUpdateState) {
         // Sensor state is already presented by the operating system, so not duplicating in the test app.
     }
 

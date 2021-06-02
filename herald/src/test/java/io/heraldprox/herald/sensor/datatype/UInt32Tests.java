@@ -20,7 +20,7 @@ public class UInt32Tests {
     public void testRange() {
         // Constants
         assertEquals(0, UInt32.min.value);
-        assertEquals(4294967295l, UInt32.max.value);
+        assertEquals(4294967295L, UInt32.max.value);
         // Zero
         assertEquals(0, new UInt32(0).value);
         // Clamping

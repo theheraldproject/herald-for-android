@@ -29,7 +29,7 @@ public class BlockingSecureRandom extends RandomSource {
     }
 
     @Override
-    public void nextBytes(final byte[] bytes) {
+    public void nextBytes(@NonNull final byte[] bytes) {
         getSecureRandom().nextBytes(bytes);
     }
 }

@@ -29,7 +29,7 @@ public class BlockingSecureRandomSingleton extends RandomSource {
     }
 
     @Override
-    public synchronized void nextBytes(final byte[] bytes) {
+    public synchronized void nextBytes(@NonNull final byte[] bytes) {
         getSecureRandomSingleton().nextBytes(bytes);
     }
 }

@@ -32,7 +32,7 @@ public class ConcreteSensorLogger implements SensorLogger {
     @Nullable
     private static TextFile logFile = null;
 
-    public ConcreteSensorLogger(String subsystem, String category) {
+    public ConcreteSensorLogger(@NonNull final String subsystem, @NonNull final String category) {
         this.subsystem = subsystem;
         this.category = category;
     }
@@ -44,7 +44,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private boolean suppress(@NonNull SensorLoggerLevel level) {
+    private boolean suppress(@NonNull final SensorLoggerLevel level) {
         if (BLESensorConfiguration.logLevel == SensorLoggerLevel.off) {
             return true;
         }
@@ -58,35 +58,35 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private void log(@NonNull SensorLoggerLevel level, @NonNull String message, final Object... values) {
+    private void log(@NonNull final SensorLoggerLevel level, @NonNull final String message, final Object... values) {
         if (!suppress(level)) {
             // android.util.Log is unavailable during test, this will throw error.
             try {
                 outputLog(level, tag(subsystem, category), message, values);
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
             outputStream(level, subsystem, category, message, values);
         }
     }
 
-    public void debug(@NonNull String message, final Object... values) {
+    public void debug(@NonNull final String message, final Object... values) {
         log(SensorLoggerLevel.debug, message, values);
     }
 
-    public void info(@NonNull String message, final Object... values) {
+    public void info(@NonNull final String message, final Object... values) {
         log(SensorLoggerLevel.info, message, values);
     }
 
-    public void fault(@NonNull String message, final Object... values) {
+    public void fault(@NonNull final String message, final Object... values) {
         log(SensorLoggerLevel.fault, message, values);
     }
 
     @NonNull
-    private static String tag(String subsystem, String category) {
+    private static String tag(@NonNull final String subsystem, @NonNull final String category) {
         return subsystem + "::" + category;
     }
 
-    private static void outputLog(@NonNull final SensorLoggerLevel level, final String tag, @NonNull final String message, final Object... values) {
+    private static void outputLog(@NonNull final SensorLoggerLevel level, @NonNull final String tag, @NonNull final String message, final Object... values) {
         final Throwable throwable = getThrowable(values);
         switch (level) {
             case debug: {
@@ -116,7 +116,7 @@ public class ConcreteSensorLogger implements SensorLogger {
         }
     }
 
-    private static void outputStream(final SensorLoggerLevel level, final String subsystem, final String category, @NonNull final String message, final Object... values) {
+    private static void outputStream(@NonNull final SensorLoggerLevel level, @NonNull final String subsystem, @NonNull final String category, @NonNull final String message, final Object... values) {
         if (null == logFile) {
             return;
         }

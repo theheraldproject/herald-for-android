@@ -5,7 +5,6 @@
 package io.heraldprox.herald.sensor.analysis.sampling;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
@@ -14,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("unchecked")
 public class VariantSet {
     private final int defaultListSize;
     private final Map<Class<? extends DoubleValue>, ListManager<? extends DoubleValue>> map = new ConcurrentHashMap<>();
@@ -37,17 +37,17 @@ public class VariantSet {
     }
 
     @NonNull
-    public <T extends DoubleValue> ListManager<T> add(final Class<T> variant, final int listSize) {
+    public <T extends DoubleValue> ListManager<T> add(@NonNull final Class<T> variant, final int listSize) {
         final ListManager<T> listManager = new ListManager<>(listSize);
         map.put(variant, listManager);
         return listManager;
     }
 
-    public <T extends DoubleValue> void remove(final Class<T> variant) {
+    public <T extends DoubleValue> void remove(@NonNull final Class<T> variant) {
         map.remove(variant);
     }
 
-    public void remove(SampledID sampledID) {
+    public void remove(@NonNull final SampledID sampledID) {
         for (final ListManager<? extends DoubleValue> listManager : map.values()) {
             listManager.remove(sampledID);
         }
@@ -58,7 +58,7 @@ public class VariantSet {
     }
 
     @NonNull
-    public <T extends DoubleValue> ListManager<T> listManager(final Class<T> variant) {
+    public <T extends DoubleValue> ListManager<T> listManager(@NonNull final Class<T> variant) {
         ListManager<T> listManager = (ListManager<T>) map.get(variant);
         if (null == listManager) {
             listManager = add(variant, defaultListSize);
@@ -66,7 +66,7 @@ public class VariantSet {
         return listManager;
     }
 
-    public <T extends DoubleValue> SampleList<T> listManager(final Class<T> variant, final SampledID listFor) {
+    public <T extends DoubleValue> SampleList<T> listManager(@NonNull final Class<T> variant, @NonNull final SampledID listFor) {
         final ListManager<T> listManager = listManager(variant);
         return listManager.list(listFor);
     }
@@ -75,7 +75,7 @@ public class VariantSet {
         return map.size();
     }
 
-    public <T extends DoubleValue> void push(final SampledID sampledID, @NonNull final Sample<T> sample) {
+    public <T extends DoubleValue> void push(@NonNull final SampledID sampledID, @NonNull final Sample<T> sample) {
         ((ListManager<T>) listManager(sample.value().getClass())).push(sampledID, sample);
     }
 }

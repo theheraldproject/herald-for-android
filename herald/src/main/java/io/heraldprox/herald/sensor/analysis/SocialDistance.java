@@ -25,7 +25,7 @@ public class SocialDistance extends Interactions {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
         final Encounter encounter = new Encounter(didMeasure, new PayloadData(fromTarget.value.getBytes()));
         if (encounter.isValid()) {
             append(encounter);
@@ -33,7 +33,7 @@ public class SocialDistance extends Interactions {
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget, PayloadData withPayload) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
         // Interactions require a valid payload, but that is unnecessary for social distance
         // Overriding parent function with no-op, replaced with sensor(sensor:didMeasure:fromTarget)
     }
@@ -43,20 +43,26 @@ public class SocialDistance extends Interactions {
     /// or RSSI less than excludeRssiBelow in every minute.
     /// - measuredPower defines RSSI at 1 metre
     /// - excludeRssiBelow defines minimum RSSI to include in analysis
-    public Double scoreByProximity(@NonNull Date start, @NonNull Date end) {
+    @NonNull
+    public Double scoreByProximity(@NonNull final Date start, @NonNull final Date end) {
         return scoreByProximity(start, end, -32d, -65d);
     }
-    public Double scoreByProximity(@NonNull Date start, @NonNull Date end, double measuredPower, double excludeRssiBelow) {
+
+    @NonNull
+    public Double scoreByProximity(@NonNull final Date start, @NonNull final Date end, final double measuredPower, final double excludeRssiBelow) {
         // Get encounters over time period
         final List<Encounter> encounters = subdata(start, end);
         // Get number of minutes in time period
-        final double duration = Math.ceil(new TimeInterval(start, end).value / 60);
+        final double duration = Math.ceil(new TimeInterval(start, end).value / 60d);
+        if (0 == duration) {
+            return 0d;
+        }
         // Get interactions for each time windows over time period
         final List<InteractionsForTime> timeWindows = reduceByTime(encounters,  TimeInterval.minute);
         // Get sum of exposure in each time window
         final double rssiRange = measuredPower - excludeRssiBelow;
         double totalScore = 0;
-        for (InteractionsForTime timeWindow : timeWindows) {
+        for (final InteractionsForTime timeWindow : timeWindows) {
             Double maxRSSI = null;
             for (List<Proximity> proximities : timeWindow.context.values()) {
                 for (Proximity proximity : proximities) {
@@ -80,20 +86,26 @@ public class SocialDistance extends Interactions {
             totalScore = totalScore + rssiPercentage;
         }
         // Score for time period is totalScore / duration
-        final double score = totalScore / duration;
+        @SuppressWarnings("UnnecessaryLocalVariable") final double score = totalScore / duration;
         return score;
     }
 
     /// Calculate social distance score based on number of different devices per 1 minute time window over duration
     /// A score of 1.0 means 6 or more in every minute, score of 0.0 means no device in every minute.
-    public Double scoreByTarget(@NonNull Date start, @NonNull Date end) {
+    @NonNull
+    public Double scoreByTarget(@NonNull final Date start, @NonNull final Date end) {
         return scoreByTarget(start, end, 6, -65);
     }
-    public Double scoreByTarget(@NonNull Date start, @NonNull Date end, int maximumDeviceCount, double excludeRssiBelow) {
+
+    @NonNull
+    public Double scoreByTarget(@NonNull final Date start, @NonNull final Date end, final int maximumDeviceCount, final double excludeRssiBelow) {
         // Get encounters over time period
         final List<Encounter> encounters = subdata(start, end);
         // Get number of minutes in time period
-        final double duration = Math.ceil(new TimeInterval(start, end).value / 60);
+        final double duration = Math.ceil(new TimeInterval(start, end).value / 60d);
+        if (0 == duration) {
+            return 0d;
+        }
         // Get interactions for each time windows over time period
         final List<InteractionsForTime> timeWindows = reduceByTime(encounters,  TimeInterval.minute);
         // Get sum of exposure in each time window
@@ -115,6 +127,7 @@ public class SocialDistance extends Interactions {
             totalScore = totalScore + devicesPercentage;
         }
         // Score for time period is totalScore / duration
+        //noinspection UnnecessaryLocalVariable
         final double score = totalScore / duration;
         return score;
     }

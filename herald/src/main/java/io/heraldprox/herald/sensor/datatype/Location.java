@@ -15,7 +15,7 @@ public class Location {
     /// Time spent at location.
     public final Date start, end;
 
-    public Location(LocationReference value, Date start, Date end) {
+    public Location(@NonNull final LocationReference value, @NonNull final Date start, @NonNull final Date end) {
         this.value = value;
         this.start = start;
         this.end = end;
@@ -24,6 +24,7 @@ public class Location {
     /// Get plain text description of proximity data
     @NonNull
     public String description() {
+        //noinspection ConstantConditions
         return (null == value ? "null" : value.description()) + ":[from=" + start + ",to=" + end + "]";
     }
 }

@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat;
 
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("ConstantConditions")
 public class SocialDistanceTests {
     private final static SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 

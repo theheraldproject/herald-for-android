@@ -12,12 +12,15 @@ import io.heraldprox.herald.sensor.datatype.DoubleValue;
 import java.util.Iterator;
 
 public class IteratorProxy<T extends DoubleValue> implements Iterator<Sample<T>>, Filterable<T> {
-    private Iterator<Sample<T>> source;
-    private Filter<T> filter;
-    private Sample<T> nextItem;
+    @NonNull
+    private final Iterator<Sample<T>> source;
+    @NonNull
+    private final Filter<T> filter;
+    @Nullable
+    private Sample<T> nextItem = null;
     private boolean nextItemSet = false;
 
-    public IteratorProxy(final Iterator<Sample<T>> source, final Filter<T> filter) {
+    public IteratorProxy(@NonNull final Iterator<Sample<T>> source, @NonNull final Filter<T> filter) {
         this.source = source;
         this.filter = filter;
     }
@@ -39,12 +42,12 @@ public class IteratorProxy<T extends DoubleValue> implements Iterator<Sample<T>>
 
     @NonNull
     @Override
-    public IteratorProxy<T> filter(final Filter filter) {
+    public IteratorProxy<T> filter(@NonNull final Filter<T> filter) {
         return new IteratorProxy<>(this, filter);
     }
 
     @NonNull
-    public Summary<T> aggregate(final Aggregate<T> ... aggregates) {
+    public Summary<T> aggregate(@NonNull final Aggregate<T> ... aggregates) {
         return toView().aggregate(aggregates);
     }
 

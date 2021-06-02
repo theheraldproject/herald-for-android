@@ -13,15 +13,15 @@ import java.util.Objects;
 public class UInt32 implements DoubleValue {
     public final static int bitWidth = 32;
     public final static UInt32 min = new UInt32(0);
-    public final static UInt32 max = new UInt32(4294967295l);
+    public final static UInt32 max = new UInt32(4294967295L);
     public final long value;
 
-    public UInt32(long value) {
-        this.value = (value < 0 ? 0 : (value > 4294967295l ? 4294967295l : value));
+    public UInt32(final long value) {
+        this.value = (value < 0 ? 0 : Math.min(value, 4294967295L));
     }
 
     @Override
-    public boolean equals(@Nullable Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) return true;
         if (null == o || getClass() != o.getClass()) return false;
         UInt32 uInt32 = (UInt32) o;

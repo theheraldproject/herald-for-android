@@ -42,17 +42,17 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     private final ExecutorService queue = Executors.newSingleThreadExecutor();
 
     @Override
-    public void add(final BLEDatabaseDelegate delegate) {
+    public void add(@NonNull final BLEDatabaseDelegate delegate) {
         delegates.add(delegate);
     }
 
     @Nullable
     @Override
-    public BLEDevice device(final TargetIdentifier targetIdentifier) {
+    public BLEDevice device(@NonNull final TargetIdentifier targetIdentifier) {
         return database.get(targetIdentifier);
     }
 
-    @Nullable
+    @NonNull
     @Override
     public BLEDevice device(@NonNull final BluetoothDevice bluetoothDevice) {
         final TargetIdentifier identifier = new TargetIdentifier(bluetoothDevice);
@@ -75,7 +75,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return device;
     }
 
-    @Nullable
+    @NonNull
     @Override
     public BLEDevice device(@NonNull final ScanResult scanResult) {
         // Get device by target identifier
@@ -91,6 +91,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
             // Reuse existing Android device
             BLEDevice deviceWithSamePseudoDeviceAddress = null;
             for (final BLEDevice device : database.values()) {
+                //noinspection ConstantConditions
                 if (null != device.pseudoDeviceAddress() && device.pseudoDeviceAddress().equals(pseudoDeviceAddress)) {
                     deviceWithSamePseudoDeviceAddress = device;
                     break;
@@ -147,7 +148,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return null;
     }
 
-    @Nullable
+    @NonNull
     @Override
     public BLEDevice device(@NonNull PayloadData payloadData) {
         BLEDevice device = null;
@@ -238,6 +239,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
                 continue;
             }
             // Payload is not the peer itself
+            //noinspection ConstantConditions
             if (null != peer.payloadData() && (Arrays.equals(device.payloadData().value, peer.payloadData().value))) {
                 continue;
             }

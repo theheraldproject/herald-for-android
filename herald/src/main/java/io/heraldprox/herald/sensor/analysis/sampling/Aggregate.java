@@ -4,15 +4,19 @@
 
 package io.heraldprox.herald.sensor.analysis.sampling;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public interface Aggregate<T extends DoubleValue> {
     int runs();
 
-    void beginRun(int thisRun);
+    void beginRun(final int thisRun);
 
-    void map(Sample<T> value);
+    void map(@NonNull final Sample<T> value);
 
+    @Nullable
     Double reduce();
 
     void reset();

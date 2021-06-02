@@ -26,22 +26,23 @@ import java.util.concurrent.ConcurrentHashMap;
 public class StatisticsLog extends DefaultSensorDelegate {
     @NonNull
     private final TextFile textFile;
+    @NonNull
     private final PayloadData payloadData;
     private final Map<TargetIdentifier, String> identifierToPayload = new ConcurrentHashMap<>();
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
     private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
 
-    public StatisticsLog(@NonNull final Context context, @NonNull final String filename, final PayloadData payloadData) {
+    public StatisticsLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
         textFile = new TextFile(context, filename);
         this.payloadData = payloadData;
     }
 
     @NonNull
-    private String csv(@NonNull String value) {
+    private String csv(@NonNull final String value) {
         return TextFile.csv(value);
     }
 
-    private void add(TargetIdentifier identifier) {
+    private void add(@NonNull final TargetIdentifier identifier) {
         final String payload = identifierToPayload.get(identifier);
         if (null == payload) {
             return;
@@ -49,7 +50,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
         add(payload);
     }
 
-    private void add(String payload) {
+    private void add(@NonNull final String payload) {
         final Date time = payloadToTime.get(payload);
         final Sample sample = payloadToSample.get(payload);
         if (null == time || null == sample) {
@@ -66,14 +67,14 @@ public class StatisticsLog extends DefaultSensorDelegate {
     private void write() {
         final StringBuilder content = new StringBuilder("payload,count,mean,sd,min,max\n");
         final List<String> payloadList = new ArrayList<>();
-        for (String payload : payloadToSample.keySet()) {
+        for (final String payload : payloadToSample.keySet()) {
             if (payload.equals(payloadData.shortName())) {
                 continue;
             }
             payloadList.add(payload);
         }
         Collections.sort(payloadList);
-        for (String payload : payloadList) {
+        for (final String payload : payloadList) {
             final Sample sample = payloadToSample.get(payload);
             if (null == sample) {
                 continue;
@@ -101,18 +102,18 @@ public class StatisticsLog extends DefaultSensorDelegate {
     // MARK:- SensorDelegate
 
     @Override
-    public void sensor(SensorType sensor, @NonNull PayloadData didRead, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
         identifierToPayload.put(fromTarget, didRead.shortName());
         add(fromTarget);
     }
 
     @Override
-    public void sensor(SensorType sensor, Proximity didMeasure, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
         add(fromTarget);
     }
 
     @Override
-    public void sensor(SensorType sensor, @NonNull List<PayloadData> didShare, TargetIdentifier fromTarget) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
         for (PayloadData payload : didShare) {
             add(payload.shortName());
         }

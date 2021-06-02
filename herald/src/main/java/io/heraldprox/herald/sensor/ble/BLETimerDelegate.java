@@ -6,5 +6,5 @@ package io.heraldprox.herald.sensor.ble;
 
 public interface BLETimerDelegate {
 
-    void bleTimer(long currentTimeMillis);
+    void bleTimer(final long currentTimeMillis);
 }

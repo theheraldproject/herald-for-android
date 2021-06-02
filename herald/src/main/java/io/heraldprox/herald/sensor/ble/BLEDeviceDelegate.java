@@ -4,7 +4,10 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 public interface BLEDeviceDelegate {
-    void device(BLEDevice device, BLEDeviceAttribute didUpdate);
+
+    void device(@NonNull final BLEDevice device, @NonNull final BLEDeviceAttribute didUpdate);
 }
 

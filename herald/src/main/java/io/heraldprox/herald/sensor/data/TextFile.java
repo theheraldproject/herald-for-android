@@ -84,7 +84,7 @@ public class TextFile {
     }
 
     /// Append line to new or existing file
-    public synchronized void write(String line) {
+    public synchronized void write(@NonNull final String line) {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
             fileOutputStream.write((line + "\n").getBytes());
@@ -96,7 +96,7 @@ public class TextFile {
     }
 
     /// Overwrite file content
-    public synchronized void overwrite(@NonNull String content) {
+    public synchronized void overwrite(@NonNull final String content) {
         try {
             // Write to temporary file first
             final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");
@@ -105,7 +105,9 @@ public class TextFile {
             fileOutputStream.flush();
             fileOutputStream.close();
             // Rename to actual file on completion
-            temporaryFile.renameTo(file);
+            if (!temporaryFile.renameTo(file)) {
+                logger.fault("overwrite failed (file={},reason=renameFailed)", file);
+            }
         } catch (Throwable e) {
             logger.fault("overwrite failed (file={})", file, e);
         }
@@ -113,7 +115,7 @@ public class TextFile {
 
     /// Quote value for CSV output if required.
     @NonNull
-    public static String csv(@NonNull String value) {
+    public static String csv(@NonNull final String value) {
         if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {
             return "\"" + value + "\"";
         } else {

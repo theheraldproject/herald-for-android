@@ -18,6 +18,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("ConstantConditions")
 public class InteractionsTests {
     private final static SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -71,6 +72,7 @@ public class InteractionsTests {
         assertEquals(Interactions.reduceByProximity(new ArrayList<Encounter>()).size(), 0);
 
         // One encounter at RSSI=1 with one device -> [1:1]
+        //noinspection ArraysAsListWithZeroOrOneArgument
         final List<Encounter> encounters1 = Arrays.asList(
                 new Encounter(new Proximity(ProximityMeasurementUnit.RSSI, 1d), new PayloadData((byte) 0, 1), f.parse("2020-09-24 00:00:00"))
         );
@@ -126,6 +128,7 @@ public class InteractionsTests {
         assertEquals(Interactions.reduceByTime(new ArrayList<Encounter>()).size(), 0);
 
         // One encounter at RSSI=1 with one device -> [(2020-09-24T00:00:00+0000,[0:[1]])]
+        //noinspection ArraysAsListWithZeroOrOneArgument
         final List<Encounter> encounters1 = Arrays.asList(
                 new Encounter(new Proximity(ProximityMeasurementUnit.RSSI, 1d), new PayloadData((byte) 0, 1), f.parse("2020-09-24 00:00:00"))
         );

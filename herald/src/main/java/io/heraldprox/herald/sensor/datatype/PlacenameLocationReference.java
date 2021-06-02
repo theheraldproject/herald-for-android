@@ -8,9 +8,10 @@ import androidx.annotation.NonNull;
 
 /// Free text place name.
 public class PlacenameLocationReference implements LocationReference {
+    @NonNull
     public final String name;
 
-    public PlacenameLocationReference(String name) {
+    public PlacenameLocationReference(@NonNull final String name) {
         this.name = name;
     }
 

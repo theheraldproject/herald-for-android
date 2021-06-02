@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 
@@ -14,12 +15,13 @@ import java.util.UUID;
 
 /// Legacy payload data received from target
 public class LegacyPayloadData extends PayloadData {
+    @Nullable
     public final UUID service; // null value is permitted
     public enum ProtocolName {
         UNKNOWN, NOT_AVAILABLE, HERALD, OPENTRACE, ADVERT
     }
 
-    public LegacyPayloadData(final UUID service, final byte[] value) {
+    public LegacyPayloadData(@Nullable final UUID service, @NonNull final byte[] value) {
         super(value);
         this.service = service; // null value is permitted
     }
@@ -39,6 +41,7 @@ public class LegacyPayloadData extends PayloadData {
         }
     }
 
+    @NonNull
     @Override
     public String shortName() {
         // Decoder for test payload to assist debugging of OpenTrace interop

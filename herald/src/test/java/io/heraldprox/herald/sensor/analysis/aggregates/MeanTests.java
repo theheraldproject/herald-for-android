@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("ConstantConditions")
 public class MeanTests {
 
     @Test
@@ -36,7 +37,7 @@ public class MeanTests {
             assertNotNull(mean.reduce());
             sum += i;
             count++;
-            assertEquals(sum/(double) count, mean.reduce().doubleValue(), Double.MIN_VALUE);
+            assertEquals(sum/(double) count, mean.reduce(), Double.MIN_VALUE);
         }
     }
 
@@ -54,7 +55,7 @@ public class MeanTests {
     public void testReset() {
         final Mean<Int8> mean = new Mean<>();
         mean.map(new Sample<>(new Int8(10)));
-        assertEquals(10, mean.reduce().doubleValue(), Double.MIN_VALUE);
+        assertEquals(10, mean.reduce(), Double.MIN_VALUE);
         mean.reset();
         assertNull(mean.reduce());
     }

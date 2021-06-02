@@ -14,16 +14,17 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class BLEAdvertParser {
+
     @NonNull
-    public static BLEScanResponseData parseScanResponse(@NonNull byte[] raw, int offset) {
+    public static BLEScanResponseData parseScanResponse(@NonNull final byte[] raw, final int offset) {
         // Multiple segments until end of binary data
         return new BLEScanResponseData(raw.length - offset, extractSegments(raw, offset));
     }
 
     @NonNull
-    public static List<BLEAdvertSegment> extractSegments(@NonNull byte[] raw, int offset) {
+    public static List<BLEAdvertSegment> extractSegments(@NonNull final byte[] raw, final int offset) {
+        final ArrayList<BLEAdvertSegment> segments = new ArrayList<>();
         int position = offset;
-        ArrayList<BLEAdvertSegment> segments = new ArrayList<BLEAdvertSegment>();
         int segmentLength;
         int segmentType;
         byte[] segmentData;
@@ -32,8 +33,8 @@ public class BLEAdvertParser {
 
         while (position < raw.length) {
             if ((position + 2) <= raw.length) {
-                segmentLength = (byte)raw[position++] & 0xff;
-                segmentType = (byte)raw[position++] & 0xff;
+                segmentLength = raw[position++] & 0xff;
+                segmentType = raw[position++] & 0xff;
                 // Note: Unsupported types are handled as 'unknown'
                 // check reported length with actual remaining data length
                 if ((position + segmentLength - 1) <= raw.length) {
@@ -55,18 +56,18 @@ public class BLEAdvertParser {
     }
 
     @NonNull
-    public static String hex(@NonNull byte[] bytes) {
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
+    public static String hex(@NonNull final byte[] bytes) {
+        final StringBuilder result = new StringBuilder();
+        for (final byte b : bytes) {
             result.append(String.format("%02x", b));
         }
         return result.toString();
     }
 
     @NonNull
-    public static String binaryString(@NonNull byte[] bytes) {
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
+    public static String binaryString(@NonNull final byte[] bytes) {
+        final StringBuilder result = new StringBuilder();
+        for (final byte b : bytes) {
             result.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
             result.append(" ");
         }
@@ -74,7 +75,7 @@ public class BLEAdvertParser {
     }
 
     @NonNull
-    public static byte[] subDataBigEndian(@Nullable byte[] raw, int offset, int length) {
+    public static byte[] subDataBigEndian(@Nullable final byte[] raw, final int offset, final int length) {
         if (null == raw) {
             return new byte[]{};
         }
@@ -84,7 +85,7 @@ public class BLEAdvertParser {
         if (length + offset > raw.length) {
             return new byte[]{};
         }
-        byte[] data = new byte[length];
+        final byte[] data = new byte[length];
         int position = offset;
         for (int c = 0;c < length;c++) {
             data[c] = raw[position++];
@@ -93,7 +94,7 @@ public class BLEAdvertParser {
     }
 
     @NonNull
-    public static byte[] subDataLittleEndian(@Nullable byte[] raw, int offset, int length) {
+    public static byte[] subDataLittleEndian(@Nullable final byte[] raw, final int offset, final int length) {
         if (null == raw) {
             return new byte[]{};
         }
@@ -103,7 +104,7 @@ public class BLEAdvertParser {
         if (length + offset > raw.length) {
             return new byte[]{};
         }
-        byte[] data = new byte[length];
+        final byte[] data = new byte[length];
         int position = offset + length - 1;
         for (int c = 0;c < length;c++) {
             data[c] = raw[position--];
@@ -112,28 +113,28 @@ public class BLEAdvertParser {
     }
 
     @Nullable
-    public static Integer extractTxPower(@NonNull List<BLEAdvertSegment> segments) {
+    public static Integer extractTxPower(@NonNull final List<BLEAdvertSegment> segments) {
         // find the txPower code segment in the list
-        for (BLEAdvertSegment segment : segments) {
+        for (final BLEAdvertSegment segment : segments) {
             if (segment.type == BLEAdvertSegmentType.txPowerLevel) {
-                return (new UInt8((int)segment.data[0])).value;
+                return (new UInt8(segment.data[0])).value;
             }
         }
         return null;
     }
 
     @NonNull
-    public static List<BLEAdvertManufacturerData> extractManufacturerData(@NonNull List<BLEAdvertSegment> segments) {
+    public static List<BLEAdvertManufacturerData> extractManufacturerData(@NonNull final List<BLEAdvertSegment> segments) {
         // find the manufacturerData code segment in the list
-        List<BLEAdvertManufacturerData> manufacturerData = new ArrayList<>();
-        for (BLEAdvertSegment segment : segments) {
+        final List<BLEAdvertManufacturerData> manufacturerData = new ArrayList<>();
+        for (final BLEAdvertSegment segment : segments) {
             if (segment.type == BLEAdvertSegmentType.manufacturerData) {
                 // Ensure that the data area is long enough
                 if (segment.data.length < 2) {
                     continue; // there may be a valid segment of same type... Happens for manufacturer data
                 }
                 // Create a manufacturer data segment
-                int intValue = ((segment.data[1]&0xff) << 8) | (segment.data[0]&0xff);
+                final int intValue = ((segment.data[1]&0xff) << 8) | (segment.data[0]&0xff);
                 manufacturerData.add(new BLEAdvertManufacturerData(intValue,subDataBigEndian(segment.data,2,segment.dataLength - 2), segment.raw));
             }
         }
@@ -141,9 +142,9 @@ public class BLEAdvertParser {
     }
 
     @NonNull
-    public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(@NonNull List <BLEAdvertManufacturerData> manuData) {
+    public static List <BLEAdvertAppleManufacturerSegment> extractAppleManufacturerSegments(@NonNull final List <BLEAdvertManufacturerData> manuData) {
         final List<BLEAdvertAppleManufacturerSegment> appleSegments = new ArrayList<>();
-        for (BLEAdvertManufacturerData manu : manuData) {
+        for (final BLEAdvertManufacturerData manu : manuData) {
             int bytePos = 0;
             while (bytePos < manu.data.length) {
                 final byte type = manu.data[bytePos];
@@ -160,7 +161,7 @@ public class BLEAdvertParser {
                 // Parse according to Type-Length-Data
                 else {
                     final int length = manu.data[bytePos + 1] & 0xFF;
-                    final int maxLength = (length < manu.data.length - bytePos - 2 ? length : manu.data.length - bytePos - 2);
+                    final int maxLength = Math.min(length, manu.data.length - bytePos - 2);
                     final Data data = new Data(subDataBigEndian(manu.data, bytePos + 2, maxLength));
                     final Data raw = new Data(subDataBigEndian(manu.data, bytePos, maxLength + 2));
                     final BLEAdvertAppleManufacturerSegment segment = new BLEAdvertAppleManufacturerSegment(typeValue, length, data.value, raw);
@@ -173,10 +174,10 @@ public class BLEAdvertParser {
     }
 
     @NonNull
-    public static List<BLEAdvertServiceData> extractServiceUUID16Data(@NonNull List<BLEAdvertSegment> segments) {
+    public static List<BLEAdvertServiceData> extractServiceUUID16Data(@NonNull final List<BLEAdvertSegment> segments) {
         // find the serviceData code segment in the list
-        List<BLEAdvertServiceData> serviceData = new ArrayList<>();
-        for (BLEAdvertSegment segment : segments) {
+        final List<BLEAdvertServiceData> serviceData = new ArrayList<>();
+        for (final BLEAdvertSegment segment : segments) {
             if (segment.type == BLEAdvertSegmentType.serviceUUID16Data) {
                 // Ensure that the data area is long enough
                 if (segment.data.length < 2) {

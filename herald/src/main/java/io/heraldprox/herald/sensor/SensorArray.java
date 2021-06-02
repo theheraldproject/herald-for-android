@@ -24,19 +24,16 @@ import java.util.List;
 
 /// Sensor array for combining multiple detection and tracking methods.
 public class SensorArray implements Sensor {
-    @NonNull
-    private final Context context;
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private final List<Sensor> sensorArray = new ArrayList<>();
-
+    @NonNull
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
 
     @NonNull
     private final ConcreteBLESensor concreteBleSensor;
 
-    public SensorArray(@NonNull final Context context, @NonNull PayloadDataSupplier payloadDataSupplier) {
-        this.context = context;
+    public SensorArray(@NonNull final Context context, @NonNull final PayloadDataSupplier payloadDataSupplier) {
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);
         logger.debug("init");
@@ -55,21 +52,22 @@ public class SensorArray implements Sensor {
     }
 
     /// Immediate send data.
-    public boolean immediateSend(Data data, TargetIdentifier targetIdentifier) {
+    public boolean immediateSend(@NonNull final Data data, @NonNull final TargetIdentifier targetIdentifier) {
         return concreteBleSensor.immediateSend(data,targetIdentifier);
     }
 
     /// Immediate send to all (connected / recent / nearby)
-    public boolean immediateSendAll(Data data) {
+    public boolean immediateSendAll(@NonNull final Data data) {
         return concreteBleSensor.immediateSendAll(data);
     }
 
+    @NonNull
     public final PayloadData payloadData() {
         return payloadData;
     }
 
     @Override
-    public void add(final SensorDelegate delegate) {
+    public void add(@NonNull final SensorDelegate delegate) {
         for (Sensor sensor : sensorArray) {
             sensor.add(delegate);
         }

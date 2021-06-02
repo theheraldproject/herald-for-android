@@ -13,7 +13,6 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
 public class FowlerBasic<T extends DoubleValue> implements Aggregate<T> {
-    private int run = 1;
     private final Mode<T> mode = new Mode<>();
     private final double intercept;
     private final double coefficient;
@@ -29,13 +28,12 @@ public class FowlerBasic<T extends DoubleValue> implements Aggregate<T> {
     }
 
     @Override
-    public void beginRun(int thisRun) {
-        run = thisRun;
+    public void beginRun(final int thisRun) {
         mode.beginRun(thisRun);
     }
 
     @Override
-    public void map(@NonNull Sample<T> value) {
+    public void map(@NonNull final Sample<T> value) {
         mode.map(value);
    }
 

@@ -62,10 +62,13 @@ import static android.bluetooth.le.AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_A
 public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateManagerDelegate {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLETransmitter");
     private final static long advertOffDurationMillis = TimeInterval.seconds(4).millis();
+    @NonNull
     private final Context context;
     @NonNull
     private final BluetoothStateManager bluetoothStateManager;
+    @NonNull
     private final PayloadDataSupplier payloadDataSupplier;
+    @NonNull
     private final BLEDatabase database;
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     private final AtomicBoolean transmitterEnabled = new AtomicBoolean(false);
@@ -83,7 +86,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
      * @param payloadDataSupplier Source of the payload to transmit
      * @param database BLE Device database to locate nearby device information
      */
-    public ConcreteBLETransmitter(Context context, @NonNull BluetoothStateManager bluetoothStateManager, @NonNull BLETimer timer, PayloadDataSupplier payloadDataSupplier, BLEDatabase database) {
+    public ConcreteBLETransmitter(@NonNull final Context context, @NonNull final BluetoothStateManager bluetoothStateManager, @NonNull final BLETimer timer, @NonNull final PayloadDataSupplier payloadDataSupplier, @NonNull final BLEDatabase database) {
         this.context = context;
         this.bluetoothStateManager = bluetoothStateManager;
         this.payloadDataSupplier = payloadDataSupplier;
@@ -94,7 +97,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
     @Override
-    public void add(SensorDelegate delegate) {
+    public void add(@NonNull final SensorDelegate delegate) {
         delegates.add(delegate);
     }
 
@@ -150,6 +153,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
     private class AdvertLoopTask implements BLETimerDelegate {
+        @NonNull
         private AdvertLoopState advertLoopState = AdvertLoopState.stopped;
         private long lastStateChangeAt = System.currentTimeMillis();
         @Nullable
@@ -157,7 +161,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         @Nullable
         private AdvertiseCallback advertiseCallback;
 
-        private void state(final long now, AdvertLoopState state) {
+        private void state(final long now, @NonNull final AdvertLoopState state) {
             final long elapsed = now - lastStateChangeAt;
             logger.debug("advertLoopTask, state change (from={},to={},elapsed={}ms)", advertLoopState, state, elapsed);
             this.advertLoopState = state;
@@ -175,7 +179,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     logger.debug("advertLoopTask, stopping advert following bluetooth state change (isSupported={},bluetoothPowerOff={})", isSupported(), bluetoothStateManager.state() == BluetoothState.poweredOff);
                     stopAdvert(bluetoothLeAdvertiser(), advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {
                         @Override
-                        public void accept(Boolean value) {
+                        public void accept(@NonNull final Boolean value) {
                             advertiseCallback = null;
                             bluetoothGattServer = null;
                             state(now, AdvertLoopState.stopped);
@@ -202,7 +206,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                                 public void accept(@NonNull Triple<Boolean, AdvertiseCallback, BluetoothGattServer> value) {
                                     advertiseCallback = value.b;
                                     bluetoothGattServer = value.c;
-                                    state(now, value.a ? AdvertLoopState.started : AdvertLoopState.stopped);
+                                    state(now, value.a != null && value.a ? AdvertLoopState.started : AdvertLoopState.stopped);
                                 }
                             });
                         }
@@ -221,7 +225,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                         state(now, AdvertLoopState.stopping);
                         stopAdvert(bluetoothLeAdvertiser, advertiseCallback, bluetoothGattServer, new Callback<Boolean>() {
                             @Override
-                            public void accept(Boolean value) {
+                            public void accept(@NonNull final Boolean value) {
                                 advertiseCallback = null;
                                 bluetoothGattServer = null;
                                 state(now, AdvertLoopState.stopped);
@@ -291,13 +295,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     final BluetoothGattServer bluetoothGattServerConfirmed = bluetoothGattServer;
                     final AdvertiseCallback advertiseCallback = new AdvertiseCallback() {
                         @Override
-                        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+                        public void onStartSuccess(final AdvertiseSettings settingsInEffect) {
                             logger.debug("startAdvert successful");
                             callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(true, this, bluetoothGattServerConfirmed));
                         }
 
                         @Override
-                        public void onStartFailure(int errorCode) {
+                        public void onStartFailure(final int errorCode) {
                             logger.fault("startAdvert failed (errorCode={})", onStartFailureErrorCodeToString(errorCode));
                             callback.accept(new Triple<Boolean, AdvertiseCallback, BluetoothGattServer>(false, this, bluetoothGattServerConfirmed));
                         }
@@ -345,6 +349,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
 
+    @NonNull
     @Override
     public PayloadData payloadData() {
         return payloadDataSupplier.payload(new PayloadTimestamp(new Date()), null);
@@ -356,11 +361,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     }
 
     @Override
-    public void bluetoothStateManager(BluetoothState didUpdateState) {
+    public void bluetoothStateManager(@NonNull final BluetoothState didUpdateState) {
         logger.debug("didUpdateState (state={},transmitterEnabled={})", didUpdateState, transmitterEnabled.get());
     }
 
-    private void startAdvertising(@NonNull final BluetoothLeAdvertiser bluetoothLeAdvertiser, final AdvertiseCallback advertiseCallback) {
+    private void startAdvertising(@NonNull final BluetoothLeAdvertiser bluetoothLeAdvertiser, @NonNull final AdvertiseCallback advertiseCallback) {
         logger.debug("startAdvertising");
         final AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
@@ -395,7 +400,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             private final Map<String, byte[]> onCharacteristicWriteSignalData = new ConcurrentHashMap<>();
 
             @Nullable
-            private PayloadData onCharacteristicReadPayloadData(@NonNull BluetoothDevice bluetoothDevice) {
+            private PayloadData onCharacteristicReadPayloadData(@NonNull final BluetoothDevice bluetoothDevice) {
                 final BLEDevice device = database.device(bluetoothDevice);
                 final String key = bluetoothDevice.getAddress();
                 if (onCharacteristicReadPayloadData.containsKey(key)) {
@@ -407,13 +412,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @NonNull
-            private byte[] onCharacteristicWriteSignalData(@NonNull BluetoothDevice device, @Nullable byte[] value) {
+            private byte[] onCharacteristicWriteSignalData(@NonNull final BluetoothDevice device, @Nullable final byte[] value) {
                 final String key = device.getAddress();
                 byte[] partialData = onCharacteristicWriteSignalData.get(key);
                 if (null == partialData) {
                     partialData = new byte[0];
                 }
-                byte[] data = new byte[partialData.length + (null == value ? 0 : value.length)];
+                final byte[] data = new byte[partialData.length + (null == value ? 0 : value.length)];
                 System.arraycopy(partialData, 0, data, 0, partialData.length);
                 if (value != null) {
                     System.arraycopy(value, 0, data, partialData.length, value.length);
@@ -422,14 +427,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 return data;
             }
 
-            private void removeData(@NonNull BluetoothDevice device) {
+            private void removeData(@NonNull final BluetoothDevice device) {
                 final String deviceAddress = device.getAddress();
-                for (String deviceRequestId : new ArrayList<>(onCharacteristicReadPayloadData.keySet())) {
+                for (final String deviceRequestId : new ArrayList<>(onCharacteristicReadPayloadData.keySet())) {
                     if (deviceRequestId.startsWith(deviceAddress)) {
                         onCharacteristicReadPayloadData.remove(deviceRequestId);
                     }
                 }
-                for (String deviceRequestId : new ArrayList<>(onCharacteristicWriteSignalData.keySet())) {
+                for (final String deviceRequestId : new ArrayList<>(onCharacteristicWriteSignalData.keySet())) {
                     if (deviceRequestId.startsWith(deviceAddress)) {
                         onCharacteristicWriteSignalData.remove(deviceRequestId);
                     }
@@ -437,7 +442,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @Override
-            public void onConnectionStateChange(@NonNull BluetoothDevice bluetoothDevice, int status, int newState) {
+            public void onConnectionStateChange(@NonNull final BluetoothDevice bluetoothDevice, final int status, final int newState) {
                 final BLEDevice device = database.device(bluetoothDevice);
                 logger.debug("onConnectionStateChange (device={},status={},newState={})",
                         device, status, onConnectionStateChangeStatusToString(newState));
@@ -450,7 +455,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @Override
-            public void onCharacteristicWriteRequest(@NonNull BluetoothDevice device, int requestId, @NonNull BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, @Nullable byte[] value) {
+            public void onCharacteristicWriteRequest(@NonNull final BluetoothDevice device, final int requestId, @NonNull final BluetoothGattCharacteristic characteristic, final boolean preparedWrite, final boolean responseNeeded, final int offset, @Nullable final byte[] value) {
                 final BLEDevice targetDevice = database.device(device);
                 final TargetIdentifier targetIdentifier = targetDevice.identifier;
                 logger.debug("didReceiveWrite (central={},requestId={},offset={},characteristic={},value={})",
@@ -466,7 +471,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 }
                 final Data data = new Data(onCharacteristicWriteSignalData(device, value));
 				if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
-				    if (null == data.value) {
+                    //noinspection ConstantConditions
+                    if (null == data.value) {
 				        return;
                     }
                     final PayloadData payloadData = new PayloadData(data.value);
@@ -546,14 +552,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @Override
-            public void onCharacteristicReadRequest(@NonNull BluetoothDevice device, int requestId, int offset, @NonNull BluetoothGattCharacteristic characteristic) {
+            public void onCharacteristicReadRequest(@NonNull final BluetoothDevice device, final int requestId, final int offset, @NonNull final BluetoothGattCharacteristic characteristic) {
                 final BLEDevice targetDevice = database.device(device);
                 if (characteristic.getUuid() == BLESensorConfiguration.payloadCharacteristicUUID || characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
                     final PayloadData payloadData = onCharacteristicReadPayloadData(device);
-                    if (offset > payloadData.value.length) {
+                    if (payloadData != null && offset > payloadData.value.length) {
                         logger.fault("didReceiveRead, invalid offset (central={},requestId={},offset={},characteristic=payload,dataLength={})", targetDevice, requestId, offset, payloadData.value.length);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);
-                    } else {
+                    } else if (payloadData != null) {
                         final byte[] value = Arrays.copyOfRange(payloadData.value, offset, payloadData.value.length);
                         server.get().sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
                         logger.debug("didReceiveRead (central={},requestId={},offset={},characteristic=payload)", targetDevice, requestId, offset);
@@ -580,17 +586,17 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             logger.fault("Bluetooth LE advertiser unsupported");
             return;
         }
-        for (BluetoothDevice device : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)) {
+        for (final BluetoothDevice device : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)) {
             bluetoothGattServer.cancelConnection(device);
         }
-        for (BluetoothDevice device : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT_SERVER)) {
+        for (final BluetoothDevice device : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT_SERVER)) {
             bluetoothGattServer.cancelConnection(device);
         }
         bluetoothGattServer.clearServices();
 
         // Logic check - ensure there are now no Gatt Services
         List<BluetoothGattService> services = bluetoothGattServer.getServices();
-        for (BluetoothGattService svc : services) {
+        for (final BluetoothGattService svc : services) {
             logger.fault("setGattService device clearServices() call did not correctly clear service (service={})",svc.getUuid());
         }
 
@@ -619,7 +625,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         // Logic check - ensure there can be only one Herald service
         services = bluetoothGattServer.getServices();
         int count = 0;
-        for (BluetoothGattService svc : services) {
+        for (final BluetoothGattService svc : services) {
             if (svc.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
                 count++;
             }

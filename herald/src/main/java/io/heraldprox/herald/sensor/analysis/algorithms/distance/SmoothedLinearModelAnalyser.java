@@ -23,8 +23,11 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
 public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Distance> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearModelAnalyser");
+    @NonNull
     private final TimeInterval interval;
+    @NonNull
     private final TimeInterval smoothingWindow;
+    @NonNull
     private final SmoothedLinearModel model;
     @NonNull
     private Date lastRan = new Date(0);
@@ -34,7 +37,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
         this(new TimeInterval(4), new TimeInterval(60), new SmoothedLinearModel<RSSI>());
     }
 
-    public SmoothedLinearModelAnalyser(final TimeInterval interval, final TimeInterval smoothingWindow, final SmoothedLinearModel<RSSI> smoothedLinearModel) {
+    public SmoothedLinearModelAnalyser(@NonNull final TimeInterval interval, @NonNull final TimeInterval smoothingWindow, @NonNull final SmoothedLinearModel<RSSI> smoothedLinearModel) {
         this.interval = interval;
         this.smoothingWindow = smoothingWindow;
         this.model = smoothedLinearModel;
@@ -53,7 +56,7 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
     }
 
     @Override
-    public boolean analyse(@NonNull Date timeNow, SampledID sampled, @NonNull SampleList<RSSI> input, @NonNull final SampleList<Distance> output, @NonNull CallableForNewSample<Distance> callable) {
+    public boolean analyse(@NonNull final Date timeNow, @NonNull final SampledID sampled, @NonNull final SampleList<RSSI> input, @NonNull final SampleList<Distance> output, @NonNull CallableForNewSample<Distance> callable) {
         // Interval guard
         final TimeInterval secondsSinceLastRan = new TimeInterval(timeNow.secondsSinceUnixEpoch() - lastRan.secondsSinceUnixEpoch());
         if (secondsSinceLastRan.value < interval.value) {
@@ -67,7 +70,12 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
             return false;
         }
         // Input guard : Must cover entire smoothing window
-        final TimeInterval observed = new TimeInterval(timeNow.secondsSinceUnixEpoch() - validInput.get(0).taken().secondsSinceUnixEpoch());
+        final Sample<RSSI> firstValidInput = validInput.get(0);
+        if (null == firstValidInput) {
+            logger.debug("analyse, skipped (reason=noValidData,inputSamples={},validInputSamples={})", input.size(), validInput.size());
+            return false;
+        }
+        final TimeInterval observed = new TimeInterval(timeNow.secondsSinceUnixEpoch() - firstValidInput.taken().secondsSinceUnixEpoch());
         if (observed.value < smoothingWindow.value) {
             logger.debug("analyse, skipped (reason=insufficientHistoricDataForSmoothing,required={}s,observed={}s)", smoothingWindow, observed);
             return false;
@@ -86,13 +94,23 @@ public class SmoothedLinearModelAnalyser implements AnalysisProvider<RSSI, Dista
             return false;
         }
         // Publish distance data
-        final Date timeStart = window.get(0).taken();
+        final Sample<RSSI> sampleStart = window.get(0);
+        if (null == sampleStart) {
+            logger.debug("analyse, skipped (reason=emptyWindow)");
+            return false;
+        }
+        final Date timeStart = sampleStart.taken();
         final Date timeEnd = window.latest();
+        if (null == timeEnd) {
+            logger.debug("analyse, skipped (reason=missingTimeEnd)");
+            return false;
+        }
         final Date timeMiddle = new Date(timeEnd.secondsSinceUnixEpoch() - ((timeEnd.secondsSinceUnixEpoch() - timeStart.secondsSinceUnixEpoch()) / 2));
         logger.debug("analyse (timeStart={},timeEnd={},timeMiddle={},samples={},medianOfRssi={},distance={})", timeStart, timeEnd, timeMiddle, window.size(), model.medianOfRssi(), distance);
         final Sample<Distance> newSample = new Sample<>(timeMiddle, new Distance(distance));
         output.push(newSample);
         callable.newSample(sampled, newSample);
+        lastRan = new Date();
         return true;
     }
 }

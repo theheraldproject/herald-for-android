@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.Sensor;
 import io.heraldprox.herald.sensor.SensorDelegate;
@@ -23,6 +25,7 @@ public interface BLETransmitter extends Sensor {
      * to detect a beacon transmitter and make their own presence known by sending its own beacon code and RSSI as
      * data to the transmitter.
      */
+    @NonNull
     Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
 
     /**
@@ -30,6 +33,7 @@ public interface BLETransmitter extends Sensor {
      * 
      * @return The current PayloadData for this device.
      */
+    @NonNull
     PayloadData payloadData();
 
     /**

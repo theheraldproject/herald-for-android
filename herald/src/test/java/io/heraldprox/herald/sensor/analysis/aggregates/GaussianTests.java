@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("ConstantConditions")
 public class GaussianTests {
 
     @Test
@@ -37,7 +38,7 @@ public class GaussianTests {
             sum += i;
             count++;
             // One pass algorithm for mean and variance
-            assertEquals(sum/(double) count, gaussian.reduce().doubleValue(), Double.MIN_VALUE);
+            assertEquals(sum/(double) count, gaussian.reduce(), Double.MIN_VALUE);
             if (count > 1) {
                 final double mean = sum / (double) count;
                 double sumSquaredDelta = 0;
@@ -67,7 +68,7 @@ public class GaussianTests {
     public void testReset() {
         final Gaussian<Int8> gaussian = new Gaussian<>();
         gaussian.map(new Sample<>(new Int8(10)));
-        assertEquals(10, gaussian.reduce().doubleValue(), Double.MIN_VALUE);
+        assertEquals(10, gaussian.reduce(), Double.MIN_VALUE);
         gaussian.reset();
         assertNull(gaussian.reduce());
     }

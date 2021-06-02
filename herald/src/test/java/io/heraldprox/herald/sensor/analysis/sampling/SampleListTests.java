@@ -13,9 +13,9 @@ import java.util.Iterator;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+@SuppressWarnings({"ConstantConditions", "unchecked"})
 public class SampleListTests {
 
     @Test
@@ -51,7 +51,9 @@ public class SampleListTests {
 
     @Test
     public void sample_copy_assign() {
+        //noinspection UnnecessaryLocalVariable
         final Sample<RSSI> s = new Sample<>(new Date(1234), new RSSI(-55));
+        //noinspection UnnecessaryLocalVariable
         final Sample<RSSI> s2 = s;
         assertEquals(s2.taken().secondsSinceUnixEpoch(), 1234);
         assertEquals(s2.value().value, -55, Double.MIN_VALUE);
