@@ -48,6 +48,7 @@ dependencies {
 }
 
 ext["signing.gnupg.passphrase"] = System.getenv('GPG_PASSPHRASE') 
+ext["signing.gnupg.keyName"] = System.getenv('GPG_KEYID') 
 
 signing {
     useGpgCmd()
