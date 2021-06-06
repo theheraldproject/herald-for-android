@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.heraldprox'
-version = '2.0.0-beta4'
+version = '2.0.0-beta5'
 
 apply plugin: 'com.android.library'
 
@@ -17,7 +17,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 2
-        versionName "2.0.0-beta4"
+        versionName "2.0.0-beta5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -47,12 +47,12 @@ dependencies {
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.7.1'
 }
 
-// Causes getAt() warnings - TODO fix this
-//signing {
-//  useGpgCmd()
-//  sign(publishing.publications["release","debug"])
-//}
+ext["signing.gnupg.passphrase"] = System.getenv('GPG_PASSPHRASE') 
 
+signing {
+    useGpgCmd()
+    sign publishing.publications
+}
 
 afterEvaluate {
     publishing {
