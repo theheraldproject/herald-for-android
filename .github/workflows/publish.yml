@@ -29,3 +29,4 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PUBLISH_PASSPHRASE }}
+          GPG_KEYID: ${{ secrets.GPG_PUBLISH_KEYID }}
