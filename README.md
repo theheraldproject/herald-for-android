@@ -1,13 +1,15 @@
-# Herald-for-Android
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4869/badge)](https://bestpractices.coreinfrastructure.org/projects/4869)
+[![Unit tests & Linting](https://github.com/theheraldproject/herald-for-android/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/theheraldproject/herald-for-android/actions/workflows/unit_tests.yml)
 
-![Epidemiology](images/epidemiology.png)
+# Herald-for-Android
 
 Continuous proximity detection across iOS and Android devices in background mode for contact tracing and infection control according to epidemiology requirements. 
 
+![Epidemiology](images/epidemiology.png)
+
 All files are copyright 2020-2021 Herald Project Contributors and
 are provided under the Apache 2.0 license.
-
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 
 See LICENSE.txt and NOTICE.txt for details.
 
