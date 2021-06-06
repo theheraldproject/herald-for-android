@@ -19,6 +19,8 @@ jobs:
         with:
           java-version: '8'
           distribution: 'adopt'
+          gpg-private-key: ${{ secrets.GPG_PUBLISH_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PUBLISH_PASSPHRASE }} 
           
       - name: Publish to the Maven Central Repository
         run: ./gradlew publish --stacktrace --info
@@ -26,3 +28,4 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PUBLISH_PASSPHRASE }}
