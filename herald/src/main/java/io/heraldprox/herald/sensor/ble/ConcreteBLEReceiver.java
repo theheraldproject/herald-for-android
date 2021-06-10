@@ -71,6 +71,8 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final static Sample timeToConnectDevice = new Sample();
     private final static Sample timeToProcessDevice = new Sample();
     private final static int defaultMTU = 20;
+    // Proxy for fixing CVE-2020-12856
+    private final BLEBluetoothGattProxy bluetoothGattProxy = new BLEBluetoothGattProxy();
     @NonNull
     private final Context context;
     @NonNull
@@ -1101,6 +1103,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
+                bluetoothGattProxy.proxy(gatt);
                 if (!gatt.readCharacteristic(modelCharacteristic)) {
                     logger.fault("nextTask failed (task=readModel,device={},reason=readModelCharacteristicFailed)", device);
                     gatt.disconnect();
@@ -1116,6 +1119,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
+                bluetoothGattProxy.proxy(gatt);
                 if (!gatt.readCharacteristic(deviceNameCharacteristic)) {
                     logger.fault("nextTask failed (task=readDeviceName,device={},reason=readDeviceNameCharacteristicFailed)", device);
                     gatt.disconnect();
@@ -1131,6 +1135,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     gatt.disconnect();
                     return; // => onConnectionStateChange
                 }
+                bluetoothGattProxy.proxy(gatt);
                 // OpenTrace relies on MTU change to 512 to enable exchange of large payloads
                 if (device.protocolIsOpenTrace()) {
                     gatt.requestMtu(512);
@@ -1234,6 +1239,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             device.signalCharacteristicWriteQueue = null;
             signalCharacteristic.setValue(data);
             signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            bluetoothGattProxy.proxy(gatt);
             if (!gatt.writeCharacteristic(signalCharacteristic)) {
                 logger.fault("writeSignalCharacteristic to iOS failed (task={},device={},reason=writeCharacteristicFailed)", task, device);
                 gatt.disconnect();
@@ -1276,6 +1282,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final byte[] data = device.signalCharacteristicWriteQueue.poll();
         signalCharacteristic.setValue(data);
         signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        bluetoothGattProxy.proxy(gatt);
         if (!gatt.writeCharacteristic(signalCharacteristic)) {
             logger.fault("writeAndroidSignalCharacteristic failed (device={},reason=writeCharacteristicFailed)", device);
             return WriteAndroidSignalCharacteristicResult.failed;
@@ -1307,6 +1314,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onMtuChanged (device={},status={})", device, bleStatus(status));
         final BluetoothGattCharacteristic characteristic = device.legacyPayloadCharacteristic();
+        bluetoothGattProxy.proxy(gatt);
         if (BluetoothGatt.GATT_SUCCESS == status && null != characteristic && gatt.readCharacteristic(characteristic)) {
             logger.debug("nextTask (task=readPayload|legacy,device={})", device);
             return; // => onCharacteristicRead | timeout
@@ -1324,6 +1332,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             if (null != characteristic && null != legacyPayloadData) {
                 characteristic.setValue(legacyPayloadData.value);
                 characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                bluetoothGattProxy.proxy(gatt);
                 if (gatt.writeCharacteristic(characteristic)) {
                     // onCharacteristicWrite
                     logger.debug("writeLegacyPayload requested (device={})", device);
