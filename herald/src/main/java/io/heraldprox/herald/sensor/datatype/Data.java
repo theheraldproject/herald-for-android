@@ -122,6 +122,25 @@ public class Data {
         }
     }
 
+    /**
+     * Get prefix of data, equivalent to subdata(0, length)
+     * @param length
+     * @return
+     */
+    @Nullable
+    public Data prefix(final int length) {
+        return subdata(0, length);
+    }
+
+    @Nullable
+    public Data suffix(final int from) {
+        final int length = value.length - from;
+        if (length < 0) {
+            return null;
+        }
+        return subdata(from, length);
+    }
+
     /// Append data to end of this data.
     public void append(@Nullable final Data data) {
         if (null == data) {
@@ -414,7 +433,7 @@ public class Data {
     }
 
     /// Encode data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
-    @SuppressWarnings("UnusedReturnValue")
+    @SuppressWarnings({"UnusedReturnValue", "ConstantConditions"})
     public boolean append(@Nullable final Data value, @NonNull final DataLengthEncodingOption encoding) {
         //noinspection ConstantConditions
         if (null == value || null == encoding) {
@@ -593,6 +612,9 @@ public class Data {
     @Nullable
     public DecodedString string(final int index, @NonNull final DataLengthEncodingOption encoding) {
         final DecodedData data = data(index, encoding);
+        if (null == data) {
+            return null;
+        }
         try {
             final String string = new String(data.value.value, StandardCharsets.UTF_8);
             return new DecodedString(string, data.start, data.end);

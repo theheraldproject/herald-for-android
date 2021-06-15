@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
+import io.heraldprox.herald.sensor.data.security.PseudoRandomFunction;
 import io.heraldprox.herald.sensor.datatype.random.RandomSource;
 
 import java.util.Arrays;
@@ -45,6 +46,7 @@ public class UIntBig {
      * Deep copy of given value
      * @param value
      */
+    @SuppressWarnings("CopyConstructorMissesField")
     private UIntBig(@NonNull final UIntBig value) {
         this(new short[value.magnitude.length]);
         System.arraycopy(value.magnitude, 0, magnitude, 0, magnitude.length);
@@ -65,6 +67,14 @@ public class UIntBig {
     }
 
     /**
+     * Data as UIntBig, equivalent to new UIntBig(data.uintBig(0))
+     * @param data
+     */
+    public UIntBig(@NonNull final Data data) {
+        this(data.uintBig(0));
+    }
+
+    /**
      * Hex encoded string with format MSB...LSB
      * @param hexEncodedString
      */
@@ -81,7 +91,7 @@ public class UIntBig {
         magnitude = new short[data.value.length / 2];
         for (int i=0, j=data.value.length, n; i<magnitude.length; i++) {
             n = (int) data.value[--j] & 0xFF;
-            n |= ((int) (data.value[--j] & 0xFF) << 8);
+            n |= (((int) data.value[--j] & 0xFF) << 8);
             n &= 0xFFFF;
             magnitude[i] = (short) n;
         }
@@ -104,6 +114,24 @@ public class UIntBig {
         }
     }
 
+    public UIntBig(final int bitLength, @NonNull final PseudoRandomFunction random) {
+        magnitude = new short[(bitLength + 15) / 16];
+        final Data bytes = new Data(new byte[2]);
+        int value, remaining=bitLength;
+        for (int i=0; i<magnitude.length && remaining>0; i++) {
+            random.nextBytes(bytes);
+            value = ((bytes.value[0] & 0xFF) << 8) | (bytes.value[1] & 0xFF);
+            if (remaining < 16) {
+                value = value >>> (16 - remaining);
+                remaining = 0;
+            } else {
+                remaining -= 16;
+            }
+            magnitude[i] = (short) (value & 0xFFFF);
+        }
+    }
+
+    @SuppressWarnings("ConstantConditions")
     @NonNull
     public String hexEncodedString() {
         final Data data = new Data();
@@ -144,6 +172,17 @@ public class UIntBig {
             value |= (((long) magnitude[3] & 0xFFFF) << 48);
         }
         return value;
+    }
+
+    /**
+     * Get UIntBig as data.
+     * @return Data representation of UIntBig, equivalent to new Data().append(this).
+     */
+    @NonNull
+    public Data data() {
+        final Data data = new Data();
+        data.append(this);
+        return data;
     }
 
     /**
@@ -224,7 +263,7 @@ public class UIntBig {
      * @param modulus
      */
     protected void mod(@NonNull final UIntBig modulus) {
-        final short[] a = modulus.magnitude;;
+        final short[] a = modulus.magnitude;
         final short[] b = magnitude;
         mod(a, b);
         magnitude = trimZeroMSBs(b);
@@ -237,7 +276,7 @@ public class UIntBig {
      * @param b
      * @param offset
      */
-    protected final static void reduce(@NonNull final short[] a, @NonNull final short[] b, @NonNull final int offset) {
+    protected static void reduce(@NonNull final short[] a, @NonNull final short[] b, final int offset) {
         final int valueA = ((int) a[a.length - 1] & 0xFFFF) + (a.length > 1 ? 1 : 0);
         int valueB, carry, quotient;
         short multiplier;
@@ -265,7 +304,7 @@ public class UIntBig {
     /**
      * Modular function : b % a
      */
-    protected final static void mod(@NonNull final short[] a, @NonNull final short[] b) {
+    protected static void mod(@NonNull final short[] a, @NonNull final short[] b) {
         for (int offset=b.length - a.length + 1; offset-->0;) {
             reduce(a, b, offset);
         }
@@ -277,7 +316,7 @@ public class UIntBig {
      * @param b
      * @return -1 for a < b, 0 for a == b, 1 for a > b
      */
-    protected final static int compare(@NonNull final short[] a, @NonNull final short[] b) {
+    protected static int compare(@NonNull final short[] a, @NonNull final short[] b) {
         int i=a.length-1, j=b.length-1;
         while (i >= 0 && a[i] == 0) {
             i--;
@@ -324,7 +363,7 @@ public class UIntBig {
      * @param offset
      * @return
      */
-    protected final static int subtract(@NonNull final short[] a, final short multiplier, @NonNull final short[] b, final int offset) {
+    protected static int subtract(@NonNull final short[] a, final short multiplier, @NonNull final short[] b, final int offset) {
         final int times = (int) multiplier & 0xFFFF;
         int valueA, valueB, valueAL, valueAH, result, carry = 0;
         for (int i=0; i<a.length; i++) {
@@ -417,8 +456,9 @@ public class UIntBig {
      * @param magnitude
      * @return
      */
+    @SuppressWarnings("StatementWithEmptyBody")
     @NonNull
-    protected final static short[] trimZeroMSBs(@NonNull final short[] magnitude) {
+    protected static short[] trimZeroMSBs(@NonNull final short[] magnitude) {
         int i = magnitude.length - 1;
         for (; i>0 && magnitude[i] == zero; i--);
         if (i == 0 && magnitude[0] == zero) {
