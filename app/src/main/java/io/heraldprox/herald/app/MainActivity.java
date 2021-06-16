@@ -119,10 +119,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         targetsListView.setAdapter(targetListAdapter);
         targetsListView.setOnItemClickListener(this);
 
-        // Test programmatic control of sensor on/off (default is on)
+        // Test programmatic control of sensor on/off
         final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
-        sensor.start();
-        onOffSwitch.setChecked(true);
+        onOffSwitch.setChecked(false);
         onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -133,6 +132,13 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 }
             }
         });
+
+        // Sensor is on by default, unless automated test has been enabled,
+        // in which case, sensor is off by default and controlled by test
+        // server remote commands.
+        if (null == AppDelegate.automatedTestServer) {
+            sensor.start();
+        }
     }
 
     /// REQUIRED : Request application permissions for sensor operation.
@@ -435,8 +441,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull SensorState didUpdateState) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final SensorState didUpdateState) {
         // Sensor state is already presented by the operating system, so not duplicating in the test app.
+        if (sensor == SensorType.ARRAY) {
+            final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    onOffSwitch.setChecked(didUpdateState == SensorState.on);
+                }
+            });
+        }
     }
 
     // MARK:- OnItemClickListener

@@ -9,11 +9,13 @@ import android.media.MediaScannerConnection;
 import android.os.Environment;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,6 +41,38 @@ public class TextFile {
                 MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
         }, 30, 30, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Get input stream associated with file.
+     * @param context Application context.
+     * @param filename File.
+     * @return Input stream, or null on failure.
+     */
+    @Nullable
+    public final static InputStream inputStream(@NonNull final Context context, @NonNull final String filename) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        if (!folder.exists()) {
+            logger.fault("inputStream, folder does not exist (folder={})", folder);
+            return null;
+        }
+        final File file = new File(folder, filename);
+        if (!file.exists()) {
+            logger.fault("inputStream, file does not exist (file={})", file);
+            return null;
+        }
+        try {
+            final FileInputStream fileInputStream = new FileInputStream(file);
+            if (null == fileInputStream) {
+                logger.fault("inputStream, cannot open file input stream (file={})", file);
+                return null;
+            }
+            return fileInputStream;
+        } catch (Throwable e) {
+            logger.fault("inputStream, failed due to exception", e);
+            return null;
+        }
     }
 
     /// Get contents of file

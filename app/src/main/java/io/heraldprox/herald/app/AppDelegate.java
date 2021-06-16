@@ -48,6 +48,10 @@ public class AppDelegate extends Application implements SensorDelegate {
     private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
     private static AppDelegate appDelegate = null;
 
+    // Test automation, set to null to disable automation.
+    // Set to "http://serverAddress:port" to enable automation.
+    public final static String automatedTestServer = null;
+
     // Sensor for proximity detection
     private SensorArray sensor = null;
 
@@ -83,6 +87,11 @@ public class AppDelegate extends Application implements SensorDelegate {
             }
         }
         // Sensor will start and stop with UI switch (default ON) and bluetooth state
+        // Or remotely controlled by test server.
+        if (null != automatedTestServer) {
+            final AutomatedTestClient automatedTestClient = new AutomatedTestClient(automatedTestServer, this, sensor, TimeInterval.seconds(10));
+            sensor.add(automatedTestClient);
+        }
     }
 
     @Override
