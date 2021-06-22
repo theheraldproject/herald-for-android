@@ -34,6 +34,7 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.analysis.sampling.SampleList;
 import io.heraldprox.herald.sensor.analysis.sampling.SampledID;
 import io.heraldprox.herald.sensor.analysis.views.Since;
+import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
@@ -60,7 +61,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
-public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener {
+public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener, Resettable {
     private final static String tag = MainActivity.class.getName();
     /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
@@ -99,6 +100,30 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
     private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
 
+    @Override
+    public synchronized void reset() {
+        didDetect = 0;
+        didRead = 0;
+        didMeasure = 0;
+        didShare = 0;
+        didReceive = 0;
+
+        targetIdentifiers.clear();
+        payloads.clear();
+        targets.clear();
+
+        socialMixingScore.reset();
+        smoothedLinearModel.reset();
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                updateCounts();
+                updateTargets();
+                updateSocialDistance(socialMixingScoreUnit);
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,8 +161,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         // Sensor is on by default, unless automated test has been enabled,
         // in which case, sensor is off by default and controlled by test
         // server remote commands.
-        if (null == AppDelegate.automatedTestServer) {
+        if (null == AppDelegate.automatedTestClient) {
             sensor.start();
+        } else {
+            AppDelegate.automatedTestClient.add(this);
         }
     }
 

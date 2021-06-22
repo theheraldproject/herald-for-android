@@ -6,7 +6,7 @@ package io.heraldprox.herald.sensor.data;
 
 import androidx.annotation.NonNull;
 
-public interface SensorLogger {
+public interface SensorLogger extends Resettable {
 
     void debug(@NonNull final String message, final Object... values);
 

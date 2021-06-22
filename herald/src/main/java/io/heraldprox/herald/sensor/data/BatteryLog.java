@@ -19,24 +19,13 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /// CSV battery log for post event analysis and visualisation
-public class BatteryLog {
+public class BatteryLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
-    static {
-        dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
     private final static TimeInterval updateInterval = TimeInterval.seconds(30);
-    @NonNull
-    private final Context context;
-    @NonNull
-    private final TextFile textFile;
 
     public BatteryLog(@NonNull final Context context, @NonNull final String filename) {
-        this.context = context;
-        textFile = new TextFile(context, filename);
-        if (textFile.empty()) {
-            textFile.write("time,source,level");
-        }
+        super(context, filename);
+        writeHeader();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -56,7 +45,16 @@ public class BatteryLog {
         }).start();
     }
 
+    private void writeHeader() {
+        if (empty()) {
+            write("time,source,level");
+        }
+    }
+
     private void update() {
+        if (null == context) {
+            return;
+        }
         final IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         final Intent batteryStatus = context.registerReceiver(null, intentFilter);
         if (null == batteryStatus) {
@@ -69,8 +67,8 @@ public class BatteryLog {
         final float batteryLevel = level * 100 / (float) scale;
 
         final String powerSource = (isCharging ? "external" : "battery");
-        final String timestamp = dateFormatter.format(new Date());
-        textFile.write(timestamp + "," + powerSource + "," + batteryLevel);
+        writeHeader();
+        write(timestamp() + "," + powerSource + "," + batteryLevel);
         logger.debug("update (powerSource={},batteryLevel={})", powerSource, batteryLevel);
     }
 }

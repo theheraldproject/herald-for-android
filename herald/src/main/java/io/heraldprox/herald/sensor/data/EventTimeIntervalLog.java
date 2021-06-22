@@ -23,10 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV log of event time intervals for post event analysis and visualisation
-public class EventTimeIntervalLog extends DefaultSensorDelegate {
-    @NonNull
-    private final TextFile textFile;
+/// CSV log of event time intervals for post event analysis ands visualisation
+public class EventTimeIntervalLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadData payloadData;
     @NonNull
@@ -39,14 +37,9 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
     }
 
     public EventTimeIntervalLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData, @NonNull final EventType eventType) {
-        this.textFile = new TextFile(context, filename);
+        super(context, filename);
         this.payloadData = payloadData;
         this.eventType = eventType;
-    }
-
-    @NonNull
-    private String csv(@NonNull final String value) {
-        return TextFile.csv(value);
     }
 
     private void add(@NonNull final String payload) {
@@ -100,7 +93,7 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
             content.append(sample.max());
             content.append('\n');
         }
-        textFile.overwrite(content.toString());
+        overwrite(content.toString());
     }
 
 

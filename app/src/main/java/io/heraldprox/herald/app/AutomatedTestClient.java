@@ -8,6 +8,7 @@ import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -18,7 +19,10 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,12 +31,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.SensorArray;
 import io.heraldprox.herald.sensor.data.ConcretePayloadDataFormatter;
+import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
+import io.heraldprox.herald.sensor.data.Resettable;
+import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.data.TextFile;
+import io.heraldprox.herald.sensor.datatype.Callback;
 import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
 public class AutomatedTestClient extends DefaultSensorDelegate {
+    private final SensorLogger logger = new ConcreteSensorLogger("App", "AutomatedTestClient");
     private final static String tag = AutomatedTestClient.class.getName();
     @NonNull
     private final String serverAddress;
@@ -44,6 +53,7 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
     private final TimeInterval heartbeatInterval;
     @NonNull
     private final Thread timerThread;
+    private final List<Resettable> resettables = new ArrayList<>();
     private final Queue<String> commandQueue = new ConcurrentLinkedQueue<>();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final AtomicBoolean sensorArrayState = new AtomicBoolean(false);
@@ -67,7 +77,11 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
                         executorService.execute(new Runnable() {
                             @Override
                             public void run() {
-                                processQueue(now);
+                                if (now - lastActionHeartbeat < heartbeatInterval.millis()) {
+                                    return;
+                                }
+                                actionHeartbeat();
+                                lastActionHeartbeat = now;
                             }
                         });
                         last = now;
@@ -82,6 +96,8 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
             }
         });
         this.timerThread.start();
+        // Add resettable
+        add(logger);
     }
 
     // MARK: - SensorDelegate
@@ -95,11 +111,15 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
         }
     }
 
-    private void processQueue(final long timeMillis) {
-        if (timeMillis - lastActionHeartbeat < heartbeatInterval.millis()) {
-            return;
-        }
-        actionHeartbeat();
+    /**
+     * Add resettable item for resetting on clear action.
+     * @param resettable
+     */
+    public void add(@NonNull Resettable resettable) {
+        resettables.add(resettable);
+    }
+
+    private void processQueue() {
         if (processingQueue) {
             return;
         }
@@ -116,6 +136,9 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
                 final String filename = command.substring("upload(".length()).replace(")","");
                 Log.d(tag, "processQueue, processing (command=upload,action=uploadFile,filename=" + filename + ")");
                 actionUpload(filename);
+            } else if ("clear".equals(command)) {
+                Log.d(tag, "processQueue, processing (command=upload,action=clear)");
+                actionClear();
             } else {
                 Log.w(tag, "processQueue, ignoring unknown command (command=" + command + ")");
             }
@@ -132,7 +155,12 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
             final String version = Integer.toString(android.os.Build.VERSION.SDK_INT);
             final String payload = new ConcretePayloadDataFormatter().shortFormat(sensorArray.payloadData());
             final String status = (sensorArrayState.get() ? "on" : "off");
-            serverHeartbeat(model, os, version, payload, status);
+            serverHeartbeat(model, os, version, payload, status, new Runnable() {
+                @Override
+                public void run() {
+                    processQueue();
+                }
+            });
         } catch (Throwable e) {
             Log.e(tag, "actionHeartbeat failed", e);
         }
@@ -156,9 +184,20 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
         }
     }
 
+    private void actionClear() {
+        for (final Resettable resettable : resettables) {
+            try {
+                resettable.reset();
+            } catch (Throwable e) {
+                Log.e(tag, "actionClear, failed to reset (resettable=" + resettable + ")", e);
+            }
+        }
+     }
+
     // MARK: - Server API
 
-    private void serverHeartbeat(final String model, final String os, final String version, final String payload, final String status) {
+    private void serverHeartbeat(@NonNull final String model, @NonNull final String os, @NonNull final String version,
+                                 @NonNull final String payload, @NonNull final String status, @Nullable final Runnable postProcess) {
         executorService.execute(new Runnable() {
             @Override
             public void run() {
@@ -179,6 +218,11 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
                         commandQueue.add(commands[i]);
                     }
                     Log.d(tag, "serverHeartbeat, complete (commandQueue=" + commandQueue + ")");
+                    if (null == postProcess) {
+                        return;
+                    }
+                    postProcess.run();
+                    Log.d(tag, "serverHeartbeat, post process complete");
                 } catch (Throwable e) {
                     Log.e(tag, "serverHeartbeat, failed on exception", e);
                 }
@@ -186,7 +230,9 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
         });
     }
 
-    private void serverUpload(final String model, final String os, final String version, final String payload, final String status, final String filename, final InputStream inputStream) {
+    private void serverUpload(@NonNull final String model, @NonNull final String os, @NonNull final String version,
+                              @NonNull final String payload, @NonNull final String status,
+                              @NonNull final String filename, @NonNull final InputStream inputStream) {
         executorService.execute(new Runnable() {
             @Override
             public void run() {
@@ -212,6 +258,7 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
 
     // MARK: - Utility functions
 
+    @Nullable
     private String getUrl(@NonNull final URL url) {
         String response = null;
         try {
@@ -229,7 +276,8 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
         return response;
     }
 
-    private String postUrl(final URL url, final InputStream inputStream) {
+    @Nullable
+    private String postUrl(@NonNull final URL url, @NonNull final InputStream inputStream) {
         String response = null;
         try {
             final HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();

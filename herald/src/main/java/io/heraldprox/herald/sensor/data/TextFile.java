@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TextFile {
+public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
     @NonNull
     private final File file;
@@ -41,6 +41,38 @@ public class TextFile {
                 MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
         }, 30, 30, TimeUnit.SECONDS);
+    }
+
+    // MARK: - Resettable
+
+    @Override
+    public synchronized void reset() {
+        overwrite("");
+    }
+
+    // MARK: - I/O functions
+
+    /**
+     * Remove all text files in context.
+     * @param context Application context
+     * @return True if successful, false otherwise.
+     */
+    public final static boolean removeAll(@NonNull final Context context) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        if (!folder.exists()) {
+            return true;
+        }
+        boolean success = true;
+        for (final File file : folder.listFiles()) {
+            if (file.delete()) {
+                logger.debug("Remove file successful (folder={},file={})", folder, file.getName());
+            } else {
+                logger.fault("Remove file failed (folder={},file={})", folder, file.getName());
+                success = false;
+            }
+        }
+        return success;
     }
 
     /**

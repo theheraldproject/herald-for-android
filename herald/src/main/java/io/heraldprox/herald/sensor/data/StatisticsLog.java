@@ -23,9 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /// CSV contact log for post event analysis and visualisation
-public class StatisticsLog extends DefaultSensorDelegate {
-    @NonNull
-    private final TextFile textFile;
+public class StatisticsLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadData payloadData;
     private final Map<TargetIdentifier, String> identifierToPayload = new ConcurrentHashMap<>();
@@ -33,13 +31,8 @@ public class StatisticsLog extends DefaultSensorDelegate {
     private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
 
     public StatisticsLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
-        textFile = new TextFile(context, filename);
+        super(context, filename);
         this.payloadData = payloadData;
-    }
-
-    @NonNull
-    private String csv(@NonNull final String value) {
-        return TextFile.csv(value);
     }
 
     private void add(@NonNull final TargetIdentifier identifier) {
@@ -95,7 +88,7 @@ public class StatisticsLog extends DefaultSensorDelegate {
             content.append(sample.max());
             content.append('\n');
         }
-        textFile.overwrite(content.toString());
+        overwrite(content.toString());
     }
 
 

@@ -20,10 +20,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /// CSV contact log for post event analysis and visualisation
-public class DetectionLog extends DefaultSensorDelegate {
+public class DetectionLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
-    @NonNull
-    private final TextFile textFile;
     @NonNull
     private final PayloadData payloadData;
     private final String deviceName = android.os.Build.MODEL;
@@ -32,7 +30,7 @@ public class DetectionLog extends DefaultSensorDelegate {
     private final PayloadDataFormatter payloadDataFormatter;
 
     public DetectionLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData, @NonNull final PayloadDataFormatter payloadDataFormatter) {
-        textFile = new TextFile(context, filename);
+        super(context, filename);
         this.payloadData = payloadData;
         this.payloadDataFormatter = payloadDataFormatter;
         write();
@@ -40,11 +38,6 @@ public class DetectionLog extends DefaultSensorDelegate {
 
     public DetectionLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
-    }
-
-    @NonNull
-    private String csv(@NonNull final String value) {
-        return TextFile.csv(value);
     }
 
     private void write() {
@@ -70,7 +63,7 @@ public class DetectionLog extends DefaultSensorDelegate {
         }
         logger.debug("write (content={})", content.toString());
         content.append("\n");
-        textFile.overwrite(content.toString());
+        overwrite(content.toString());
     }
 
 
