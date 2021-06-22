@@ -9,6 +9,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.PayloadData;
+import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
@@ -68,6 +69,13 @@ public class DetectionLog extends SensorDelegateLogger {
 
 
     // MARK:- SensorDelegate
+
+
+    @Override
+    public void sensor(@NonNull SensorType sensor, @NonNull SensorState didUpdateState) {
+        logger.debug("didUpdateState (state={})", didUpdateState);
+        write();
+    }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
