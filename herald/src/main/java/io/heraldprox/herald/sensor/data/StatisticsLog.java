@@ -13,7 +13,6 @@ import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.analysis.Sample;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 
 import java.util.ArrayList;
 import java.util.Collections;

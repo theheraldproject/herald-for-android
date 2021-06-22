@@ -8,7 +8,6 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.analysis.Sample;

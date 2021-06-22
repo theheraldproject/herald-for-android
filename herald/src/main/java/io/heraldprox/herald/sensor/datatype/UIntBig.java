@@ -237,7 +237,7 @@ public class UIntBig {
      * @param b
      * @param offset
      */
-    protected final static void reduce(@NonNull final short[] a, @NonNull final short[] b, @NonNull final int offset) {
+    protected final static void reduce(@NonNull final short[] a, @NonNull final short[] b, final int offset) {
         final int valueA = ((int) a[a.length - 1] & 0xFFFF) + (a.length > 1 ? 1 : 0);
         int valueB, carry, quotient;
         short multiplier;

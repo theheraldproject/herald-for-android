@@ -13,13 +13,8 @@ import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 
 /// CSV contact log for post event analysis and visualisation
 public class ContactLog extends SensorDelegateLogger {

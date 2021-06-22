@@ -12,7 +12,6 @@ import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 
 import java.util.ArrayList;
 import java.util.Collections;

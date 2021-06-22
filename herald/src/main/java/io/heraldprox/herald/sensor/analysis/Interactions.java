@@ -7,13 +7,10 @@ package io.heraldprox.herald.sensor.analysis;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
-import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Encounter;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;

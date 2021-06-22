@@ -13,11 +13,6 @@ import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
-
 /// CSV battery log for post event analysis and visualisation
 public class BatteryLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
