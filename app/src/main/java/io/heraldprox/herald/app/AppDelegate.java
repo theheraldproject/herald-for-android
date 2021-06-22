@@ -54,7 +54,7 @@ public class AppDelegate extends Application implements SensorDelegate {
     // Set to "http://serverAddress:port" to enable automation.
     private final static String automatedTestServer = null;
     @Nullable
-    public static AutomatedTestClient automatedTestClient = null;
+    public AutomatedTestClient automatedTestClient = null;
 
     // Sensor for proximity detection
     private SensorArray sensor = null;

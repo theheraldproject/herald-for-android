@@ -161,10 +161,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         // Sensor is on by default, unless automated test has been enabled,
         // in which case, sensor is off by default and controlled by test
         // server remote commands.
-        if (null == AppDelegate.automatedTestClient) {
+        final AutomatedTestClient automatedTestClient = AppDelegate.getAppDelegate().automatedTestClient;
+        if (null == automatedTestClient) {
             sensor.start();
         } else {
-            AppDelegate.automatedTestClient.add(this);
+            automatedTestClient.add(this);
         }
     }
 
