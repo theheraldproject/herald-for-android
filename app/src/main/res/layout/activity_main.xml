@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- Copyright 2020 Herald Project Contributors -->
+<!-- Copyright 2020-2021 Herald Project Contributors -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -8,7 +8,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.vmware.herald.app.MainActivity">
+    tools:context="io.heraldprox.herald.app.MainActivity">
 
     <Switch
         android:id="@+id/sensorOnOffSwitch"

@@ -1,0 +1,40 @@
+name: Unit Tests
+
+# READ THIS BEFORE MODIFYING: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+# And this: https://nathandavison.com/blog/github-actions-and-the-threat-of-malicious-pull-requests
+
+# WARNING ONLY EVER USE A GITHUB_TOKEN THAT HAS **ONLY** READ_REPO ACCESS
+# (Because we invoke the local gradlew command for reproducibility)
+
+# read-only repo token
+# no access to secrets
+on:
+  pull_request:
+    branches:
+      - develop # PRs from external developers or project team
+      - master  # PRs for triggering a release. Both old (master) and new (main) branch names
+      - main
+
+jobs:
+  unit_tests:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Unit tests
+        run: ./gradlew test --stacktrace --info
+
+      - name: Unit tests results
+        uses: actions/upload-artifact@v1
+        with:
+          name: unit-tests-results
+          path: herald/build/reports/tests/testDebugUnitTest
+
+      - name: Linting
+        run: ./gradlew check --stacktrace --info
+
+      - name: Linting results
+        uses: actions/upload-artifact@v1
+        with:
+          name: linting-results
+          path: herald/build/reports/lint-results.html
