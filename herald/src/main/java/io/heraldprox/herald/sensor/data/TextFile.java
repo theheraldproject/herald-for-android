@@ -11,12 +11,17 @@ import android.os.Environment;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.w3c.dom.Text;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -77,6 +82,24 @@ public class TextFile implements Resettable {
             }
         }
         return success;
+    }
+
+    /**
+     * List all text files in context.
+     * @param context
+     * @return List of all text files in context.
+     */
+    public final static Collection<TextFile> listAll(@NonNull final Context context) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        final List<TextFile> textFiles = new ArrayList<>();
+        if (!folder.exists()) {
+            return textFiles;
+        }
+        for (final File file : folder.listFiles()) {
+            textFiles.add(new TextFile(file));
+        }
+        return textFiles;
     }
 
     /**

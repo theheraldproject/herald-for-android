@@ -52,7 +52,7 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     // Test automation, set to null to disable automation.
     // Set to "http://serverAddress:port" to enable automation.
-    private final static String automatedTestServer = "http://192.168.4.30:9999";
+    private final static String automatedTestServer = null;
     @Nullable
     public AutomatedTestClient automatedTestClient = null;
 

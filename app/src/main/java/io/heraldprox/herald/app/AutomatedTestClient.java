@@ -192,11 +192,20 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
     }
 
     private void actionClear() {
+        // Reset all resettables
         for (final Resettable resettable : resettables) {
             try {
                 resettable.reset();
             } catch (Throwable e) {
                 Log.e(tag, "actionClear, failed to reset (resettable=" + resettable + ")", e);
+            }
+        }
+        // Reset all text files
+        for (final TextFile textFile : TextFile.listAll(context)) {
+            try {
+                textFile.reset();
+            } catch (Throwable e) {
+                Log.e(tag, "actionClear, failed to reset (textFile=" + textFile + ")", e);
             }
         }
      }
