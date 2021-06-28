@@ -52,7 +52,7 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     // Test automation, set to null to disable automation.
     // Set to "http://serverAddress:port" to enable automation.
-    private final static String automatedTestServer = null;
+    private final static String automatedTestServer = "http://192.168.4.30:9999";
     @Nullable
     public AutomatedTestClient automatedTestClient = null;
 
@@ -81,7 +81,7 @@ public class AppDelegate extends Application implements SensorDelegate {
         // Sensor will start and stop with UI switch (default ON) and bluetooth state
         // Or remotely controlled by test server.
         if (null != automatedTestServer) {
-            automatedTestClient = new AutomatedTestClient(automatedTestServer, this, sensor, TimeInterval.seconds(10));
+            automatedTestClient = new AutomatedTestClient(automatedTestServer, this, sensor, TimeInterval.minute);
             sensor.add(automatedTestClient);
         }
         // Efficacy Loggers

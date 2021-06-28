@@ -243,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
             target.distance(sampleList.filter(Since.recent(90)).toView().latestValue());
         }
         // Update UI
-        ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetListAdapter.getCount() + ")");
+        ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetList.size() + ")");
         targetListAdapter.clear();
         targetListAdapter.addAll(targetList);
     }

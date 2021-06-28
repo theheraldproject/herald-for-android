@@ -26,14 +26,18 @@ public class TextFile implements Resettable {
     @NonNull
     private final File file;
 
-    public TextFile(@NonNull final Context context, @NonNull final String filename) {
-        final File folder = new File(getRootFolder(context), "Sensor");
+    public TextFile(@NonNull final File file) {
+        this.file = file;
+        final File folder = file.getParentFile();
         if (!folder.exists()) {
             if (!folder.mkdirs()) {
                 logger.fault("Make folder failed (folder={})", folder);
             }
         }
-        file = new File(folder, filename);
+    }
+
+    public TextFile(@NonNull final Context context, @NonNull final String filename) {
+        this(new File(new File(getRootFolder(context), "Sensor"), filename));
         final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleWithFixedDelay(new Runnable() {
             @Override

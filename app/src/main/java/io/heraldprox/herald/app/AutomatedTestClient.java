@@ -5,6 +5,7 @@
 package io.heraldprox.herald.app;
 
 import android.content.Context;
+import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -35,7 +36,6 @@ import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.data.TextFile;
-import io.heraldprox.herald.sensor.datatype.Callback;
 import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
@@ -52,6 +52,8 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
     @NonNull
     private final TimeInterval heartbeatInterval;
     @NonNull
+    private final PowerManager.WakeLock wakeLock;
+    @NonNull
     private final Thread timerThread;
     private final List<Resettable> resettables = new ArrayList<>();
     private final Queue<String> commandQueue = new ConcurrentLinkedQueue<>();
@@ -65,7 +67,10 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
         this.context = context;
         this.sensorArray = sensorArray;
         this.heartbeatInterval = heartbeatInterval;
-        // Thread based reliable timer, assumes BLETimer is already active to provide partial wakelock
+        // Thread based reliable timer
+        final PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Herald:AutomatedTestClient");
+        wakeLock.acquire(); // Deliberate use wakelock forever and actively manage sleep time so as not to waste battery
         this.timerThread = new Thread(new Runnable() {
             private long last = 0;
             @Override
@@ -95,6 +100,8 @@ public class AutomatedTestClient extends DefaultSensorDelegate {
                 }
             }
         });
+        this.timerThread.setPriority(Thread.MAX_PRIORITY);
+        this.timerThread.setName("Herald.AutomatedTestClient");
         this.timerThread.start();
         // Add resettable
         add(logger);
