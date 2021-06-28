@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Encounter;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
@@ -196,9 +197,9 @@ public class Interactions extends SensorDelegateLogger {
         @NonNull
         public final TimeInterval duration;
         @NonNull
-        public final Sample proximity;
+        public final Distribution proximity;
 
-        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Sample proximity) {
+        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Distribution proximity) {
             this.lastSeenAt = lastSeenAt;
             this.duration = duration;
             this.proximity = proximity;
@@ -228,7 +229,7 @@ public class Interactions extends SensorDelegateLogger {
             final InteractionsForTarget triple = targets.get(encounter.payload);
             if (null == triple) {
                 // One encounter is assumed to be at least 1 second minimum
-                final Sample proximity = new Sample(encounter.proximity.value, 1);
+                final Distribution proximity = new Distribution(encounter.proximity.value, 1);
                 targets.put(encounter.payload, new InteractionsForTarget(encounter.timestamp, new TimeInterval(1), proximity));
                 continue;
             }

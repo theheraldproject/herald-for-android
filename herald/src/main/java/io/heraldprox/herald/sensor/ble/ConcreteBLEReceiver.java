@@ -27,7 +27,6 @@ import androidx.annotation.Nullable;
 import io.heraldprox.herald.BuildConfig;
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
 import io.heraldprox.herald.sensor.SensorDelegate;
-import io.heraldprox.herald.sensor.analysis.Sample;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertParser;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertServiceData;
 import io.heraldprox.herald.sensor.ble.filter.BLEDeviceFilter;

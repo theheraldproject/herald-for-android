@@ -5,7 +5,6 @@
 package io.heraldprox.herald.sensor.datatype;
 
 import io.heraldprox.herald.sensor.TestUtil;
-import io.heraldprox.herald.sensor.analysis.Sample;
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandom;
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomNIST;
 import io.heraldprox.herald.sensor.datatype.random.BlockingSecureRandomSingleton;
@@ -95,15 +94,15 @@ public class PseudoDeviceAddressTests {
                 new BlockingSecureRandomSingleton(),
                 new BlockingSecureRandomNIST());
         for (RandomSource randomSource : randomSources) {
-            final Sample sample = new Sample();
+            final Distribution distribution = new Distribution();
             long t0, t1;
             for (int i = 100000; i-- > 0; ) {
                 t0 = System.nanoTime();
                 new PseudoDeviceAddress(randomSource);
                 t1 = System.nanoTime();
-                sample.add(t1 - t0);
+                distribution.add(t1 - t0);
             }
-            System.err.println(randomSource.getClass().getSimpleName() + " : " + sample);
+            System.err.println(randomSource.getClass().getSimpleName() + " : " + distribution);
         }
     }
 
