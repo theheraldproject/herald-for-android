@@ -16,6 +16,8 @@ import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.PayloadTimestamp;
+import io.heraldprox.herald.sensor.datatype.SensorState;
+import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.motion.ConcreteInertiaSensor;
 
@@ -26,6 +28,7 @@ import java.util.List;
 public class SensorArray implements Sensor {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private final List<Sensor> sensorArray = new ArrayList<>();
+    private final List<SensorDelegate> delegates = new ArrayList<>();
     @NonNull
     private final PayloadData payloadData;
     public final static String deviceDescription = android.os.Build.MODEL + " (Android " + android.os.Build.VERSION.SDK_INT + ")";
@@ -68,7 +71,8 @@ public class SensorArray implements Sensor {
 
     @Override
     public void add(@NonNull final SensorDelegate delegate) {
-        for (Sensor sensor : sensorArray) {
+        delegates.add(delegate);
+        for (final Sensor sensor : sensorArray) {
             sensor.add(delegate);
         }
     }
@@ -76,8 +80,11 @@ public class SensorArray implements Sensor {
     @Override
     public void start() {
         logger.debug("start");
-        for (Sensor sensor : sensorArray) {
+        for (final Sensor sensor : sensorArray) {
             sensor.start();
+        }
+        for (final SensorDelegate delegate : delegates) {
+            delegate.sensor(SensorType.ARRAY, SensorState.on);
         }
     }
 
@@ -86,6 +93,9 @@ public class SensorArray implements Sensor {
         logger.debug("stop");
         for (Sensor sensor : sensorArray) {
             sensor.stop();
+        }
+        for (final SensorDelegate delegate : delegates) {
+            delegate.sensor(SensorType.ARRAY, SensorState.off);
         }
     }
 }

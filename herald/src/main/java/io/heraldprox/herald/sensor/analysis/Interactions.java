@@ -7,12 +7,11 @@ package io.heraldprox.herald.sensor.analysis;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
+import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
-import io.heraldprox.herald.sensor.data.TextFile;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Encounter;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
@@ -30,38 +29,42 @@ import java.util.Map;
 /// Log of interactions for recording encounters (time, proximity, and identity).
 /// This is can be used as basis for maintaining a persistent log
 /// of encounters for on-device or centralised matching.
-public class Interactions extends DefaultSensorDelegate {
+public class Interactions extends SensorDelegateLogger {
     @SuppressWarnings("FieldCanBeLocal")
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Analysis.EncounterLog");
-    @Nullable
-    private final TextFile textFile;
     @NonNull
     private List<Encounter> encounters = new ArrayList<>();
 
     public Interactions() {
-        textFile = null;
+        super();
     }
 
     public Interactions(@NonNull final Context context, @NonNull final String filename) {
-        textFile = new TextFile(context, filename);
-        if (textFile.empty()) {
-            textFile.write("time,proximity,unit,payload");
-        } else {
-            final String content = textFile.contentsOf();
-            for (String line : content.split("\n")) {
-                final Encounter encounter = new Encounter(line);
-                if (encounter.isValid()) {
-                    encounters.add(encounter);
-                }
+        super(context, filename);
+        for (String line : contentsOf().split("\n")) {
+            final Encounter encounter = new Encounter(line);
+            if (encounter.isValid()) {
+                encounters.add(encounter);
             }
-            logger.debug("Loaded historic encounters (count={})", encounters.size());
+        }
+        logger.debug("Loaded historic encounters (count={})", encounters.size());
+    }
+
+    @Override
+    public synchronized void reset() {
+        super.reset();
+        encounters.clear();
+    }
+
+    private void writeHeader() {
+        if (empty()) {
+            write("time,proximity,unit,payload");
         }
     }
 
     public synchronized void append(@NonNull final Encounter encounter) {
-        if (textFile != null) {
-            textFile.write(encounter.csvString());
-        }
+        writeHeader();
+        write(encounter.csvString());
         encounters.add(encounter);
     }
 
@@ -103,14 +106,13 @@ public class Interactions extends DefaultSensorDelegate {
     /// Remove all log records before date (exclusive). Use this function to implement data retention policy.
     public synchronized void remove(@NonNull final Date before) {
         final StringBuilder content = new StringBuilder();
+        content.append("time,proximity,unit,payload\n");
         final List<Encounter> subdata = subdata(before);
         for (final Encounter encounter : subdata) {
             content.append(encounter.csvString());
             content.append("\n");
         }
-        if (textFile != null) {
-            textFile.overwrite(content.toString());
-        }
+        overwrite(content.toString());
         encounters = subdata;
     }
 
@@ -195,9 +197,9 @@ public class Interactions extends DefaultSensorDelegate {
         @NonNull
         public final TimeInterval duration;
         @NonNull
-        public final Sample proximity;
+        public final Distribution proximity;
 
-        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Sample proximity) {
+        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Distribution proximity) {
             this.lastSeenAt = lastSeenAt;
             this.duration = duration;
             this.proximity = proximity;
@@ -227,7 +229,7 @@ public class Interactions extends DefaultSensorDelegate {
             final InteractionsForTarget triple = targets.get(encounter.payload);
             if (null == triple) {
                 // One encounter is assumed to be at least 1 second minimum
-                final Sample proximity = new Sample(encounter.proximity.value, 1);
+                final Distribution proximity = new Distribution(encounter.proximity.value, 1);
                 targets.put(encounter.payload, new InteractionsForTarget(encounter.timestamp, new TimeInterval(1), proximity));
                 continue;
             }

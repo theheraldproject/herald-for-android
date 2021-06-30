@@ -34,6 +34,7 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.analysis.sampling.SampleList;
 import io.heraldprox.herald.sensor.analysis.sampling.SampledID;
 import io.heraldprox.herald.sensor.analysis.views.Since;
+import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
@@ -60,7 +61,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
-public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener {
+public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener, Resettable {
     private final static String tag = MainActivity.class.getName();
     /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
@@ -99,6 +100,30 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
     private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
 
+    @Override
+    public synchronized void reset() {
+        didDetect = 0;
+        didRead = 0;
+        didMeasure = 0;
+        didShare = 0;
+        didReceive = 0;
+
+        targetIdentifiers.clear();
+        payloads.clear();
+        targets.clear();
+
+        socialMixingScore.reset();
+        smoothedLinearModel.reset();
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                updateCounts();
+                updateTargets();
+                updateSocialDistance(socialMixingScoreUnit);
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,10 +144,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         targetsListView.setAdapter(targetListAdapter);
         targetsListView.setOnItemClickListener(this);
 
-        // Test programmatic control of sensor on/off (default is on)
+        // Test programmatic control of sensor on/off
         final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
-        sensor.start();
-        onOffSwitch.setChecked(true);
+        onOffSwitch.setChecked(false);
         onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -133,6 +157,16 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 }
             }
         });
+
+        // Sensor is on by default, unless automated test has been enabled,
+        // in which case, sensor is off by default and controlled by test
+        // server remote commands.
+        final AutomatedTestClient automatedTestClient = AppDelegate.getAppDelegate().automatedTestClient;
+        if (null == automatedTestClient) {
+            sensor.start();
+        } else {
+            automatedTestClient.add(this);
+        }
     }
 
     /// REQUIRED : Request application permissions for sensor operation.
@@ -209,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
             target.distance(sampleList.filter(Since.recent(90)).toView().latestValue());
         }
         // Update UI
-        ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetListAdapter.getCount() + ")");
+        ((TextView) findViewById(R.id.detection)).setText("DETECTION (" + targetList.size() + ")");
         targetListAdapter.clear();
         targetListAdapter.addAll(targetList);
     }
@@ -435,8 +469,17 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     @Override
-    public void sensor(@NonNull SensorType sensor, @NonNull SensorState didUpdateState) {
+    public void sensor(@NonNull final SensorType sensor, @NonNull final SensorState didUpdateState) {
         // Sensor state is already presented by the operating system, so not duplicating in the test app.
+        if (sensor == SensorType.ARRAY) {
+            final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    onOffSwitch.setChecked(didUpdateState == SensorState.on);
+                }
+            });
+        }
     }
 
     // MARK:- OnItemClickListener

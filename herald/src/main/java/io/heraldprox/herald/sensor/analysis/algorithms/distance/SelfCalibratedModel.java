@@ -36,6 +36,8 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
     private final double maxRssiPercentile, anchorRssiPercentile;
     @NonNull
     public final RssiHistogram histogram;
+    @Nullable
+    private final TextFile textFile;
     private double maxRssi = -10;
     @NonNull
     private Date lastSampleTime = new Date(0);
@@ -47,6 +49,16 @@ public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearMo
         this.maxRssiPercentile = (TimeInterval.day.value - withinMin.value) / (double) TimeInterval.day.value;
         this.anchorRssiPercentile = (TimeInterval.day.value - withinMean.value) / (double) TimeInterval.day.value;
         this.histogram = new RssiHistogram(-99, -10, TimeInterval.minutes(10), textFile);
+        this.textFile = textFile;
+    }
+
+    @Override
+    public void reset() {
+        super.reset();
+        if (null == textFile) {
+            return;
+        }
+        textFile.reset();
     }
 
     public void update() {

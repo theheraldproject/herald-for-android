@@ -4,7 +4,7 @@
 
 package io.heraldprox.herald.app;
 
-import io.heraldprox.herald.sensor.analysis.Sample;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -22,9 +22,9 @@ public class Target {
     private Distance distance = null;
     private ImmediateSendData received = null;
     private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
-    private Sample didReadTimeInterval = new Sample();
-    private Sample didMeasureTimeInterval = new Sample();
-    private Sample didShareTimeInterval = new Sample();
+    private Distribution didReadTimeInterval = new Distribution();
+    private Distribution didMeasureTimeInterval = new Distribution();
+    private Distribution didShareTimeInterval = new Distribution();
 
     public Target(TargetIdentifier targetIdentifier, PayloadData payloadData) {
         this.targetIdentifier = targetIdentifier;
@@ -89,7 +89,7 @@ public class Target {
         return didRead;
     }
 
-    public Sample didReadTimeInterval() { return didReadTimeInterval; }
+    public Distribution didReadTimeInterval() { return didReadTimeInterval; }
 
     public void didRead(Date date) {
         if (didRead != null && date != null) {
@@ -104,7 +104,7 @@ public class Target {
         return didMeasure;
     }
 
-    public Sample didMeasureTimeInterval() {
+    public Distribution didMeasureTimeInterval() {
         return didMeasureTimeInterval;
     }
 
@@ -121,7 +121,7 @@ public class Target {
         lastUpdatedAt = didShare;
     }
 
-    public Sample didShareTimeInterval() {
+    public Distribution didShareTimeInterval() {
         return didShareTimeInterval;
     }
 }

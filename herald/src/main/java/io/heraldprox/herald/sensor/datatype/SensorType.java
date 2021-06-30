@@ -21,5 +21,7 @@ public enum SensorType {
     /// Accelerometer motion sensor
     ACCELEROMETER,
     /// Other - in case of new sensor types in use between major versions
-    OTHER
+    OTHER,
+    /// Sensor array consisting of multiple sensors
+    ARRAY
 }

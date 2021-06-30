@@ -24,18 +24,20 @@ import android.os.ParcelUuid;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import io.heraldprox.herald.BuildConfig;
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
 import io.heraldprox.herald.sensor.SensorDelegate;
-import io.heraldprox.herald.sensor.analysis.Sample;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertParser;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertServiceData;
 import io.heraldprox.herald.sensor.ble.filter.BLEDeviceFilter;
 import io.heraldprox.herald.sensor.ble.filter.BLEScanResponseData;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
+import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.BluetoothState;
 import io.heraldprox.herald.sensor.datatype.Callback;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.Histogram;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.LegacyPayloadData;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -67,9 +69,46 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final static long scanRestDurationMillis = TimeInterval.seconds(1).millis();
     private final static long scanProcessDurationMillis = TimeInterval.seconds(60).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(12).millis();
-    private final static Sample timeToConnectDevice = new Sample();
-    private final static Sample timeToProcessDevice = new Sample();
+    /**
+     * Connection timeout data collected from 34,394 successful connections
+     * from 6 Android phones along with 4 iPhones (10 in total) over 15 hours.
+     * <table>
+     *   <col width="25%"/>
+     *   <col width="75%"/>
+     *   <thead>
+     *     <tr><th>Timeout (seconds)</th><th>Cumulative count</th><th>Cumulative distribution (%)</th></tr>
+     *   <thead>
+     *   <tbody>
+     *      <tr><td>0</td><td>20099</td><td>58.4%</td></tr>
+     *      <tr><td>1</td><td>30694</td><td>89.2%</td></tr>
+     *      <tr><td>2</td><td>33041</td><td>96.1%</td></tr>
+     *      <tr><td>3</td><td>33746</td><td>98.1%</td></tr>
+     *      <tr><td>4</td><td>34066</td><td>99.0%</td></tr>
+     *      <tr><td>5</td><td>34289</td><td>99.7%</td></tr>
+     *      <tr><td>6</td><td>34337</td><td>99.8%</td></tr>
+     *      <tr><td>7</td><td>34347</td><td>99.9%</td></tr>
+     *      <tr><td>8</td><td>34354</td><td>99.9%</td></tr>
+     *      <tr><td>9</td><td>34358</td><td>99.9%</td></tr>
+     *      <tr><td>10</td><td>34358</td><td>99.9%</td></tr>
+     *      <tr><td>11</td><td>34360</td><td>99.9%</td></tr>
+     *      <tr><td>12</td><td>34367</td><td>99.9%</td></tr>
+     *      <tr><td>13</td><td>34370</td><td>99.9%</td></tr>
+     *      <tr><td>14</td><td>34373</td><td>99.9%</td></tr>
+     *      <tr><td>15</td><td>34377</td><td>100.0%</td></tr>
+     *      <tr><td>16</td><td>34385</td><td>100.0%</td></tr>
+     *      <tr><td>17</td><td>34387</td><td>100.0%</td></tr>
+     *      <tr><td>18</td><td>34389</td><td>100.0%</td></tr>
+     *      <tr><td>19</td><td>34393</td><td>100.0%</td></tr>
+     *      <tr><td>20</td><td>34394</td><td>100.0%</td></tr>
+     *   </tbody>
+     * </table>
+     */
+    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(6).millis();
+    // Collect connection and processing statistics to determine timeouts based on actual data
+    @NonNull
+    private final Histogram timeToConnectDevice;
+    @NonNull
+    private final Histogram timeToProcessDevice;
     private final static int defaultMTU = 20;
     // Proxy for fixing CVE-2020-12856
     private final BLEBluetoothGattProxy bluetoothGattProxy = new BLEBluetoothGattProxy();
@@ -155,6 +194,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // Standard rule-based filter
             this.deviceFilter = new BLEDeviceFilter();
         }
+        // Only collect and store histogram of connection and processing time in debug mode
+        this.timeToConnectDevice = (BuildConfig.DEBUG ? new Histogram(0, 20, TimeInterval.minute, new TextFile(context, "timeToConnectDevice.csv")) : null);
+        this.timeToProcessDevice = (BuildConfig.DEBUG ? new Histogram(0, 60, TimeInterval.minute, new TextFile(context, "timeToProcessDevice.csv")) : null);
     }
 
     // MARK:- BLEReceiver
@@ -523,7 +565,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // Filter device by advert messages unless it is already confirmed ios device
                 final BLEDeviceFilter.MatchingPattern matchingPattern = deviceFilter.match(device);
                 if (device.operatingSystem() != BLEDeviceOperatingSystem.ios && null != matchingPattern) {
-                    logger.fault("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
+                    logger.debug("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 }
                 // Possibly an iOS device offering sensor service in background mode,
@@ -756,7 +798,6 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("taskConnectDevice, already connected to transmitter (device={})", device);
             return true;
         }
-        // Connect (timeout at 95% = 2 SD)
         final long timeConnect = System.currentTimeMillis();
         logger.debug("taskConnectDevice, connect (device={})", device);
         device.state(BLEDeviceState.connecting);
@@ -808,10 +849,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // capability, but that was deemed too unreliable for minimal gain in
             // performance, as the target device plays a big part in determining the
             // connection time, and that can be unpredictable due to environment factors.
-            final long connectElapsed = System.currentTimeMillis() - timeConnect;
+            final long timeToConnectMillis = System.currentTimeMillis() - timeConnect;
             // Add sample to adaptive connection timeout
-            timeToConnectDevice.add(connectElapsed);
-            logger.debug("taskConnectDevice, connected (device={},elapsed={}ms,statistics={})", device, connectElapsed, timeToConnectDevice);
+            if (null != timeToConnectDevice) {
+                timeToConnectDevice.add((int) (timeToConnectMillis / 1000));
+            }
+            logger.debug("taskConnectDevice, connected (device={},elapsed={}ms)", device, timeToConnectMillis);
         }
         // Wait for disconnection
         // Device is connected at this point, and all the actual work is being
@@ -847,13 +890,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // Always set state to .disconnected at the end
         device.state(BLEDeviceState.disconnected);
-        final long timeDisconnect = System.currentTimeMillis();
-        final long timeElapsed = (timeDisconnect - timeConnect);
+        final long timeToProcessMillis = (System.currentTimeMillis() - timeConnect);
         if (success) {
-            timeToProcessDevice.add(timeElapsed);
-            logger.debug("taskConnectDevice, complete (success=true,device={},elapsed={}ms,statistics={})", device, timeElapsed, timeToProcessDevice);
+            if (null != timeToProcessDevice) {
+                timeToProcessDevice.add((int) (timeToProcessMillis / 1000));
+            }
+            logger.debug("taskConnectDevice, complete (success=true,device={},elapsed={}ms)", device, timeToProcessMillis);
         } else {
-            logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
+            logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeToProcessMillis);
         }
         // Train device filter
         if (BLESensorConfiguration.deviceFilterTrainingEnabled) {

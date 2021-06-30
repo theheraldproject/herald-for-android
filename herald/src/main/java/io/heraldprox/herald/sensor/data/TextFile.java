@@ -9,29 +9,40 @@ import android.media.MediaScannerConnection;
 import android.os.Environment;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import org.w3c.dom.Text;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TextFile {
+public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
     @NonNull
     private final File file;
 
-    public TextFile(@NonNull final Context context, @NonNull final String filename) {
-        final File folder = new File(getRootFolder(context), "Sensor");
+    public TextFile(@NonNull final File file) {
+        this.file = file;
+        final File folder = file.getParentFile();
         if (!folder.exists()) {
             if (!folder.mkdirs()) {
                 logger.fault("Make folder failed (folder={})", folder);
             }
         }
-        file = new File(folder, filename);
+    }
+
+    public TextFile(@NonNull final Context context, @NonNull final String filename) {
+        this(new File(new File(getRootFolder(context), "Sensor"), filename));
         final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleWithFixedDelay(new Runnable() {
             @Override
@@ -39,6 +50,88 @@ public class TextFile {
                 MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
         }, 30, 30, TimeUnit.SECONDS);
+    }
+
+    // MARK: - Resettable
+
+    @Override
+    public synchronized void reset() {
+        overwrite("");
+    }
+
+    // MARK: - I/O functions
+
+    /**
+     * Remove all text files in context.
+     * @param context Application context
+     * @return True if successful, false otherwise.
+     */
+    public final static boolean removeAll(@NonNull final Context context) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        if (!folder.exists()) {
+            return true;
+        }
+        boolean success = true;
+        for (final File file : folder.listFiles()) {
+            if (file.delete()) {
+                logger.debug("Remove file successful (folder={},file={})", folder, file.getName());
+            } else {
+                logger.fault("Remove file failed (folder={},file={})", folder, file.getName());
+                success = false;
+            }
+        }
+        return success;
+    }
+
+    /**
+     * List all text files in context.
+     * @param context
+     * @return List of all text files in context.
+     */
+    public final static Collection<TextFile> listAll(@NonNull final Context context) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        final List<TextFile> textFiles = new ArrayList<>();
+        if (!folder.exists()) {
+            return textFiles;
+        }
+        for (final File file : folder.listFiles()) {
+            textFiles.add(new TextFile(file));
+        }
+        return textFiles;
+    }
+
+    /**
+     * Get input stream associated with file.
+     * @param context Application context.
+     * @param filename File.
+     * @return Input stream, or null on failure.
+     */
+    @Nullable
+    public final static InputStream inputStream(@NonNull final Context context, @NonNull final String filename) {
+        final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+        final File folder = new File(getRootFolder(context), "Sensor");
+        if (!folder.exists()) {
+            logger.fault("inputStream, folder does not exist (folder={})", folder);
+            return null;
+        }
+        final File file = new File(folder, filename);
+        if (!file.exists()) {
+            logger.fault("inputStream, file does not exist (file={})", file);
+            return null;
+        }
+        try {
+            final FileInputStream fileInputStream = new FileInputStream(file);
+            if (null == fileInputStream) {
+                logger.fault("inputStream, cannot open file input stream (file={})", file);
+                return null;
+            }
+            return fileInputStream;
+        } catch (Throwable e) {
+            logger.fault("inputStream, failed due to exception", e);
+            return null;
+        }
     }
 
     /// Get contents of file

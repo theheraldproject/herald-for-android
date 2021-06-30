@@ -14,6 +14,7 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -25,6 +26,7 @@ import io.heraldprox.herald.sensor.data.BatteryLog;
 import io.heraldprox.herald.sensor.data.ContactLog;
 import io.heraldprox.herald.sensor.data.DetectionLog;
 import io.heraldprox.herald.sensor.data.EventTimeIntervalLog;
+import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.StatisticsLog;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.LegacyPayloadData;
@@ -48,6 +50,12 @@ public class AppDelegate extends Application implements SensorDelegate {
     private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
     private static AppDelegate appDelegate = null;
 
+    // Test automation, set to null to disable automation.
+    // Set to "http://serverAddress:port" to enable automation.
+    private final static String automatedTestServer = null;
+    @Nullable
+    public AutomatedTestClient automatedTestClient = null;
+
     // Sensor for proximity detection
     private SensorArray sensor = null;
 
@@ -70,19 +78,31 @@ public class AppDelegate extends Application implements SensorDelegate {
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
         // Add appDelegate as listener for detection events for logging and start sensor
         sensor.add(this);
+        // Sensor will start and stop with UI switch (default ON) and bluetooth state
+        // Or remotely controlled by test server.
+        if (null != automatedTestServer) {
+            automatedTestClient = new AutomatedTestClient(automatedTestServer, this, sensor, TimeInterval.minute);
+            sensor.add(automatedTestClient);
+        }
         // Efficacy Loggers
-        PayloadData payloadData = sensor.payloadData();
         if (BuildConfig.DEBUG) {
-            sensor.add(new ContactLog(this, "contacts.csv"));
-            sensor.add(new StatisticsLog(this, "statistics.csv",payloadData));
-            sensor.add(new DetectionLog(this,"detection.csv", payloadData));
-            new BatteryLog(this, "battery.csv");
+            final PayloadData payloadData = sensor.payloadData();
+            final List<SensorDelegateLogger> sensorDelegateLoggers = new ArrayList<>();
+            sensorDelegateLoggers.add(new ContactLog(this, "contacts.csv"));
+            sensorDelegateLoggers.add(new StatisticsLog(this, "statistics.csv",payloadData));
+            sensorDelegateLoggers.add(new DetectionLog(this,"detection.csv", payloadData));
+            sensorDelegateLoggers.add(new BatteryLog(this, "battery.csv"));
             if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never ||
                 (BLESensorConfiguration.interopOpenTraceEnabled && BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval != TimeInterval.never)) {
-                sensor.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+                sensorDelegateLoggers.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+            }
+            for (final SensorDelegateLogger sensorDelegateLogger : sensorDelegateLoggers) {
+                sensor.add(sensorDelegateLogger);
+                if (null != automatedTestClient) {
+                    automatedTestClient.add(sensorDelegateLogger);
+                }
             }
         }
-        // Sensor will start and stop with UI switch (default ON) and bluetooth state
     }
 
     @Override
