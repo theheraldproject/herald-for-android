@@ -64,14 +64,16 @@ public class BLEBluetoothGattProxy {
 
     /**
      * Using Java reflection to obtain references to mService and IBluetoothGatt for proxy.
-     * @return
+     * @return True on success, false otherwise.
      */
+    @SuppressWarnings("ConstantConditions")
     private synchronized boolean reflection() {
         if (null != reflectionSuccessful) {
             return reflectionSuccessful;
         }
         try {
             // Get reference to BluetoothGatt.mService
+            //noinspection JavaReflectionMemberAccess
             final Field mService = BluetoothGatt.class.getDeclaredField("mService");
             if (null == mService) {
                 logger.fault("reflection failed (field=mService)");
@@ -102,7 +104,7 @@ public class BLEBluetoothGattProxy {
      * Replace mService field value in BluetoothGatt instance with proxy to enable interception
      * of calls to BluetoothGatt.readCharacteristic and BluetoothGatt.writeCharacteristic for
      * fixing CVE-2020-12856 vulnerability.
-     * @param bluetoothGatt
+     * @param bluetoothGatt Bluetooth GATT for wrapping as proxy.
      */
     public synchronized void proxy(final BluetoothGatt bluetoothGatt) {
         if (null == bluetoothGatt) {

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.heraldprox'
-version = '2.0.0-beta6'
+version = '2.1.0-beta1'
 
 apply plugin: 'com.android.library'
 
@@ -17,7 +17,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 30
         versionCode 2
-        versionName "2.0.0-beta6"
+        versionName "2.1.0-beta1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
