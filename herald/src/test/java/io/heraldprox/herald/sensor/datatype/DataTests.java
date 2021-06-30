@@ -18,7 +18,6 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("ConstantConditions")
 public class DataTests {
@@ -254,6 +253,54 @@ public class DataTests {
     // MARK:- Tests for Int/UInt append methods are found with the Int/UInt tests
 
     @Test
+    public void testData() throws Exception {
+        // Zero
+        final Data dataRange = new Data();
+        dataRange.append(new Data(), Data.DataLengthEncodingOption.UINT8);
+        assertNotNull(dataRange.data(0, Data.DataLengthEncodingOption.UINT8));
+        assertEquals(new Data(), dataRange.data(0, Data.DataLengthEncodingOption.UINT8).value);
+        assertEquals(1, dataRange.data(0, Data.DataLengthEncodingOption.UINT8).start);
+        assertEquals(1, dataRange.data(0, Data.DataLengthEncodingOption.UINT8).end);
+
+        // Encoding options
+        final Data dataEncoding = new Data();
+        dataEncoding.append(new Data((byte) 1, 1), Data.DataLengthEncodingOption.UINT8);
+        dataEncoding.append(new Data((byte) 2, 2), Data.DataLengthEncodingOption.UINT16);
+        dataEncoding.append(new Data((byte) 3, 3), Data.DataLengthEncodingOption.UINT32);
+        dataEncoding.append(new Data((byte) 4, 4), Data.DataLengthEncodingOption.UINT64);
+        assertNotNull(dataEncoding.data(0, Data.DataLengthEncodingOption.UINT8));
+        assertEquals(new Data((byte) 1, 1), dataEncoding.data(0, Data.DataLengthEncodingOption.UINT8).value);
+        assertEquals(1, dataEncoding.data(0, Data.DataLengthEncodingOption.UINT8).start);
+        assertEquals(2, dataEncoding.data(0, Data.DataLengthEncodingOption.UINT8).end);
+        assertNotNull(dataEncoding.data(2, Data.DataLengthEncodingOption.UINT16));
+        assertEquals(new Data((byte) 2, 2), dataEncoding.data(2, Data.DataLengthEncodingOption.UINT16).value);
+        assertEquals(4, dataEncoding.data(2, Data.DataLengthEncodingOption.UINT16).start);
+        assertEquals(6, dataEncoding.data(2, Data.DataLengthEncodingOption.UINT16).end);
+        assertNotNull(dataEncoding.data(6, Data.DataLengthEncodingOption.UINT32));
+        assertEquals(new Data((byte) 3, 3), dataEncoding.data(6, Data.DataLengthEncodingOption.UINT32).value);
+        assertEquals(10, dataEncoding.data(6, Data.DataLengthEncodingOption.UINT32).start);
+        assertEquals(13, dataEncoding.data(6, Data.DataLengthEncodingOption.UINT32).end);
+        assertNotNull(dataEncoding.data(13, Data.DataLengthEncodingOption.UINT64));
+        assertEquals(new Data((byte) 4, 4), dataEncoding.data(13, Data.DataLengthEncodingOption.UINT64).value);
+        assertEquals(21, dataEncoding.data(13, Data.DataLengthEncodingOption.UINT64).start);
+        assertEquals(25, dataEncoding.data(13, Data.DataLengthEncodingOption.UINT64).end);
+
+        // Values in range
+        final PrintWriter out = TestUtil.androidPrintWriter("data.csv");
+        out.println("value,data");
+        for (int i=0; i<=5; i++) {
+            final Data data = new Data();
+            data.append(new Data((byte) i, i), Data.DataLengthEncodingOption.UINT8);
+            assertNotNull(data.data(0, Data.DataLengthEncodingOption.UINT8));
+            assertEquals(new Data((byte) i, i), data.data(0, Data.DataLengthEncodingOption.UINT8).value);
+            out.println(i + "," + data.base64EncodedString());
+        }
+        out.flush();
+        out.close();
+        TestUtil.assertEqualsCrossPlatform("data.csv");
+    }
+
+    @Test
     public void testString() throws Exception {
         // Zero
         final Data dataRange = new Data();
@@ -265,26 +312,26 @@ public class DataTests {
 
         // Encoding options
         final Data dataEncoding = new Data();
-        dataEncoding.append("a", Data.StringLengthEncodingOption.UINT8);
-        dataEncoding.append("bb", Data.StringLengthEncodingOption.UINT16);
-        dataEncoding.append("ccc", Data.StringLengthEncodingOption.UINT32);
-        dataEncoding.append("dddd", Data.StringLengthEncodingOption.UINT64);
-        assertNotNull(dataEncoding.string(0, Data.StringLengthEncodingOption.UINT8));
-        assertEquals("a", dataEncoding.string(0, Data.StringLengthEncodingOption.UINT8).value);
-        assertEquals(1, dataEncoding.string(0, Data.StringLengthEncodingOption.UINT8).start);
-        assertEquals(2, dataEncoding.string(0, Data.StringLengthEncodingOption.UINT8).end);
-        assertNotNull(dataEncoding.string(2, Data.StringLengthEncodingOption.UINT16));
-        assertEquals("bb", dataEncoding.string(2, Data.StringLengthEncodingOption.UINT16).value);
-        assertEquals(4, dataEncoding.string(2, Data.StringLengthEncodingOption.UINT16).start);
-        assertEquals(6, dataEncoding.string(2, Data.StringLengthEncodingOption.UINT16).end);
-        assertNotNull(dataEncoding.string(6, Data.StringLengthEncodingOption.UINT32));
-        assertEquals("ccc", dataEncoding.string(6, Data.StringLengthEncodingOption.UINT32).value);
-        assertEquals(10, dataEncoding.string(6, Data.StringLengthEncodingOption.UINT32).start);
-        assertEquals(13, dataEncoding.string(6, Data.StringLengthEncodingOption.UINT32).end);
-        assertNotNull(dataEncoding.string(13, Data.StringLengthEncodingOption.UINT64));
-        assertEquals("dddd", dataEncoding.string(13, Data.StringLengthEncodingOption.UINT64).value);
-        assertEquals(21, dataEncoding.string(13, Data.StringLengthEncodingOption.UINT64).start);
-        assertEquals(25, dataEncoding.string(13, Data.StringLengthEncodingOption.UINT64).end);
+        dataEncoding.append("a", Data.DataLengthEncodingOption.UINT8);
+        dataEncoding.append("bb", Data.DataLengthEncodingOption.UINT16);
+        dataEncoding.append("ccc", Data.DataLengthEncodingOption.UINT32);
+        dataEncoding.append("dddd", Data.DataLengthEncodingOption.UINT64);
+        assertNotNull(dataEncoding.string(0, Data.DataLengthEncodingOption.UINT8));
+        assertEquals("a", dataEncoding.string(0, Data.DataLengthEncodingOption.UINT8).value);
+        assertEquals(1, dataEncoding.string(0, Data.DataLengthEncodingOption.UINT8).start);
+        assertEquals(2, dataEncoding.string(0, Data.DataLengthEncodingOption.UINT8).end);
+        assertNotNull(dataEncoding.string(2, Data.DataLengthEncodingOption.UINT16));
+        assertEquals("bb", dataEncoding.string(2, Data.DataLengthEncodingOption.UINT16).value);
+        assertEquals(4, dataEncoding.string(2, Data.DataLengthEncodingOption.UINT16).start);
+        assertEquals(6, dataEncoding.string(2, Data.DataLengthEncodingOption.UINT16).end);
+        assertNotNull(dataEncoding.string(6, Data.DataLengthEncodingOption.UINT32));
+        assertEquals("ccc", dataEncoding.string(6, Data.DataLengthEncodingOption.UINT32).value);
+        assertEquals(10, dataEncoding.string(6, Data.DataLengthEncodingOption.UINT32).start);
+        assertEquals(13, dataEncoding.string(6, Data.DataLengthEncodingOption.UINT32).end);
+        assertNotNull(dataEncoding.string(13, Data.DataLengthEncodingOption.UINT64));
+        assertEquals("dddd", dataEncoding.string(13, Data.DataLengthEncodingOption.UINT64).value);
+        assertEquals(21, dataEncoding.string(13, Data.DataLengthEncodingOption.UINT64).start);
+        assertEquals(25, dataEncoding.string(13, Data.DataLengthEncodingOption.UINT64).end);
 
         // Values in range
         final PrintWriter out = TestUtil.androidPrintWriter("string.csv");
@@ -300,7 +347,5 @@ public class DataTests {
         out.close();
         TestUtil.assertEqualsCrossPlatform("string.csv");
     }
-
-
 }
 
