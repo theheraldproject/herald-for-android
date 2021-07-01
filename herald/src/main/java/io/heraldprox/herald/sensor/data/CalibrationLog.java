@@ -15,7 +15,11 @@ import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
-/// CSV contact log for post event analysis and visualisation
+/**
+ * CSV calibration log for post event analysis and visualisation. This is used for automated
+ * analysis of RSSI over distance. The accelerometer data provides the signal for segmenting
+ * data by distance when used on the cable car rig.
+ */
 public class CalibrationLog extends SensorDelegateLogger {
 
     public CalibrationLog(@NonNull final Context context, @NonNull final String filename) {

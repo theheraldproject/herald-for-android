@@ -120,7 +120,11 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         return device(bluetoothDevice);
     }
 
-    /// Get pseudo device address for Android devices
+    /**
+     * Get pseudo device address for Android devices.
+     * @param scanResult Scan result may contain pseudo device address
+     * @return Pseudo device address extracted from scan result, or null if not found (e.g. iOS devices)
+     */
     @Nullable
     private PseudoDeviceAddress pseudoDeviceAddress(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();

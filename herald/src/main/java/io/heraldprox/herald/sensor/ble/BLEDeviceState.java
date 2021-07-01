@@ -4,7 +4,9 @@
 
 package io.heraldprox.herald.sensor.ble;
 
-/// BLE device connection state
+/**
+ * BLE device connection state.
+ */
 public enum BLEDeviceState {
     connecting, connected, disconnected
 }

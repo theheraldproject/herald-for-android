@@ -17,9 +17,11 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 import java.util.Date;
 import java.util.List;
 
-/// Estimate social distance to other app users to encourage people to keep their distance from
-/// people. This is intended to be used to generate a daily score as indicator of behavioural change
-/// to improve awareness of social mixing behaviour.
+/**
+ * Estimate social distance to other app users to encourage people to keep their distance from
+ * people. This is intended to be used to generate a daily score as indicator of behavioural change
+ * to improve awareness of social mixing behaviour.
+ */
 public class SocialDistance extends Interactions {
 
     // MARK:- SensorDelegate
@@ -38,13 +40,18 @@ public class SocialDistance extends Interactions {
         // Overriding parent function with no-op, replaced with sensor(sensor:didMeasure:fromTarget)
     }
 
-    /// Calculate social distance score based on maximum RSSI per 1 minute time window over duration
-    /// A score of 1.0 means RSSI >= measuredPower in every minute, score of 0.0 means no encounter
-    /// or RSSI less than excludeRssiBelow in every minute.
-    /// - measuredPower defines RSSI at 1 metre
-    /// - excludeRssiBelow defines minimum RSSI to include in analysis
+    /**
+     * Calculate social distance score based on maximum RSSI per 1 minute time window over duration.
+     * A score of 1.0 means RSSI >= measuredPower in every minute, score of 0.0 means no encounter
+     * or RSSI less than excludeRssiBelow in every minute.
+     * @param start Start time (inclusive)
+     * @param end End time (exclusive)
+     * @return Social distance score with range [0,1]
+     */
     @NonNull
     public Double scoreByProximity(@NonNull final Date start, @NonNull final Date end) {
+        // measuredPower defines RSSI at 1 metre
+        // excludeRssiBelow defines minimum RSSI to include in analysis
         return scoreByProximity(start, end, -32d, -65d);
     }
 
@@ -90,8 +97,15 @@ public class SocialDistance extends Interactions {
         return score;
     }
 
-    /// Calculate social distance score based on number of different devices per 1 minute time window over duration
-    /// A score of 1.0 means 6 or more in every minute, score of 0.0 means no device in every minute.
+    /**
+     * Calculate social distance score based on number of different devices per 1 minute time window over duration.
+     * A score of 1.0 means 6 or more in every minute, score of 0.0 means no device in every minute.
+     * @param start
+     * @param end
+     * @param start Start time (inclusive)
+     * @param end End time (exclusive)
+     * @return Social distance score with range [0,1]
+     */
     @NonNull
     public Double scoreByTarget(@NonNull final Date start, @NonNull final Date end) {
         return scoreByTarget(start, end, 6, -65);

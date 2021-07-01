@@ -22,7 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV log of event time intervals for post event analysis ands visualisation
+/**
+ * CSV log of event time intervals for post event analysis ands visualisation.
+ */
 public class EventTimeIntervalLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadData payloadData;

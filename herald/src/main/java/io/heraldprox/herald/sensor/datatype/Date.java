@@ -10,7 +10,9 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.TimeZone;
 
-/// UTC date time
+/**
+ * UTC date time
+ */
 public class Date extends java.util.Date {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     static {

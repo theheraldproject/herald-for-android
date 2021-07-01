@@ -81,7 +81,9 @@ public class PseudoDeviceAddress {
         this.address = decode(this.data);
     }
 
-    /// Default constructor uses Random as random source, see above and RandomSource for details.
+    /**
+     * Default constructor uses NonBlockingSecureRandom as random source, see above and RandomSource for details.
+     */
     public PseudoDeviceAddress() {
         this(BLESensorConfiguration.pseudoDeviceAddressRandomisation);
     }

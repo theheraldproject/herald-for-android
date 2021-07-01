@@ -13,7 +13,9 @@ import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-/// CSV battery log for post event analysis and visualisation
+/**
+ * CSV battery log for post event analysis and visualisation
+ */
 public class BatteryLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
     private final static TimeInterval updateInterval = TimeInterval.seconds(30);

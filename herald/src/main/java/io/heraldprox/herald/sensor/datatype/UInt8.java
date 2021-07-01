@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Unsigned integer (8 bits)
+/**
+ * Unsigned integer (8 bits)
+ */
 public class UInt8 implements DoubleValue {
     public final static int bitWidth = 8;
     public final static UInt8 min = new UInt8(0);

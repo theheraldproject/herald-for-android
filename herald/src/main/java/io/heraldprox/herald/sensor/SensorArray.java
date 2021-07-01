@@ -24,7 +24,9 @@ import io.heraldprox.herald.sensor.motion.ConcreteInertiaSensor;
 import java.util.ArrayList;
 import java.util.List;
 
-/// Sensor array for combining multiple detection and tracking methods.
+/**
+ * Sensor array for combining multiple detection and tracking methods.
+ */
 public class SensorArray implements Sensor {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
     private final List<Sensor> sensorArray = new ArrayList<>();
@@ -54,12 +56,21 @@ public class SensorArray implements Sensor {
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
     }
 
-    /// Immediate send data.
+    /**
+     * Immediate send data.
+     * @param data Data to be sent immediately to target device.
+     * @param targetIdentifier Identifier of target device.
+     * @return True for success, false otherwise.
+     */
     public boolean immediateSend(@NonNull final Data data, @NonNull final TargetIdentifier targetIdentifier) {
         return concreteBleSensor.immediateSend(data,targetIdentifier);
     }
 
-    /// Immediate send to all (connected / recent / nearby)
+    /**
+     * Immediate send to all (connected / recent / nearby).
+     * @param data Data to be sent immediately to all devices.
+     * @return True for success, false otherwise.
+     */
     public boolean immediateSendAll(@NonNull final Data data) {
         return concreteBleSensor.immediateSendAll(data);
     }

@@ -59,7 +59,7 @@ public class AppDelegate extends Application implements SensorDelegate {
     // Sensor for proximity detection
     private SensorArray sensor = null;
 
-    /// Generate unique and consistent device identifier for testing detection and tracking
+    // Generate unique and consistent device identifier for testing detection and tracking
     private int identifier() {
         final String text = Build.MODEL + ":" + Build.BRAND;
         return text.hashCode();
@@ -111,12 +111,18 @@ public class AppDelegate extends Application implements SensorDelegate {
         super.onTerminate();
     }
 
-    /// Get app delegate
+    /**
+     * Get app delegate after onCreate() has been called.
+     * @return App delegate, or null if onCreate() hasn't been called yet.
+     */
     public static AppDelegate getAppDelegate() {
         return appDelegate;
     }
 
-    /// Get sensor
+    /**
+     * Get sensor array after onCreate() has been called.
+     * @return Sensor array, or null if onCreate() hasn't been called yet.
+     */
     public Sensor sensor() {
         return sensor;
     }

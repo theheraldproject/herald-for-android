@@ -22,9 +22,9 @@ import io.heraldprox.herald.sensor.datatype.UInt32;
  */
 public class ConcreteTransportLayerSecurity implements TransportLayerSecurity {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.Security.ConcreteTransportLayerSecurity");
-    /// Limitation : Public key is < 256 bytes
+    // Limitation : Public key is < 256 bytes
     private final Data.DataLengthEncodingOption encodingForPublicKeyCount = Data.DataLengthEncodingOption.UINT8;
-    /// Limitation : Encrypted data is < 65536 bytes
+    // Limitation : Encrypted data is < 65536 bytes
     private final Data.DataLengthEncodingOption encodingForEncryptedDataCount = Data.DataLengthEncodingOption.UINT16;
     @NonNull
     private final KeyExchange keyExchange;

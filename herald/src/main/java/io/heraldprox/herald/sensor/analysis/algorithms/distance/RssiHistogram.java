@@ -16,8 +16,9 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-/// Accumulate histogram of all RSSI measurements to build
-/// a profile of the receiver for normalisation
+/**
+ * Accumulate histogram of all RSSI measurements to build a profile of the receiver for normalisation
+ */
 public class RssiHistogram extends DefaultSensorDelegate {
     public final int min, max;
     @NonNull
@@ -34,7 +35,13 @@ public class RssiHistogram extends DefaultSensorDelegate {
     private Date lastUpdateTime = new Date(0);
     private long samples = 0;
 
-    /// Accumulate histogram of RSSI for value range [min, max] and auto-write profile to storage at regular intervals
+    /**
+     * Accumulate histogram of RSSI for value range [min, max] and auto-write profile to storage at regular intervals.
+     * @param min Minimum RSSI value (inclusive)
+     * @param max Maximum RSSI value (inclusive)
+     * @param updatePeriod Update histogram normalisation parameters at regular intervals
+     * @param textFile Optionally write histogram to storage at regular intervals
+     */
     public RssiHistogram(final int min, final int max, @NonNull final TimeInterval updatePeriod, @Nullable final TextFile textFile) {
         this.min = min;
         this.max = max;
@@ -50,7 +57,12 @@ public class RssiHistogram extends DefaultSensorDelegate {
         }
     }
 
-    /// Accumulate a RSSI profile for value range [min, max] in-memory only
+    /**
+     * Accumulate histogram of RSSI for value range [min, max] in-memory only. Histogram normalisation parameters
+     * are updated once per minute.
+     * @param min Minimum RSSI value (inclusive)
+     * @param max Maximum RSSI value (inclusive)
+     */
     public RssiHistogram(final int min, final int max) {
         this(min, max, TimeInterval.minute, null);
     }
@@ -69,7 +81,10 @@ public class RssiHistogram extends DefaultSensorDelegate {
         add(didMeasure.value);
     }
 
-    /// Add RSSI sample
+    /**
+     * Add RSSI sample.
+     * @param rssiValue RSSI sample value
+     */
     public synchronized void add(final double rssiValue) {
         // Guard for RSSI range
         final int rssi = (int) Math.round(rssiValue);
@@ -119,7 +134,10 @@ public class RssiHistogram extends DefaultSensorDelegate {
         return normalise(samplePercentile(percentile));
     }
 
-    /// Read profile data from storage, this replaces existing in-memory profile
+    /**
+     * Read histogram data from storage, this replaces existing in-memory profile
+     * @param textFile CSV file
+     */
     public void read(@NonNull final TextFile textFile) {
         clear();
         final String content = textFile.contentsOf();
@@ -139,7 +157,10 @@ public class RssiHistogram extends DefaultSensorDelegate {
         }
     }
 
-    /// Render profile data as CSV (RSSI,count)
+    /**
+     * Render histogram data as CSV (RSSI,count)
+     * @return CSV file content
+     */
     @NonNull
     private String toCsv() {
         final StringBuilder s = new StringBuilder();
@@ -151,7 +172,10 @@ public class RssiHistogram extends DefaultSensorDelegate {
         return s.toString();
     }
 
-    /// Write profile data to storage
+    /**
+     * Write histogram data to storage as CSV file.
+     * @param textFile CSV file.
+     */
     public void write(@NonNull final TextFile textFile) {
         final String content = toCsv();
         textFile.overwrite(content);
@@ -159,7 +183,11 @@ public class RssiHistogram extends DefaultSensorDelegate {
 
     // MARK: - Histogram equalisation
 
-    /// Compute cumulative distribution function (CDF) of histogram
+    /**
+     * Compute cumulative distribution function (CDF) of histogram.
+     * @param histogram Histogram data (input)
+     * @param cdf Cumulative distribution function (output)
+     */
     private static void cumulativeDistributionFunction(@NonNull final long[] histogram, @NonNull final long[] cdf) {
         long sum = 0;
         for (int i = 0; i < histogram.length; i++) {
@@ -167,8 +195,8 @@ public class RssiHistogram extends DefaultSensorDelegate {
         }
     }
 
-//    /// Compute transformation table for equalising histogram to target CDF.
-//    /// Use this to normalise all phones towards a common histogram profile.
+//    // Compute transformation table for equalising histogram to target CDF.
+//    // Use this to normalise all phones towards a common histogram profile.
 //    private static void equalisation(final long[] histogram, final long[] cdf, final double[] transform) {
 //        final double sum = cdf[cdf.length - 1];
 //        final long max = cdf.length - 1;
@@ -185,7 +213,11 @@ public class RssiHistogram extends DefaultSensorDelegate {
 //        }
 //    }
 
-    /// Compute transformation table for normalising histogram to maximise its dynamic range
+    /**
+     * Compute transformation table for normalising histogram to maximise its dynamic range.
+     * @param cdf Cumulative distribution function (input)
+     * @param transform Histogram normalisation lookup table (output)
+     */
     private static void normalisation(@NonNull final long[] cdf, @NonNull final double[] transform) {
         final double sum = cdf[cdf.length - 1];
         final long max = cdf.length - 1;

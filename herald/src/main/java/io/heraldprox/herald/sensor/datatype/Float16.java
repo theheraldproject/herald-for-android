@@ -9,7 +9,9 @@ import androidx.annotation.NonNull;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-/// IEE 754 binary16 format 16-bit float
+/**
+ * IEE 754 binary16 format 16-bit float.
+ */
 public class Float16 implements DoubleValue {
     public final float value;
     @NonNull
@@ -31,7 +33,11 @@ public class Float16 implements DoubleValue {
         this.value = valueOf(value);
     }
 
-    /// Float value to Float16 where the last 16 bits of integer value contains Float16
+    /**
+     * Float value to Float16 where the last 16 bits of integer value contains Float16
+     * @param values Float value
+     * @return Last 16 bits of integer value contains Float16
+     */
     private static int float16(final float values) {
         final int bits = Float.floatToIntBits(values);
         final int sign = bits >>> 16 & 0x8000;

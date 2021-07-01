@@ -63,9 +63,9 @@ import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener, Resettable {
     private final static String tag = MainActivity.class.getName();
-    /// REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
+    // REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
-    /// Test UI specific data, not required for production solution.
+    // Test UI specific data, not required for production solution.
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
     private boolean foreground = false;
 
@@ -169,7 +169,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         }
     }
 
-    /// REQUIRED : Request application permissions for sensor operation.
+    /**
+     * REQUIRED : Request application permissions for sensor operation.
+     */
     private void requestPermissions() {
         // Check and request permissions
         final List<String> requiredPermissions = new ArrayList<>();
@@ -189,7 +191,12 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         }
     }
 
-    /// REQUIRED : Handle permission results.
+    /**
+     * REQUIRED : Handle permission results.
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
     @Override
     public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);

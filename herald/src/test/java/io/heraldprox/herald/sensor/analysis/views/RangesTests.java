@@ -316,8 +316,10 @@ public class RangesTests {
         assertTrue(riskScore > 0.0); // final score should be non zero
         assertTrue(riskScore > firstNonZeroInterScore); // should be additive over time too
     }
-    //// TODO Given a list of risk-distance numbers, and the approximate final time of that contact, calculate
-    ////      a risk score when the risk of infection drops off linearly over 14 days. (like COVID-19)
-    ////      (Ideally we'd have a more robust epidemiological model, but this will suffice for example purposes)
 
+    /**
+     * TODO Given a list of risk-distance numbers, and the approximate final time of that contact, calculate
+     * a risk score when the risk of infection drops off linearly over 14 days. (like COVID-19)
+     * (Ideally we'd have a more robust epidemiological model, but this will suffice for example purposes)
+     */
 }

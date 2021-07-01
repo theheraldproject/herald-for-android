@@ -168,11 +168,14 @@ public class SignalCharacteristicData {
         return new PayloadSharingData(new RSSI(rssiValue.intValue()), payloadSharingDataBytes);
     }
 
-    /// Encode immediate send data bundle
-    // immediateSend data format
-    // 0-0 : actionCode
-    // 1-2 : payload data count in bytes (Int16)
-    // 3.. : payload data
+    /**
+     * Encode immediate send data bundle immediateSend data format
+     * <br>0-0 : actionCode
+     * <br>1-2 : payload data count in bytes (Int16)
+     * <br>3.. : payload data
+     * @param immediateSendData
+     * @return
+     */
     @NonNull
     public static Data encodeImmediateSend(@NonNull final ImmediateSendData immediateSendData) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(3 + immediateSendData.data.value.length);
@@ -184,7 +187,11 @@ public class SignalCharacteristicData {
         return new Data(byteBuffer.array());
     }
 
-    /// Decode immediate send data bundle
+    /**
+     * Decode immediate send data bundle
+     * @param data
+     * @return
+     */
     @Nullable
     public static ImmediateSendData decodeImmediateSend(@Nullable final Data data) {
         //noinspection ConstantConditions
@@ -214,7 +221,11 @@ public class SignalCharacteristicData {
         return new ImmediateSendData(immediateSendDataBytes);
     }
 
-    /// Detect signal characteristic data bundle type
+    /**
+     * Detect signal characteristic data bundle type.
+     * @param data
+     * @return
+     */
     @NonNull
     public static SignalCharacteristicDataType detect(@NonNull final Data data) {
         switch (signalDataActionCode(data.value)) {

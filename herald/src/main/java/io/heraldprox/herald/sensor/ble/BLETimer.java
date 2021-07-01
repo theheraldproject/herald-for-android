@@ -121,7 +121,10 @@ public class BLETimer {
         wakeLock.release();
     }
 
-    /// Add delegate for time notification
+    /**
+     * Add delegate for time notification.
+     * @param delegate Delegate for receiving notifications
+     */
     public void add(@NonNull final BLETimerDelegate delegate) {
         delegates.add(delegate);
     }

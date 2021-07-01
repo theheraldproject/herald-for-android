@@ -66,13 +66,15 @@ public class AnalysisRunnerTests {
         assertEquals(variantSet.size(), 1);
     }
 
-    /// [Who]   As a DCT app developer
-    /// [What]  I want to link my live application data to an analysis runner easily
-    /// [Value] So I don't have to write plumbing code for Herald itself
-    ///
-    /// [Who]   As a DCT app developer
-    /// [What]  I want to periodically run analysis aggregates automatically
-    /// [Value] So I don't miss any information, and have accurate, regular, samples
+    /**
+     * [Who]   As a DCT app developer
+     * [What]  I want to link my live application data to an analysis runner easily
+     * [Value] So I don't have to write plumbing code for Herald itself
+     *
+     * [Who]   As a DCT app developer
+     * [What]  I want to periodically run analysis aggregates automatically
+     * [Value] So I don't miss any information, and have accurate, regular, samples
+     */
     @Test
     public void analysisrunner_basic() {
         final SampleList<RSSI> srcData = new SampleList<>(25);

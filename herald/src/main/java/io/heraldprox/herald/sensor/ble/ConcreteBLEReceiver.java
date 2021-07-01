@@ -102,8 +102,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
      *      <tr><td>20</td><td>34394</td><td>100.0%</td></tr>
      *   </tbody>
      * </table>
+     * 10 device test was conducted using 12s, 8s, 6s, and 3s timeouts. Test results show
+     * 8s timeout offers optimal performance, achieving 98.9% continuity and 2.78%/hr battery drain.
      */
-    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(6).millis();
+    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(8).millis();
     // Collect connection and processing statistics to determine timeouts based on actual data
     @NonNull
     private final Histogram timeToConnectDevice;
@@ -383,7 +385,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     }
 
 
-    /// Get BLE scanner and start scan
+    /**
+     * Start scan.
+     * @param bluetoothLeScanner BLE scanner
+     * @param callback Callback for start scan result
+     */
     private void startScan(@NonNull final BluetoothLeScanner bluetoothLeScanner, @Nullable final Callback<Boolean> callback) {
         logger.debug("startScan");
         operationQueue.execute(new Runnable() {
@@ -405,13 +411,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         });
     }
 
-
-    /// Scan for devices advertising sensor service and all Apple devices as
-    // iOS background advert does not include service UUID. There is a risk
-    // that the sensor will spend time communicating with Apple devices that
-    // are not running the sensor code repeatedly, but there is no reliable
-    // way of filtering this as the service may be absent only because of
-    // transient issues. This will be handled in taskConnect.
+    /**
+     * Scan for devices advertising sensor service and all Apple devices as
+     * iOS background advert does not include service UUID. There is a risk
+     * that the sensor will spend time communicating with Apple devices that
+     * are not running the sensor code repeatedly, but there is no reliable
+     * way of filtering this as the service may be absent only because of
+     * transient issues. This will be handled in taskConnect.
+     * @param bluetoothLeScanner BLE scanner
+     */
     private void scanForPeripherals(@NonNull final BluetoothLeScanner bluetoothLeScanner) {
         logger.debug("scanForPeripherals");
         final List<ScanFilter> filter = new ArrayList<>(4);
@@ -462,7 +470,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         });
     }
 
-    /// Get BLE scanner and stop scan
+    /**
+     * Stop scan.
+     * @param bluetoothLeScanner BLE scanner
+     * @param callback Callback for stop scan result
+     */
     private void stopScan(@NonNull final BluetoothLeScanner bluetoothLeScanner, @NonNull final Callback<Boolean> callback) {
         logger.debug("stopScan");
         operationQueue.execute(new Runnable() {
@@ -491,7 +503,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- Process scan results
 
-    /// Process scan results.
+    /**
+     * Process all recent scan results.
+     */
     private void processScanResults() {
         final long t0 = System.currentTimeMillis();
         logger.debug("processScanResults (results={})", scanResults.size());
@@ -593,7 +607,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return devices;
     }
 
-    /// Does scan result include advert for sensor service?
+    /**
+     * Does scan result include advert for sensor service?
+     * @param scanResult Scan result
+     * @return True if result includes advert for sensor service, false otherwise
+     */
     private static boolean hasSensorService(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
         if (null == scanRecord) {
@@ -611,7 +629,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return false;
     }
 
-    /// Does scan result indicate device was manufactured by Apple?
+    /**
+     * Does scan result indicate device was manufactured by Apple?
+     * @param scanResult Scan result
+     * @return True if Apple device, false otherwise.
+     */
     private static boolean isAppleDevice(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
         if (null == scanRecord) {
@@ -621,7 +643,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return null != data;
     }
 
-    /// Does scan result indicate device is OpenTrace Android (true) or iOS (false) device?
+    /**
+     * Does scan result indicate device is OpenTrace Android (true) or iOS (false) device?
+     * @param scanResult Scan result
+     * @return True for OpenTrace Android devices, false otherwise
+     */
     private static boolean isOpenTraceAndroidDevice(@NonNull final ScanResult scanResult) {
         if (!BLESensorConfiguration.interopOpenTraceEnabled) {
             return false;
@@ -637,7 +663,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return null != data;
     }
 
-    /// Does scan result include advert for OpenTrace service?
+    /**
+     * Does scan result include advert for OpenTrace service?
+     * @param scanResult Scan result
+     * @return True for adverts containing OpenTrace service, false otherwise
+     */
     private static boolean hasOpenTraceService(@NonNull final ScanResult scanResult) {
         if (!BLESensorConfiguration.interopOpenTraceEnabled) {
             return false;
@@ -677,7 +707,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Extract messages from manufacturer specific data
+    /**
+     * Extract messages from manufacturer specific data.
+     * @param device BLE device
+     */
     private void processLegacyAdvertOnlyProtocolServiceData(@NonNull final BLEDevice device) {
         // Test if device has legacy advert only protocol service
         if (!hasLegacyAdvertOnlyProtocolServiceService(device)) {
@@ -711,7 +744,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Does device include advert for legacy advertising only protocol service?
+    /**
+     * Does device include advert for legacy advertising only protocol service?
+     * @param device BLE device
+     * @return True for devices with advert for legacy advertising only protocol service, false otherwise
+     */
     private static boolean hasLegacyAdvertOnlyProtocolServiceService(@Nullable final BLEDevice device) {
         if (null == device) {
             return false;
@@ -735,9 +772,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- House keeping tasks
 
-    /// Remove devices that have not been updated for over 15 minutes, as the UUID
-    // is likely to have changed after being out of range for over 20 minutes,
-    // so it will require discovery. Discovery is fast and cheap on Android.
+    /**
+     * Remove devices that have not been updated for over 15 minutes, as the UUID is likely
+     * to have changed after being out of range for over 20 minutes, so it will require
+     * discovery. Discovery is fast and cheap on Android.
+     */
     private void taskRemoveExpiredDevices() {
         final List<BLEDevice> devicesToRemove = new ArrayList<>();
         for (final BLEDevice device : database.devices()) {
@@ -751,7 +790,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Connections should not be held for more than 1 minute, likely to have not received onConnectionStateChange callback.
+    /**
+     * Connections should not be held for more than 1 minute, likely to have not received
+     * onConnectionStateChange callback.
+     */
     private void taskCorrectConnectionStatus() {
         for (final BLEDevice device : database.devices()) {
             if (device.state() == BLEDeviceState.connected && device.timeIntervalSinceConnected().value > TimeInterval.minute.value) {
@@ -1007,7 +1049,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         nextTask(gatt);
     }
 
-    /// Get Bluetooth service characteristic, or null if not found.
+    /**
+     * Get Bluetooth service characteristic, or null if not found.
+     * @param gatt GATT
+     * @param service Service UUID
+     * @param characteristic Characteristic UUID
+     * @return Characteristic, or null if not found
+     */
     @Nullable
     private BluetoothGattCharacteristic serviceCharacteristic(@NonNull final BluetoothGatt gatt, @NonNull final UUID service, @NonNull final UUID characteristic) {
         try {
@@ -1024,16 +1072,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Establish the next task for a device, given its current state.
-    /// This is necessary because all BLE activities are asynchronous,
-    /// thus the BLEDevice object acts as a repository for collating all
-    /// device state and information updates from the asynchronous calls.
-    /// This function inspects the device state and information to
-    /// determine the next task to perform, if any, for the device
-    /// while it is connected. Please note, service and characteristic
-    /// discovery must be performed (cannot be cached) on the device
-    /// on each connection, thus it makes sense to do as much as possible
-    /// once a connection has been established with the target device.
+    /**
+     * Establish the next task for a device, given its current state.
+     * This is necessary because all BLE activities are asynchronous,
+     * thus the BLEDevice object acts as a repository for collating all
+     * device state and information updates from the asynchronous calls.
+     * This function inspects the device state and information to
+     * determine the next task to perform, if any, for the device
+     * while it is connected. Please note, service and characteristic
+     * discovery must be performed (cannot be cached) on the device
+     * on each connection, thus it makes sense to do as much as possible
+     * once a connection has been established with the target device.
+     * @param device BLE device
+     * @return Next task for the device
+     */
     @NonNull
     private NextTask nextTaskForDevice(@NonNull final BLEDevice device) {
         // No task for devices marked as .ignore
@@ -1131,11 +1183,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return NextTask.nothing;
     }
 
-    /// Given an open connection, perform the next task for the device.
-    /// Use this function to define the actual code for implementing
-    /// a task on the device (e.g. readPayload). The actual priority
-    /// of tasks is defined in the function nextTaskForDevice().
-    /// See function nextTaskForDevice() for additional design details.
+    /**
+     * Given an open connection, perform the next task for the device.
+     * Use this function to define the actual code for implementing
+     * a task on the device (e.g. readPayload). The actual priority
+     * of tasks is defined in the function nextTaskForDevice().
+     * See function nextTaskForDevice() for additional design details.
+     * @param gatt GATT
+     */
     private void nextTask(@NonNull final BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
@@ -1336,7 +1391,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Split data into fragments, where each fragment has length <= mtu
+    /**
+     * Split data into fragments, where each fragment has length <= mtu.
+     * @param data Data
+     * @return Data fragments
+     */
     @NonNull
     private Queue<byte[]> fragmentDataByMtu(@NonNull final byte[] data) {
         final Queue<byte[]> fragments = new ConcurrentLinkedQueue<>();
@@ -1349,10 +1408,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return fragments;
     }
 
-    /// Interoperability with OpenTrace
-    /// If nextTask=readPayload, rather than calling readCharacteristic directly, OpenTrace requires
-    /// MTU to be set to 512, before reading the actual payload. While HERALD handles fragmentation
-    /// internally, OpenTrace relies on setting the MTU to support reading of large payloads.
+    /**
+     * Interoperability with OpenTrace.
+     * If nextTask=readPayload, rather than calling readCharacteristic directly, OpenTrace requires
+     * MTU to be set to 512, before reading the actual payload. While HERALD handles fragmentation
+     * internally, OpenTrace relies on setting the MTU to support reading of large payloads.
+     * @param gatt GATT
+     * @param mtu Actual MTU following change
+     * @param status Change status
+     */
     @Override
     public void onMtuChanged(@NonNull final BluetoothGatt gatt, final int mtu, final int status) {
         final BLEDevice device = database.device(gatt.getDevice());
@@ -1366,8 +1430,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         gatt.disconnect();
     }
 
-    /// Write payload to legacy OpenTrace device
-    /// OpenTrace protocol : read payload -> write payload -> disconnect
+    /**
+     * Write payload to legacy OpenTrace device
+     * <br>
+     * OpenTrace protocol : read payload -> write payload -> disconnect
+     * @param gatt GATT
+     */
     private void writeLegacyPayload(@NonNull final BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         if (device.protocolIsOpenTrace()) {

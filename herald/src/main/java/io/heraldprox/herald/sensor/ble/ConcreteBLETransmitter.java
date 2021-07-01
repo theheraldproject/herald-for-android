@@ -125,7 +125,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         starting, started, stopping, stopped
     }
 
-    /// Get Bluetooth LE advertiser
+    /**
+     * Get Bluetooth LE advertiser
+     * @return Advertiser, or null if unsupported or unavailable
+     */
     @Nullable
     private BluetoothLeAdvertiser bluetoothLeAdvertiser() {
         final BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();

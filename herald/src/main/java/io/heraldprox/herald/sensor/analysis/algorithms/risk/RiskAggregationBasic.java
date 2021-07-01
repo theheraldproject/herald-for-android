@@ -10,9 +10,13 @@ import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
-/// A Basic sample but non scientific risk aggregation model.
-/// Similar in function to the Oxford Risk Model, but without its calibration values and scaling.
-/// NOT FOR PRODUCTION EPIDEMIOLOGICAL USE - SAMPLE ONLY!!!
+/**
+ * A Basic sample but non scientific risk aggregation model.
+ * Similar in function to the Oxford Risk Model, but without its calibration values and scaling.
+ * <br>
+ * NOT FOR PRODUCTION EPIDEMIOLOGICAL USE - SAMPLE ONLY!!!
+ * @param <T>
+ */
 public class RiskAggregationBasic<T extends DoubleValue> implements Aggregate<T> {
     private int run = 1;
     private final double timeScale;

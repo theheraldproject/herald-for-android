@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Unsigned integer (32 bits)
+/**
+ * Unsigned integer (32 bits)
+ */
 public class UInt32 implements DoubleValue {
     public final static int bitWidth = 32;
     public final static UInt32 min = new UInt32(0);
