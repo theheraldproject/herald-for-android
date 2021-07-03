@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 
 import java.util.Date;
 
-/// Payload timestamp, should normally be Date, but it may change to UInt64 in the future to use server synchronised relative timestamp.
+/**
+ * Payload timestamp, should normally be Date, but it may change to UInt64 in the future to use server synchronised relative timestamp.
+ */
 public class PayloadTimestamp {
     @NonNull
     public final Date value;

@@ -16,7 +16,9 @@ import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.List;
 
-/// Default implementation of SensorDelegate for making all interface methods optional.
+/**
+ * Default implementation of SensorDelegate for making all interface methods optional.
+ */
 public abstract class DefaultSensorDelegate implements SensorDelegate {
 
     @Override

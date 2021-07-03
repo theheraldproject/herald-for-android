@@ -171,7 +171,7 @@ public class SampleListTests {
         assertEquals(sl.get(4).value().value, -44, Double.MIN_VALUE);
     }
 
-    //// Now handle deletion by time
+    // MARK: - Now handle deletion by time
 
     @Test
     public void samplelist_clearoneold() {
@@ -229,7 +229,7 @@ public class SampleListTests {
         assertEquals(sl.size(), 0);
     }
 
-    //// Now handle clear()
+    // MARK: - Now handle clear()
 
     @Test
     public void samplelist_clear() {
@@ -248,7 +248,7 @@ public class SampleListTests {
         assertEquals(sl.size(), 0);
     }
 
-    //// Now handle iterators
+    // MARK: - Now handle iterators
 
     @Test
     public void samplelist_iterator_empty() {
@@ -422,7 +422,7 @@ public class SampleListTests {
         assertFalse(iter.hasNext());
     }
 
-    //// Now handle other container functionality required
+    // MARK: - Now handle other container functionality required
 
     @Test
     public void sample_init() {

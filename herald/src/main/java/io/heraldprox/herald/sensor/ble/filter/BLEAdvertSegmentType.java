@@ -9,8 +9,10 @@ import androidx.annotation.NonNull;
 import java.util.HashMap;
 import java.util.Map;
 
-/// BLE Advert types - Note: We only list those we use in Herald for some reason
-/// See https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/
+/**
+ * BLE Advert types - Note: We only list those we use in Herald for some reason.
+ * See https://www.bluetooth.com/specifications/assigned-numbers/generic-access-profile/
+ */
 public enum BLEAdvertSegmentType {
     unknown("unknown", 0x00), // Valid - this number is not assigned
     serviceUUID16IncompleteList("serviceUUID16IncompleteList", 0x02),

@@ -10,7 +10,9 @@ import androidx.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-/// Raw byte array data
+/**
+ * Raw byte array data
+ */
 public class Data {
     private final static char[] hexChars = "0123456789ABCDEF".toCharArray();
     @NonNull
@@ -98,7 +100,11 @@ public class Data {
         return base64EncodedString();
     }
 
-    /// Get subdata from offset to end
+    /**
+     * Get subdata from offset to end
+     * @param offset Offset
+     * @return Suffix of data
+     */
     @Nullable
     public Data subdata(final int offset) {
         if (offset >= 0 && offset < value.length) {
@@ -110,7 +116,12 @@ public class Data {
         }
     }
 
-    /// Get subdata from offset to offset + length
+    /**
+     * Get subdata from offset to offset + length
+     * @param offset Offset
+     * @param length Length from offset
+     * @return Data fragment
+     */
     @Nullable
     public Data subdata(final int offset, final int length) {
         if (offset >= 0 && offset < value.length && offset + length <= value.length) {
@@ -141,7 +152,10 @@ public class Data {
         return subdata(from, length);
     }
 
-    /// Append data to end of this data.
+    /**
+     * Append data to end of this data.
+     * @param data Data
+     */
     public void append(@Nullable final Data data) {
         if (null == data) {
             return;
@@ -432,7 +446,12 @@ public class Data {
         UINT8, UINT16, UINT32, UINT64
     }
 
-    /// Encode data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
+    /**
+     * Encode data, inserting length as prefix using UInt8,...,64.
+     * @param value Data
+     * @param encoding Encoding for length of data
+     * @return True if successful, false otherwise.
+     */
     @SuppressWarnings({"UnusedReturnValue", "ConstantConditions"})
     public boolean append(@Nullable final Data value, @NonNull final DataLengthEncodingOption encoding) {
         //noinspection ConstantConditions
@@ -475,7 +494,11 @@ public class Data {
         return true;
     }
 
-    /// Encode string as data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
+    /**
+     * Encode string as data, inserting length as prefix using UInt8.
+     * @param value String
+     * @return True if successful, false otherwise
+     */
     @SuppressWarnings("UnusedReturnValue")
     public boolean append(@Nullable final String value) {
         if (null == value) {
@@ -484,6 +507,12 @@ public class Data {
         return append(value, DataLengthEncodingOption.UINT8);
     }
 
+    /**
+     * Encode string as data, inserting length as prefix using UInt8,...,64.
+     * @param value Data
+     * @param encoding Encoding for length of data
+     * @return True if successful, false otherwise.
+     */
     public boolean append(@Nullable final String value, @NonNull final DataLengthEncodingOption encoding) {
         //noinspection ConstantConditions
         if (null == value || null == encoding) {
@@ -501,7 +530,9 @@ public class Data {
         return append(new Data(data), encoding);
     }
 
-    /// Decoded data and start/end indices in data byte array
+    /**
+     * Decoded data and start/end indices in data byte array
+     */
     public final static class DecodedData {
         @NonNull
         public final Data value;
@@ -584,7 +615,9 @@ public class Data {
         }
     }
 
-    /// Decoded string and start/end indices in data byte array
+    /**
+     * Decoded string and start/end indices in data byte array.
+     */
     public final static class DecodedString {
         @NonNull
         public final String value;

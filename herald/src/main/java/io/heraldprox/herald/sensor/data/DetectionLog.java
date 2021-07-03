@@ -19,7 +19,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV contact log for post event analysis and visualisation
+/**
+ * CSV detection log for post event analysis and visualisation.
+ */
 public class DetectionLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.DetectionLog");
     @NonNull

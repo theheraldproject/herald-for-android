@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Signed integer (8 bits)
+/**
+ * Signed integer (8 bits)
+ */
 public class Int8 implements DoubleValue {
     public final static int bitWidth = 8;
     public final static Int8 min = new Int8(Byte.MIN_VALUE);

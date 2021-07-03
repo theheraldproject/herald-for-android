@@ -21,7 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV contact log for post event analysis and visualisation
+/**
+ * CSV statistics log for post event analysis and visualisation
+ */
 public class StatisticsLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadData payloadData;

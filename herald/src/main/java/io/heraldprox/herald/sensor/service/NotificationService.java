@@ -13,7 +13,10 @@ import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-/// Notification service for enabling foreground service (notification must be displayed to show app is running in the background).
+/**
+ * Notification service for enabling foreground service (notification must be
+ * displayed to show app is running in the background).
+ */
 public class NotificationService {
     @Nullable
     private static NotificationService shared = null;
@@ -27,7 +30,11 @@ public class NotificationService {
         this.context = application.getApplicationContext();
     }
 
-    /// Get shared global instance of notification service
+    /**
+     * Get shared global instance of notification service
+     * @param application
+     * @return
+     */
     @NonNull
     public static NotificationService shared(@NonNull final Application application) {
         if (null == shared) {
@@ -36,7 +43,11 @@ public class NotificationService {
         return shared;
     }
 
-    /// Start foreground service to enable background scan
+    /**
+     * Start foreground service to enable background scan
+     * @param notification
+     * @param notificationId
+     */
     public void startForegroundService(@NonNull final Notification notification, final int notificationId) {
         this.notification = notification;
         this.notificationId = notificationId;
@@ -50,7 +61,9 @@ public class NotificationService {
         }
     }
 
-    /// Stop current foreground service
+    /**
+     * Stop current foreground service
+     */
     public void stopForegroundService() {
         final Intent intent = new Intent(context, ForegroundService.class);
         intent.setAction(ForegroundService.ACTION_STOP);

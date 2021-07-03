@@ -8,11 +8,17 @@ import androidx.annotation.NonNull;
 
 import java.util.Date;
 
-/// Raw location data for estimating indirect exposure
+/**
+ * Raw location data for estimating indirect exposure.
+ */
 public class Location {
-    /// Measurement values, e.g. GPS coordinates in comma separated string format for latitude and longitude
+    /**
+     * Measurement values, e.g. GPS coordinates in comma separated string format for latitude and longitude
+     */
     public final LocationReference value;
-    /// Time spent at location.
+    /**
+     * Time spent at location.
+     */
     public final Date start, end;
 
     public Location(@NonNull final LocationReference value, @NonNull final Date start, @NonNull final Date end) {
@@ -21,7 +27,10 @@ public class Location {
         this.end = end;
     }
 
-    /// Get plain text description of proximity data
+    /**
+     * Get plain text description of proximity data
+     * @return Description
+     */
     @NonNull
     public String description() {
         //noinspection ConstantConditions

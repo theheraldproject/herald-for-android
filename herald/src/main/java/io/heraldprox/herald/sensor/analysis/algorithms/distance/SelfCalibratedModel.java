@@ -16,19 +16,22 @@ import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-/// Extension of SmoothedLinearModel to include self-calibration
-/// - Assume minimum and average distance between people for entire population is
-///   similar over time (e.g. weeks and months).
-/// - Experiments have shown advertised TX power for all test phones are similar
-///   while the measured RSSI by different phones differs at the same distance.
-/// - Normalisation of measured RSSI value is required to bring all receivers to
-///   a common range, and then use the minimum and median value to determine the
-///   intercept and coefficient.
-/// - Histogram normalisation is enabled by a long term histogram of all measured
-///   RSSI values by a device.
-/// - Use social norm to set minimum and mean distance between people, then set
-///   time duration within minimum and mean distance to derive percentiles for
-///   self-calibration based on observed values.
+/**
+ * Extension of SmoothedLinearModel to include self-calibration
+ * <br>- Assume minimum and average distance between people for entire population is
+ *   similar over time (e.g. weeks and months).
+ * <br>- Experiments have shown advertised TX power for all test phones are similar
+ *   while the measured RSSI by different phones differs at the same distance.
+ * <br>- Normalisation of measured RSSI value is required to bring all receivers to
+ *   a common range, and then use the minimum and median value to determine the
+ *   intercept and coefficient.
+ * <br>- Histogram normalisation is enabled by a long term histogram of all measured
+ *   RSSI values by a device.
+ * <br>- Use social norm to set minimum and mean distance between people, then set
+ *   time duration within minimum and mean distance to derive percentiles for
+ *   self-calibration based on observed values.
+ * @param <T>
+ */
 public class SelfCalibratedModel<T extends DoubleValue> extends SmoothedLinearModel<T> {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "SmoothedLinearSelfCalibratedModel");
     @NonNull

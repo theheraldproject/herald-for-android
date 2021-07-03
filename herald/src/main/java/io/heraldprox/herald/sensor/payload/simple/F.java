@@ -13,7 +13,9 @@ import io.heraldprox.herald.sensor.datatype.Data;
 
 import java.security.MessageDigest;
 
-/// Elementary functions
+/**
+ * Elementary functions used by {@link SimplePayloadDataSupplier}
+ */
 public class F {
     private final static SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
 

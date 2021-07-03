@@ -7,7 +7,9 @@ package io.heraldprox.herald.sensor.datatype;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-/// Acceleration (x,y,z) in meters per second at point in time
+/**
+ * Acceleration (x,y,z) in meters per second at point in time.
+ */
 public class InertiaLocationReference implements LocationReference {
     public final double x, y, z, magnitude;
 

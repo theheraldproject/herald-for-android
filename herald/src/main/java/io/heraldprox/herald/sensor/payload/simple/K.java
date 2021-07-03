@@ -22,13 +22,13 @@ import java.util.TimeZone;
  */
 @SuppressWarnings("ConstantConditions")
 public class K {
-    /// Secret key length
+    // Secret key length
     private final static int secretKeyLength = 2048;
-    /// Days supported by key derivation function
+    // Days supported by key derivation function
     private final static int days = 2000;
-    /// Periods per day
+    // Periods per day
     private final static int periods = 240;
-    /// Epoch as time interval since 1970
+    // Epoch as time interval since 1970
     private final static TimeInterval epoch = K.getEpoch();
 
     /**
@@ -49,7 +49,10 @@ public class K {
         }
     }
 
-    /// Epoch for calculating days and periods
+    /**
+     * Epoch for calculating days and periods
+     * @return
+     */
     @NonNull
     protected static TimeInterval getEpoch() {
         final Date date = date("2020-09-24T00:00:00+0000");
@@ -57,18 +60,29 @@ public class K {
         return new TimeInterval(date.getTime() / 1000);
     }
 
-    /// Epoch day for selecting matching key
+    /**
+     * Epoch day for selecting matching key
+     * @param onDate
+     * @return
+     */
     protected static int day(@NonNull final Date onDate) {
         return (int) ((new TimeInterval(onDate).value - epoch.value) / 86400);
     }
 
-    /// Epoch day period for selecting contact key
+    /**
+     * Epoch day period for selecting contact key
+     * @param atTime
+     * @return
+     */
     protected static int period(@NonNull final Date atTime) {
         final int second = (int) ((new TimeInterval(atTime).value - epoch.value) % 86400);
         return second / (86400 / periods);
     }
 
-    /// Generate 2048-bit secret key, K_s
+    /**
+     * Generate 2048-bit secret key, K_s
+     * @return
+     */
     @NonNull
     protected static SecretKey secretKey() {
         final SecureRandom secureRandom = getSecureRandom();

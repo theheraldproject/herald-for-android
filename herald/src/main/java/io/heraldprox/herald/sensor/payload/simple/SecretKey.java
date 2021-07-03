@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.Data;
 
-/// Secret key
+/**
+ * Secret key
+ */
 public class SecretKey extends Data {
 
     public SecretKey(@NonNull final byte[] value) {

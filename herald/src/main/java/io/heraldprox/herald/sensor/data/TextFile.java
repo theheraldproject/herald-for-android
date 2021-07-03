@@ -134,7 +134,10 @@ public class TextFile implements Resettable {
         }
     }
 
-    /// Get contents of file
+    /**
+     * Get contents of file.
+     * @return File content
+     */
     @NonNull
     public synchronized String contentsOf() {
         try {
@@ -176,7 +179,10 @@ public class TextFile implements Resettable {
         return !file.exists() || 0 == file.length();
     }
 
-    /// Append line to new or existing file
+    /**
+     * Append line to new or existing file.
+     * @param line Line of text
+     */
     public synchronized void write(@NonNull final String line) {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
@@ -188,7 +194,10 @@ public class TextFile implements Resettable {
         }
     }
 
-    /// Overwrite file content
+    /**
+     * Overwrite file content.
+     * @param content Text content
+     */
     public synchronized void overwrite(@NonNull final String content) {
         try {
             // Write to temporary file first
@@ -206,7 +215,11 @@ public class TextFile implements Resettable {
         }
     }
 
-    /// Quote value for CSV output if required.
+    /**
+     * Quote value for CSV output if required.
+     * @param value
+     * @return
+     */
     @NonNull
     public static String csv(@NonNull final String value) {
         if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {

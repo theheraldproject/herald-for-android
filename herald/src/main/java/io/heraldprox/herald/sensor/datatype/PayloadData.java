@@ -6,7 +6,9 @@ package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
 
-/// Encrypted payload data received from target. This is likely to be an encrypted datagram of the target's actual permanent identifier.
+/**
+ * Encrypted payload data received from target. This is likely to be an encrypted datagram of the target's actual permanent identifier.
+ */
 public class PayloadData extends Data {
 
     public PayloadData(@NonNull final byte[] value) {

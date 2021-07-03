@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.Data;
 
-/// Contact key seed
+/**
+ * Contact key seed
+ */
 public class ContactKeySeed extends Data {
 
     public ContactKeySeed(@NonNull final Data value) {

@@ -16,7 +16,9 @@ import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.List;
 
-/// CSV contact log for post event analysis and visualisation
+/**
+ * CSV contact log for post event analysis and visualisation.
+ */
 public class ContactLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadDataFormatter payloadDataFormatter;

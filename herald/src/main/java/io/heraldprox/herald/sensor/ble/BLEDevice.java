@@ -27,38 +27,38 @@ import java.util.List;
 import java.util.Queue;
 
 public class BLEDevice extends Device {
-    /// Pseudo device address for tracking Android devices that change address constantly.
+    // Pseudo device address for tracking Android devices that change address constantly.
     @Nullable
     private PseudoDeviceAddress pseudoDeviceAddress = null;
-    /// Delegate for listening to attribute updates events.
+    // Delegate for listening to attribute updates events.
     @NonNull
     private final BLEDeviceDelegate delegate;
-    /// Android Bluetooth device object for interacting with this device.
+    // Android Bluetooth device object for interacting with this device.
     @Nullable
     private BluetoothDevice peripheral = null;
-    /// Bluetooth device connection state.
+    // Bluetooth device connection state.
     @NonNull
     private BLEDeviceState state = BLEDeviceState.disconnected;
-    /// Device operating system, this is necessary for selecting different interaction procedures for each platform.
+    // Device operating system, this is necessary for selecting different interaction procedures for each platform.
     @NonNull
     private BLEDeviceOperatingSystem operatingSystem = BLEDeviceOperatingSystem.unknown;
-    /// Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
+    // Payload data acquired from the device via payloadCharacteristic read, e.g. C19X beacon code or Sonar encrypted identifier
     @Nullable
     private PayloadData payloadData = null;
     @Nullable
     private Date lastPayloadDataUpdate = null;
-    /// Immediate Send data to send next
+    // Immediate Send data to send next
     @Nullable
     private Data immediateSendData = null;
-    /// Most recent RSSI measurement taken by readRSSI or didDiscover.
+    // Most recent RSSI measurement taken by readRSSI or didDiscover.
     @Nullable
     private RSSI rssi = null;
-    /// Transmit power data where available (only provided by Android devices)
+    // Transmit power data where available (only provided by Android devices)
     @Nullable
     private BLE_TxPower txPower = null;
-    /// Is device receive only?
+    // Is device receive only?
     private boolean receiveOnly = false;
-    /// Ignore logic
+    // Ignore logic
     @Nullable
     private TimeInterval ignoreForDuration = null;
     @Nullable
@@ -66,7 +66,7 @@ public class BLEDevice extends Device {
     @Nullable
     private ScanRecord scanRecord = null;
 
-    /// BLE characteristics
+    // BLE characteristics
     @Nullable
     private BluetoothGattCharacteristic signalCharacteristic = null;
     @Nullable
@@ -87,17 +87,17 @@ public class BLEDevice extends Device {
     @Nullable
     private String deviceName = null;
 
-    /// Track connection timestamps
+    // Track connection timestamps
     @SuppressWarnings("FieldCanBeLocal")
     @Nullable
     private Date lastDiscoveredAt = null;
     @Nullable
     private Date lastConnectedAt = null;
 
-    /// Payload data already shared with this peer
+    // Payload data already shared with this peer
     protected final List<PayloadData> payloadSharingData = new ArrayList<>();
 
-    /// Track write timestamps
+    // Track write timestamps
     @Nullable
     private Date lastWritePayloadAt = null;
     @Nullable
@@ -116,8 +116,12 @@ public class BLEDevice extends Device {
         return new TimeInterval((new Date().getTime() - lastConnectedAt.getTime()) / 1000);
     }
 
-    /// Time interval since last attribute value update, this is used to identify devices that may have expired and should be removed from the database.
-    /// This is also used by immediateSendAll to choose targets
+    /**
+     * Time interval since last attribute value update, this is used to identify devices
+     * that may have expired and should be removed from the database. This is also used by
+     * immediateSendAll to choose targets
+     * @return Time interval since last attribute value update
+     */
     @NonNull
     public TimeInterval timeIntervalSinceLastUpdate() {
         //noinspection ConstantConditions
@@ -211,7 +215,10 @@ public class BLEDevice extends Device {
         }
     }
 
-    /// Should ignore this device for now.
+    /**
+     * Should this device be ignored for now.
+     * @return True if device should be ignored for now, false otherwise
+     */
     public boolean ignore() {
         if (null == ignoreUntil) {
             return false;

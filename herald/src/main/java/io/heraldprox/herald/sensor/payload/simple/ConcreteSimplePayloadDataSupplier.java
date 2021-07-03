@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/// Simple payload data supplier.
+/**
+ * Simple payload data supplier.
+ */
 public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplier implements SimplePayloadDataSupplier {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Payload.SimplePayloadDataSupplier");
     public final static int payloadLength = 21;
@@ -45,13 +47,20 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
         matchingKeys = K.matchingKeys(secretKey);
     }
 
-    /// Generate a new secret key
+    /**
+     * Generate a new secret key
+     * @return
+     */
     @NonNull
     public static SecretKey generateSecretKey() {
         return K.secretKey();
     }
 
-    /// Generate contact identifiers for a matching key
+    /**
+     * Generate contact identifiers for a matching key.
+     * @param matchingKey Matching key
+     * @return Contact identifiers
+     */
     @NonNull
     public static ContactIdentifier[] contactIdentifiers(@NonNull final MatchingKey matchingKey) {
         final ContactKey[] contactKeys = K.contactKeys(matchingKey);
@@ -62,7 +71,11 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
         return contactIdentifiers;
     }
 
-    /// Generate contact identifier for time
+    /**
+     * Generate contact identifier for time.
+     * @param time Time
+     * @return Contact identifier
+     */
     @Nullable
     private ContactIdentifier contactIdentifier(@NonNull final Date time) {
         final int day = K.day(time);

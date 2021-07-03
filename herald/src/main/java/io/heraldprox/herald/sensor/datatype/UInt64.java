@@ -9,13 +9,16 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Unsigned integer (64 bits)
+/**
+ * Unsigned integer (64 bits)
+ */
 public class UInt64 implements DoubleValue {
     public final static int bitWidth = 64;
     public final static UInt64 min = new UInt64(0);
-    /// Setting max to signed long max, rather than unsigned long
-    /// max, as Java unsigned long arithmetic functions are relatively
-    /// immature, thus is likely to cause confusion.
+    /**
+     * Setting max to signed long max, rather than unsigned long max, as Java unsigned
+     * long arithmetic functions are relatively immature, thus is likely to cause confusion.
+     */
     public final static UInt64 max = new UInt64(Long.MAX_VALUE);
     public final long value;
 

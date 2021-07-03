@@ -9,12 +9,18 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Calibration data for interpreting proximity value between sensor and target, e.g. Transmit power for BLE.
+/**
+ * Calibration data for interpreting proximity value between sensor and target, e.g. Transmit power for BLE.
+ */
 public class Calibration {
-    /// Unit of measurement, e.g. transmit power
+    /**
+     * Unit of measurement, e.g. transmit power
+     */
     @NonNull
     public final CalibrationMeasurementUnit unit;
-    /// Measured value, e.g. transmit power in BLE advert
+    /**
+     * Measured value, e.g. transmit power in BLE advert
+     */
     @NonNull
     public final Double value;
 
@@ -23,7 +29,10 @@ public class Calibration {
         this.value = value;
     }
 
-    /// Get plain text description of calibration data
+    /**
+     * Get plain text description of calibration data
+     * @return Description
+     */
     @NonNull
     public String description() {
         return unit + ":" + value;

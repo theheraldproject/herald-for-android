@@ -13,7 +13,9 @@ import org.json.JSONObject;
 
 import java.util.UUID;
 
-/// Legacy payload data received from target
+/**
+ * Legacy payload data received from target
+ */
 public class LegacyPayloadData extends PayloadData {
     @Nullable
     public final UUID service; // null value is permitted

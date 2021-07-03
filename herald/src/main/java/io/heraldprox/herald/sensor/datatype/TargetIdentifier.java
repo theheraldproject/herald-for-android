@@ -12,8 +12,10 @@ import androidx.annotation.Nullable;
 import java.util.Objects;
 import java.util.UUID;
 
-/// Ephemeral identifier for detected target (e.g. smartphone, beacon, place).
-// This is likely to be an UUID but using String for variable identifier length.
+/**
+ * Ephemeral identifier for detected target (e.g. smartphone, beacon, place). This is likely
+ * to be an UUID but using String for variable identifier length.
+ */
 public class TargetIdentifier {
     @NonNull
     public final String value;
@@ -22,13 +24,18 @@ public class TargetIdentifier {
         this.value = value;
     }
 
-    /// Create random target identifier
+    /**
+     * Create random target identifier
+     */
     public TargetIdentifier() {
         // generated securely, see https://docs.oracle.com/javase/7/docs/api/java/util/UUID.html#randomUUID()
         this(UUID.randomUUID().toString());
     }
 
-    /// Create target identifier based on bluetooth device address
+    /**
+     * Create target identifier based on bluetooth device address
+     * @param bluetoothDevice
+     */
     public TargetIdentifier(@NonNull final BluetoothDevice bluetoothDevice) {
         this(bluetoothDevice.getAddress());
     }
