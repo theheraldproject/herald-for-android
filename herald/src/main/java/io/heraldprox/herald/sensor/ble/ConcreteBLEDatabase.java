@@ -128,7 +128,7 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
     @Nullable
     private PseudoDeviceAddress pseudoDeviceAddress(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
-        if (null == scanRecord) {
+        if (null == scanRecord || null == scanRecord.getManufacturerSpecificData()) {
             return null;
         }
         // Add external entropy to RandomSource
