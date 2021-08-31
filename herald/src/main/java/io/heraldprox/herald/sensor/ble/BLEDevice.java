@@ -285,8 +285,16 @@ public class BLEDevice extends Device {
     }
 
     public void txPower(@Nullable final BLE_TxPower txPower) {
-        this.txPower = txPower;
         lastUpdatedAt = new Date();
+        // Only update if TxPower has changed
+        if (this.txPower == txPower) {
+            return;
+        }
+        if (null != this.txPower && null != txPower && this.txPower.value == txPower.value) {
+            return;
+        }
+        // Update only when TxPower has changed
+        this.txPower = txPower;
         delegate.device(this, BLEDeviceAttribute.txPower);
     }
 
