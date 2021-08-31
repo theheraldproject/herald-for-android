@@ -102,7 +102,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
      *      <tr><td>20</td><td>34394</td><td>100.0%</td></tr>
      *   </tbody>
      * </table>
-     * 10 device test was conducted using 12s, 8s, 6s, and 3s timeouts. Test results show
+     * 10 device test was conducted using 12s, 8s, 7s, 6s, and 3s timeouts. Test results show
      * 8s timeout offers optimal performance, achieving 98.9% continuity and 2.78%/hr battery drain.
      */
     private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(8).millis();
