@@ -28,6 +28,7 @@ import io.heraldprox.herald.sensor.data.DetectionLog;
 import io.heraldprox.herald.sensor.data.EventTimeIntervalLog;
 import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.StatisticsLog;
+import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.LegacyPayloadData;
 import io.heraldprox.herald.sensor.datatype.Location;
@@ -43,6 +44,7 @@ import io.heraldprox.herald.sensor.service.NotificationService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private final static String tag = AppDelegate.class.getName();
@@ -58,12 +60,6 @@ public class AppDelegate extends Application implements SensorDelegate {
 
     // Sensor for proximity detection
     private SensorArray sensor = null;
-
-    // Generate unique and consistent device identifier for testing detection and tracking
-    private int identifier() {
-        final String text = Build.MODEL + ":" + Build.BRAND;
-        return text.hashCode();
-    }
 
     @Override
     public void onCreate() {
@@ -226,5 +222,31 @@ public class AppDelegate extends Application implements SensorDelegate {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         final Notification notification = builder.build();
         return notification;
+    }
+
+    // MARK: - Generate random unique identifier
+
+    /**
+     * Generate unique and consistent device identifier for testing detection and tracking.
+     * The method will offer a consistent identifier for an installation of the app. This
+     * identifier will change if the app is uninstalled and installed again.
+     */
+    private int identifier() {
+        final TextFile identifierFile = new TextFile(this, "identifier.txt");
+        Integer identifier = null;
+        // Try reading identifier from file
+        try {
+            identifier = Integer.parseInt(identifierFile.contentsOf().trim());
+            Log.i(tag, "identifier read from file (identifier=" + identifier + ")");
+        } catch (Throwable e) {
+            Log.i(tag, "identifier cannot be read from file", e);
+        }
+        // Failing that generate a new identifier
+        if (null == identifier) {
+            identifier = UUID.randomUUID().hashCode();
+            identifierFile.overwrite(identifier.toString());
+            Log.i(tag, "identifier generated and written to file (identifier=" + identifier + ")");
+        }
+        return identifier;
     }
 }
