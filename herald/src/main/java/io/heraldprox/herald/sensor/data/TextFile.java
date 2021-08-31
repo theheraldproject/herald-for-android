@@ -53,7 +53,7 @@ public class TextFile implements Resettable {
         if (null == folder) {
             logger.fault("File must exist in a folder");
         }
-        if (!folder.exists() && !folder.mkdirs()) {
+        if (null != folder && !folder.exists() && !folder.mkdirs()) {
             logger.fault("Make folder failed (folder={})", folder);
         }
         executorService.scheduleWithFixedDelay(new Runnable() {
