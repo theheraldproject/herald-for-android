@@ -29,12 +29,18 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
     public final static int payloadLength = 21;
     private final Data commonPayload = new Data();
     @NonNull
-    private final MatchingKey[] matchingKeys;
+    private final SecretKey secretKey;
     // Cache contact identifiers for the day
     @Nullable
     private Integer day = null;
     @Nullable
-    private ContactIdentifier[] contactIdentifiers = null;
+    private MatchingKey matchingKey = null;
+    @Nullable
+    private Integer period = null;
+    @Nullable
+    private ContactKey contactKey = null;
+    @Nullable
+    private ContactIdentifier contactIdentifier = null;
 
     public ConcreteSimplePayloadDataSupplier(@NonNull final UInt8 protocolAndVersion, @NonNull final UInt16 countryCode, @NonNull final UInt16 stateCode, @NonNull final SecretKey secretKey) {
         // Generate common header
@@ -44,7 +50,7 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
         commonPayload.append(stateCode);
 
         // Generate matching keys from secret key
-        matchingKeys = K.matchingKeys(secretKey);
+        this.secretKey = secretKey;
     }
 
     /**
@@ -57,18 +63,17 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
     }
 
     /**
-     * Generate contact identifiers for a matching key.
-     * @param matchingKey Matching key
-     * @return Contact identifiers
+     * Generate matching key for day
      */
-    @NonNull
-    public static ContactIdentifier[] contactIdentifiers(@NonNull final MatchingKey matchingKey) {
-        final ContactKey[] contactKeys = K.contactKeys(matchingKey);
-        final ContactIdentifier[] contactIdentifiers = new ContactIdentifier[contactKeys.length];
-        for (int i=contactKeys.length; i-->0;) {
-            contactIdentifiers[i] = K.contactIdentifier(contactKeys[i]);
+    @Nullable
+    public MatchingKey matchingKey(@NonNull final Date time) {
+        final int day = K.day(time);
+        final MatchingKeySeed matchingKeySeed = K.matchingKeySeed(secretKey, day);
+        if (null == matchingKeySeed) {
+            logger.fault("Failed to generate matching key seed (time={},day={})", time, day);
+            return null;
         }
-        return contactIdentifiers;
+        return K.matchingKey(matchingKeySeed);
     }
 
     /**
@@ -78,37 +83,41 @@ public class ConcreteSimplePayloadDataSupplier extends DefaultPayloadDataSupplie
      */
     @Nullable
     private ContactIdentifier contactIdentifier(@NonNull final Date time) {
+        // Generate contact key and contact identifier
         final int day = K.day(time);
-        final int period = K.period(time);
-
-        if (!(day >= 0 && day < matchingKeys.length)) {
-            logger.fault("Contact identifier out of day range (time={},day={})", time, day);
-            return null;
-        }
-
-        // Generate and cache contact keys for specific day on-demand
-        if (null == this.day || this.day != day) {
-            contactIdentifiers = contactIdentifiers(matchingKeys[day]);
+        if (null == this.day || this.day != day || null == this.matchingKey) {
+            this.matchingKey = matchingKey(time);
             this.day = day;
+            // Reset contact key on matching key change
+            this.contactKey = null;
+            this.period = null;
         }
 
-        if (null == contactIdentifiers) {
-            logger.fault("Contact identifiers unavailable (time={},day={})", time, day);
-            return null;
-        }
-
-        if (!(period >= 0 && period < contactIdentifiers.length)) {
-            logger.fault("Contact identifier out of period range (time={},period={})", time, period);
-            return null;
+        final int  period = K.period(time);
+        if (null == this.period || this.period != period) {
+            final MatchingKey matchingKey = this.matchingKey;
+            if (null == matchingKey) {
+                logger.fault("Contact identifier out of range, failed to generate matching key (time={},day={})", time, day);
+                return null;
+            }
+            final ContactKeySeed contactKeySeed = K.contactKeySeed(matchingKey, period);
+            if (null == contactKeySeed) {
+                logger.fault("Contact identifier out of range, failed to generate contact key seed (time={},day={})", time, day);
+                return null;
+            }
+            this.contactKey = K.contactKey(contactKeySeed);
+            this.period = period;
+            this.contactIdentifier = K.contactIdentifier(this.contactKey);
         }
 
         // Defensive check
-        if (contactIdentifiers[period].value.length != 16) {
-            logger.fault("Contact identifier not 16 bytes (time={},count={})", time, contactIdentifiers[period].value.length);
+        final ContactIdentifier contactIdentifier = this.contactIdentifier;
+        if (null == contactIdentifier || contactIdentifier.value.length != 16) {
+            logger.fault("Contact identifier out of range (time={},day={})", time, day);
             return null;
         }
 
-        return contactIdentifiers[period];
+        return contactIdentifier;
     }
 
     // MARK:- SimplePayloadDataSupplier

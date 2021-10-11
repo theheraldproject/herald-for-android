@@ -11,8 +11,6 @@ import android.os.Environment;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.w3c.dom.Text;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -22,34 +20,76 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
+    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     @NonNull
     private final File file;
+    private final ConcurrentLinkedQueue<String> writeBuffer = new ConcurrentLinkedQueue<>();
+    private final AtomicLong writeBufferSize = new AtomicLong();
 
+    /**
+     * Text file with 30 second write delay on write() calls.
+     * @param file File within a folder.
+     */
     public TextFile(@NonNull final File file) {
-        this.file = file;
-        final File folder = file.getParentFile();
-        if (!folder.exists()) {
-            if (!folder.mkdirs()) {
-                logger.fault("Make folder failed (folder={})", folder);
-            }
-        }
+        this(file, 30);
     }
 
-    public TextFile(@NonNull final Context context, @NonNull final String filename) {
-        this(new File(new File(getRootFolder(context), "Sensor"), filename));
-        final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+    /**
+     * Text file with configurable write delay on write() calls.
+     * @param file File within a folder.
+     * @param writeDelay Time delay in seconds between flushing buffered data to storage.
+     */
+    public TextFile(@NonNull final File file, final int writeDelay) {
+        this.file = file;
+        final File folder = file.getParentFile();
+        if (null == folder) {
+            logger.fault("File must exist in a folder");
+        }
+        if (null != folder && !folder.exists() && !folder.mkdirs()) {
+            logger.fault("Make folder failed (folder={})", folder);
+        }
         executorService.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
+                flush();
+            }
+        }, writeDelay, writeDelay, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Text file with 30 second write delay on write() calls.
+     * @param context Application context.
+     * @param filename File name of file to be stored within "Sensor" folder in application context.
+     */
+    public TextFile(@NonNull final Context context, @NonNull final String filename) {
+        this(context, filename, 30);
+    }
+
+    /**
+     * Text file with configurable write delay on write() calls.
+     * @param context Application context.
+     * @param filename File name of file to be stored within "Sensor" folder in application context.
+     * @param writeDelay Time delay in seconds between flushing buffered data to storage
+     */
+    public TextFile(@NonNull final Context context, @NonNull final String filename, final int writeDelay) {
+        this(new File(new File(getRootFolder(context), "Sensor"), filename));
+        executorService.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                if (!flush()) {
+                    return;
+                }
                 MediaScannerConnection.scanFile(context, new String[]{file.getAbsolutePath()}, null, null);
             }
-        }, 30, 30, TimeUnit.SECONDS);
+        }, writeDelay, writeDelay, TimeUnit.SECONDS);
     }
 
     // MARK: - Resettable
@@ -180,10 +220,45 @@ public class TextFile implements Resettable {
     }
 
     /**
-     * Append line to new or existing file.
-     * @param line Line of text
+     * Append line to new or existing file. The line is added to the
+     * write buffer and automatically flushed once every 30 seconds
+     * or when the buffer contains > 256k of text.
      */
     public synchronized void write(@NonNull final String line) {
+        writeBuffer.add(line);
+        if (writeBufferSize.addAndGet(line.length()) > 262144) {
+            flush();
+        }
+    }
+
+    /**
+     * Flush write buffer if it is not empty.
+     * @return True if data was written, false otherwise.
+     */
+    public synchronized boolean flush() {
+        if (writeBuffer.isEmpty()) {
+            return false;
+        }
+        try {
+            final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+            String line;
+            while ((line = writeBuffer.poll()) != null) {
+                fileOutputStream.write((line + "\n").getBytes());
+            }
+            fileOutputStream.flush();
+            fileOutputStream.close();
+            writeBufferSize.set(0);
+        } catch (Throwable e) {
+            logger.fault("flushWriteBuffer failed (file={})", file, e);
+        }
+        return true;
+    }
+
+    /**
+     * Append line to new or existing file immediately.
+     * @param line Line of text
+     */
+    public synchronized void writeNow(@NonNull final String line) {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
             fileOutputStream.write((line + "\n").getBytes());
@@ -199,6 +274,8 @@ public class TextFile implements Resettable {
      * @param content Text content
      */
     public synchronized void overwrite(@NonNull final String content) {
+        // Discard pending writes
+        writeBuffer.clear();
         try {
             // Write to temporary file first
             final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");

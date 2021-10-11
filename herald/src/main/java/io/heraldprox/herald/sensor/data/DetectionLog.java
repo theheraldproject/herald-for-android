@@ -14,6 +14,7 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,40 @@ public class DetectionLog extends SensorDelegateLogger {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
     }
 
+    private void read() {
+        final String content = contentsOf();
+        if (null == content || content.isEmpty()) {
+            return;
+        }
+        // Parse log file to read previously stored payloads
+        final String[] data = content.trim().split(",");
+        final List<String> storedPayloads = new ArrayList<>(data.length);
+        // File format is : deviceName,osName,osVersion,selfPayload,targetPayload1,...,targetPayloadN
+        // Target payloads start at index 4
+        for (int i=4; i<data.length; i++) {
+            if (null != data[i] && !data[i].isEmpty()) {
+                storedPayloads.add(data[i].trim());
+            }
+        }
+        // Register stored payloads as { payload -> "stored" } where "stored" is the target identifier
+        // if payload is not in memory already (due to app restart).
+        final List<String> mergedPayloads = new ArrayList<>(storedPayloads.size());
+        for (final String targetPayload : storedPayloads) {
+            if (payloads.containsKey(targetPayload)) {
+                continue;
+            }
+            payloads.put(targetPayload, "stored");
+            mergedPayloads.add(targetPayload);
+        }
+        Collections.sort(storedPayloads);
+        Collections.sort(mergedPayloads);
+        logger.debug("read (stored={},merged={})", storedPayloads.toString(), mergedPayloads.toString());
+    }
+
     private void write() {
+        // Read stored payloads to combine with payloads in memory
+        read();
+        // Write all payloads
         final StringBuilder content = new StringBuilder();
         content.append(csv(deviceName));
         content.append(',');
@@ -80,7 +114,8 @@ public class DetectionLog extends SensorDelegateLogger {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
-        if (null == payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value)) {
+        final String previousTarget = payloads.put(payloadDataFormatter.shortFormat(didRead), fromTarget.value);
+        if (null == previousTarget || "stored".equals(previousTarget)) {
             logger.debug("didRead (payload={})", payloadDataFormatter.shortFormat(payloadData));
             write();
         }
@@ -89,7 +124,8 @@ public class DetectionLog extends SensorDelegateLogger {
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
         for (final PayloadData payloadData : didShare) {
-            if (null == payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value)) {
+            final String previousTarget = payloads.put(payloadDataFormatter.shortFormat(payloadData), fromTarget.value);
+            if (null == previousTarget || "stored".equals(previousTarget)) {
                 logger.debug("didShare (payload={})", payloadDataFormatter.shortFormat(payloadData));
                 write();
             }

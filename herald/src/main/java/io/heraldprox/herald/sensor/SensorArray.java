@@ -23,12 +23,14 @@ import io.heraldprox.herald.sensor.motion.ConcreteInertiaSensor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Sensor array for combining multiple detection and tracking methods.
  */
 public class SensorArray implements Sensor {
-    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray");
+    private final static AtomicInteger instanceIdentifier = new AtomicInteger(0);
+    private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "SensorArray[" + instanceIdentifier.getAndIncrement() + "]");
     private final List<Sensor> sensorArray = new ArrayList<>();
     private final List<SensorDelegate> delegates = new ArrayList<>();
     @NonNull
