@@ -177,12 +177,28 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         final List<String> requiredPermissions = new ArrayList<>();
         requiredPermissions.add(Manifest.permission.BLUETOOTH);
         requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
+
+        // The next two ARE ***BOTH*** STILL NEEDED for Android 12 in order for didMeasure and didRead to work!
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        // WARNING: On android 12, the user MUST select 'Precise' too (not 'Approximate') in the UI
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
         }
         requiredPermissions.add(Manifest.permission.WAKE_LOCK);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // The following is only needed if this device advertises (i.e. uses BLETransmitter) (the demo app does)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_SCAN);
+            // The following is only needed if this device scans (i.e. uses BLEReceiver) (the demo app does)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+//        } else {
+            // IF YOU DO NOT REQUEST ***BOTH*** THE FOLLOWING FOR ANDROID 12 TOO, THEN YOU WONT GET DidMeasure or DidRead callbacks!!!
+            // The following are for prior to Android 12 (Code S, above)
+//            requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+//            requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
         final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(requiredPermissionsArray, permissionRequestCode);
