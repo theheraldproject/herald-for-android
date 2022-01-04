@@ -655,4 +655,23 @@ public class Data {
             return null;
         }
     }
+
+    /**
+     * Length of the byte array value.
+     * @return Size of the value array in number of bytes. Returns 0 for null value array.
+     */
+    public int length() {
+        if (null == value) {
+            return 0;
+        }
+        return value.length;
+    }
+
+    /**
+     * Alias for length(). They are identical.
+     * @return Size of the value array in number of bytes.
+     */
+    public int size() {
+        return length();
+    }
 }

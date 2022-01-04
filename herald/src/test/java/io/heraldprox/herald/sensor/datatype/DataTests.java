@@ -347,5 +347,41 @@ public class DataTests {
         out.close();
         TestUtil.assertEqualsCrossPlatform("string.csv");
     }
+
+    @Test
+    public void testLength() throws Exception {
+        // Zero length
+        assertEquals(0, new Data().length());
+        assertEquals(0, new Data(new byte[0]).length());
+        assertEquals(0, new Data((byte) 0,0).length());
+        assertEquals(0, new Data("").length());
+        assertEquals(0, new Data((String) null).length());
+        // Length = 1
+        assertEquals(1, new Data(new byte[1]).length());
+        assertEquals(1, new Data((byte) 0,1).length());
+        // Length = 2
+        assertEquals(2, new Data(new byte[2]).length());
+        assertEquals(2, new Data((byte) 0,2).length());
+        // Should not be possible due to @NonNull but good to check anyway
+        assertEquals(0, new Data((byte[]) null).length());
+    }
+
+    @Test
+    public void testSize() throws Exception {
+        // Zero length
+        assertEquals(0, new Data().size());
+        assertEquals(0, new Data(new byte[0]).size());
+        assertEquals(0, new Data((byte) 0,0).size());
+        assertEquals(0, new Data("").size());
+        assertEquals(0, new Data((String) null).size());
+        // Length = 1
+        assertEquals(1, new Data(new byte[1]).size());
+        assertEquals(1, new Data((byte) 0,1).size());
+        // Length = 2
+        assertEquals(2, new Data(new byte[2]).size());
+        assertEquals(2, new Data((byte) 0,2).size());
+        // Should not be possible due to @NonNull but good to check anyway
+        assertEquals(0, new Data((byte[]) null).size());
+    }
 }
 
