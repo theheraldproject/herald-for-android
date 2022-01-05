@@ -277,16 +277,11 @@ public class TextFile implements Resettable {
         // Discard pending writes
         writeBuffer.clear();
         try {
-            // Write to temporary file first
-            final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");
-            final FileOutputStream fileOutputStream = new FileOutputStream(temporaryFile);
+            // No longer writing to temporary file first as this caused the test to fail on latest Android version
+            final FileOutputStream fileOutputStream = new FileOutputStream(file, false);
             fileOutputStream.write(content.getBytes());
             fileOutputStream.flush();
             fileOutputStream.close();
-            // Rename to actual file on completion
-            if (!temporaryFile.renameTo(file)) {
-                logger.fault("overwrite failed (file={},reason=renameFailed)", file);
-            }
         } catch (Throwable e) {
             logger.fault("overwrite failed (file={})", file, e);
         }

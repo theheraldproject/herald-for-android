@@ -20,7 +20,7 @@ import io.heraldprox.herald.sensor.DefaultSensorDelegate;
  * Default sensor delegate with convenient functions for writing data to log file.
  */
 public class SensorDelegateLogger extends DefaultSensorDelegate implements Resettable {
-    protected final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
+    protected final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.UK);
     @Nullable
     protected final Context context;
     @Nullable
