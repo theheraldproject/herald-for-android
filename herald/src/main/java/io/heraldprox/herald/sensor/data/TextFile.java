@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");

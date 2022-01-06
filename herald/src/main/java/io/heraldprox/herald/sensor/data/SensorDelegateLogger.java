@@ -35,6 +35,17 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
         this.context = context;
         this.textFile = new TextFile(context, filename);
         this.dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        if (empty()) {
+            writeNow(header());
+        }
+    }
+
+    /**
+     * Override this method to provide optional file header row.
+     * @return
+     */
+    protected String header() {
+        return "";
     }
 
     @Override
@@ -43,6 +54,16 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
             return;
         }
         textFile.reset();
+        writeNow(header());
+    }
+
+    /**
+     * Get given time as formatted timestamp "yyyy-MM-dd HH:mm:ss"
+     * @return Formatted timestamp for given time.
+     */
+    @NonNull
+    protected String timestamp(@NonNull Date date) {
+        return TextFile.csv(dateFormatter.format(date));
     }
 
     /**
@@ -51,7 +72,7 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
      */
     @NonNull
     protected String timestamp() {
-        return TextFile.csv(dateFormatter.format(new Date()));
+        return timestamp(new Date());
     }
 
     /**
@@ -73,6 +94,38 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
             return;
         }
         textFile.write(line);
+    }
+
+    /**
+     * Write line immediately. Same as write() but the data is flushed to file immediately.
+     * @param line Line to write.
+     */
+    protected void writeNow(@NonNull final String line) {
+        if (null == textFile) {
+            return;
+        }
+        textFile.writeNow(line);
+    }
+
+    /**
+     * Write list of values as CSV row. This function will wrap individual values in quotes if necessary.
+     * Null values will be outputted as empty string.
+     * @param values
+     */
+    @NonNull
+    protected String writeCsv(@NonNull final String... values) {
+        final StringBuilder stringBuilder = new StringBuilder();
+        for (int i=0; i<values.length; i++) {
+            if (i > 0) {
+                stringBuilder.append(',');
+            }
+            if (null != values[i]) {
+                stringBuilder.append(TextFile.csv(values[i]));
+            }
+        }
+        final String line = stringBuilder.toString();
+        write(line);
+        return line;
     }
 
     /**

@@ -26,17 +26,15 @@ public class CalibrationLog extends SensorDelegateLogger {
         super(context, filename);
     }
 
-    private void writeHeader() {
-        if (empty()) {
-            write("time,payload,rssi,x,y,z");
-        }
+    @Override
+    protected String header() {
+        return "time,payload,rssi,x,y,z";
     }
 
     // MARK:- SensorDelegate
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
-        writeHeader();
         write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
     }
 
@@ -44,7 +42,6 @@ public class CalibrationLog extends SensorDelegateLogger {
     public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
         if (didVisit.value instanceof InertiaLocationReference) {
             final InertiaLocationReference reference = (InertiaLocationReference) didVisit.value;
-            writeHeader();
             write(timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);
         }
     }

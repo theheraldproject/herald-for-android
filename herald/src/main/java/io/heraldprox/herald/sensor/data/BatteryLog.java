@@ -22,7 +22,6 @@ public class BatteryLog extends SensorDelegateLogger {
 
     public BatteryLog(@NonNull final Context context, @NonNull final String filename) {
         super(context, filename);
-        writeHeader();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -42,10 +41,9 @@ public class BatteryLog extends SensorDelegateLogger {
         }).start();
     }
 
-    private void writeHeader() {
-        if (empty()) {
-            write("time,source,level");
-        }
+    @Override
+    protected String header() {
+        return "time,source,level";
     }
 
     private void update() {
@@ -64,7 +62,6 @@ public class BatteryLog extends SensorDelegateLogger {
         final float batteryLevel = level * 100 / (float) scale;
 
         final String powerSource = (isCharging ? "external" : "battery");
-        writeHeader();
         write(timestamp() + "," + powerSource + "," + batteryLevel);
         logger.debug("update (powerSource={},batteryLevel={})", powerSource, batteryLevel);
     }

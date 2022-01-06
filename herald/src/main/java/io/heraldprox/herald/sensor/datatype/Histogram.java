@@ -75,23 +75,32 @@ public class Histogram {
     /**
      * Add sample. Out of range values are discarded.
      * @param value
+     * @param increment
      */
-    public synchronized void add(final int value) {
+    public synchronized void add(final int value, final long increment) {
         if (value < min || value > max) {
             return;
         }
         // Increment count
         final int index = value - min;
-        histogram[index]++;
-        samples++;
+        histogram[index] += increment;
+        samples += increment;
         // Write histogram to text file at regular intervals
-        final Date time = new Date();
-        if (lastUpdateTime.secondsSinceUnixEpoch() + updatePeriod.value < time.secondsSinceUnixEpoch()) {
-            if (textFile != null) {
+        if (textFile != null) {
+            final Date time = new Date();
+            if (lastUpdateTime.secondsSinceUnixEpoch() + updatePeriod.value < time.secondsSinceUnixEpoch()) {
                 write(textFile);
+                lastUpdateTime = time;
             }
-            lastUpdateTime = time;
         }
+    }
+
+    /**
+     * Add sample. Out of range values are discarded.
+     * @param value
+     */
+    public synchronized void add(final int value) {
+        add(value, 1);
     }
 
     /**
