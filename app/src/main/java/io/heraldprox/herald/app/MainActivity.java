@@ -35,8 +35,10 @@ import io.heraldprox.herald.sensor.analysis.sampling.SampleList;
 import io.heraldprox.herald.sensor.analysis.sampling.SampledID;
 import io.heraldprox.herald.sensor.analysis.views.Since;
 import io.heraldprox.herald.sensor.data.Resettable;
+import io.heraldprox.herald.sensor.data.RssiLog;
 import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Distance;
+import io.heraldprox.herald.sensor.datatype.Histogram;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -48,7 +50,6 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,7 +67,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
     // Test UI specific data, not required for production solution.
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
     private boolean foreground = false;
 
     // MARK:- Events
@@ -99,6 +99,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final ConcreteAnalysisDelegate<Distance> analysisDelegate = new ConcreteAnalysisDelegate<>(Distance.class, 5);
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
     private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
+
+    // MARK:- RSSI histogram
+    private final RssiLog rssiLog = new RssiLog();
 
     @Override
     public synchronized void reset() {
@@ -323,6 +326,19 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         ((TextView) findViewById(R.id.didReceiveCount)).setText(Long.toString(this.didReceive));
     }
 
+    private long lastUpdateRssiLog = 0;
+    private void updateRssiLog() {
+        final long currentTimeMillis = System.currentTimeMillis();
+        if (currentTimeMillis - lastUpdateRssiLog < 1000) {
+            return;
+        }
+        final HistogramView histogramView = ((HistogramView) findViewById(R.id.histogram));
+        histogramView.setHistogram(rssiLog.histogram());
+        histogramView.invalidate();
+        lastUpdateRssiLog = currentTimeMillis;
+    }
+
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -408,6 +424,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     @Override
     public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
+        rssiLog.sensor(sensor, didMeasure, fromTarget);
         this.didMeasure++;
         final PayloadData didRead = targetIdentifiers.get(fromTarget);
         if (didRead != null) {
@@ -435,6 +452,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                     textView.setText(text);
                     updateTargets();
                     updateSocialDistance(socialMixingScoreUnit);
+                    updateRssiLog();
                 }
             });
         }

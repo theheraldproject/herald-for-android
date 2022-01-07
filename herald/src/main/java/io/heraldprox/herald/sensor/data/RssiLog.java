@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,7 +24,11 @@ import io.heraldprox.herald.sensor.datatype.Tuple;
 
 public class RssiLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Analysis", "RssiLog");
+    private final static int minRSSI = -100, maxRSSI = 0;
+    private final static TimeInterval quantisationPeriod = new TimeInterval(5);
+    private final static TimeInterval histogramPeriod = TimeInterval.hour;
     private final List<PointMeasurement> pointMeasurements = new ArrayList<>();
+    private final List<HistogramForPeriod> histogramForPeriods = new ArrayList<>();
 
     /**
      * RSSI measurement taken at a point in time for a specific target.
@@ -50,6 +55,36 @@ public class RssiLog extends SensorDelegateLogger {
         }
     }
 
+    /**
+     * RSSI histogram for a period of time for all targets.
+     */
+    public final static class HistogramForPeriod {
+        @NonNull
+        public final Date start;
+        @NonNull
+        public final Date end;
+        @NonNull
+        public final Histogram histogram;
+
+        public HistogramForPeriod(@NonNull final Date start, @NonNull final Date end, @NonNull final Histogram histogram) {
+            this.start = start;
+            this.end = end;
+            this.histogram = histogram;
+        }
+
+        public HistogramForPeriod(@NonNull final Date timestamp, @NonNull final TimeInterval period, @NonNull final List<PointMeasurement> pointMeasurements) {
+            start = periodStart(timestamp, period);
+            end = periodEnd(timestamp, period);
+            final List<PointMeasurement> pointMeasurementsInPeriod = subdata(pointMeasurements, start, end);
+            final List<PointMeasurement> quantisedPointMeasurements = quantise(pointMeasurementsInPeriod, quantisationPeriod);
+            this.histogram = histogramOfRssi(quantisedPointMeasurements, minRSSI, maxRSSI);
+        }
+    }
+
+    public RssiLog() {
+        super();
+    }
+
     public RssiLog(@NonNull Context context, @NonNull String filename) {
         super(context, filename);
     }
@@ -69,11 +104,20 @@ public class RssiLog extends SensorDelegateLogger {
         append(new PointMeasurement(fromTarget, didMeasure));
     }
 
+    public Histogram histogram() {
+        final HistogramForPeriod historic = merge(histogramForPeriods);
+        final HistogramForPeriod pending = merge(histogramForPeriods(pointMeasurements, histogramPeriod));
+        final Histogram histogram = new Histogram(minRSSI, maxRSSI);
+        if (null != historic) {
+            histogram.add(historic.histogram);
+        }
+        histogram.add(pending.histogram);
+        return histogram;
+    }
+
     // MARK: - Accumulate measurements
 
     protected synchronized void append(@NonNull final PointMeasurement pointMeasurement) {
-        // Add to memory
-        pointMeasurements.add(pointMeasurement);
         // Add to CSV log file
         final String timestamp = timestamp(pointMeasurement.timestamp);
         final String target = pointMeasurement.target.toString();
@@ -82,6 +126,16 @@ public class RssiLog extends SensorDelegateLogger {
         final String line = writeCsv(timestamp, target, rssi, txPower);
         // Add to logger
         logger.debug("Append (sizeInMemory={},line={})", pointMeasurements.size(), line);
+        // Add to memory
+        if (!pointMeasurements.isEmpty()) {
+            final Date periodEndPointMeasurement = periodEnd(pointMeasurement.timestamp, histogramPeriod);
+            final Date periodEndBuffer = periodEnd(pointMeasurements.get(0).timestamp, histogramPeriod);
+            if (periodEndPointMeasurement.after(periodEndBuffer)) {
+                histogramForPeriods.addAll(histogramForPeriods(pointMeasurements, histogramPeriod));
+                pointMeasurements.clear();
+            }
+        }
+        pointMeasurements.add(pointMeasurement);
     }
 
     // MARK: - Process measurements
@@ -168,17 +222,33 @@ public class RssiLog extends SensorDelegateLogger {
      */
     @NonNull
     protected final static List<PointMeasurement> subdata(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final Date start, @NonNull final Date end) {
-        final List<PointMeasurement> subdata = new ArrayList<>(pointMeasurements.size());
-        for (final PointMeasurement pointMeasurement : pointMeasurements) {
-            if (pointMeasurement.timestamp.compareTo(start) >= 0) {
-                if (pointMeasurement.timestamp.compareTo(end) < 0) {
-                    subdata.add(pointMeasurement);
-                } else {
-                    break;
-                }
-            }
+        // Search for first point measurement at or after start timestamp
+        int startIndex = 0;
+        while (startIndex < pointMeasurements.size() && pointMeasurements.get(startIndex).timestamp.before(start)) {
+            startIndex++;
         }
-        return subdata;
+        // Search for last point measurement before end timestamp
+        int endIndex = startIndex;
+        while (endIndex < pointMeasurements.size() && pointMeasurements.get(endIndex).timestamp.before(end)) {
+            endIndex++;
+        }
+        return pointMeasurements.subList(startIndex, endIndex);
+    }
+
+    /**
+     * Select a subset of point measurements based on start (inclusive) timestamp.
+     * @param pointMeasurements Point measurements for selection, assumes sorted in time order.
+     * @param start Start timestamp (inclusive)
+     * @return Point measurements at or after start timestamp.
+     */
+    @NonNull
+    protected final static List<PointMeasurement> subdata(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final Date start) {
+        // Search for first point measurement at or after start timestamp
+        int startIndex = 0;
+        while (startIndex < pointMeasurements.size() && pointMeasurements.get(startIndex).timestamp.before(start)) {
+            startIndex++;
+        }
+        return pointMeasurements.subList(startIndex, pointMeasurements.size());
     }
 
     /**
@@ -206,15 +276,14 @@ public class RssiLog extends SensorDelegateLogger {
      * Build histogram of RSSI values for point measurements in range [min,max].
      * @param pointMeasurements Point measurements for building histogram.
      * @param min Minimum value (inclusive).
-     * @param max Maximum value (exclusive).
+     * @param max Maximum value (inclusive).
      * @return Histogram of integer RSSI values from the point measurements.
      */
     @NonNull
-    protected final static Histogram histogramOfRssi(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final Double min, @NonNull final Double max) {
-        final int intMin = (int) Math.floor(min);
-        final int intMax = (int) Math.ceil(max);
-        final Histogram histogram = new Histogram(intMin, intMax);
-        for (final PointMeasurement pointMeasurement : filterByRssi(pointMeasurements, min, max)) {
+    protected final static Histogram histogramOfRssi(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final int min, @NonNull final int max) {
+        final Histogram histogram = new Histogram(min, max);
+        for (final PointMeasurement pointMeasurement : pointMeasurements) {
+            // Out of range RSSI are filtered by add()
             histogram.add((int) Math.round(pointMeasurement.rssi));
         }
         return histogram;
@@ -234,5 +303,41 @@ public class RssiLog extends SensorDelegateLogger {
             smoothed.add(value, sumOfWindowValue / (1 + halfWindow * 2));
         }
         return smoothed;
+    }
+
+    @NonNull
+    protected final static Date periodStart(@NonNull Date timestamp, @NonNull TimeInterval period) {
+        return new Date((timestamp.secondsSinceUnixEpoch() / period.value) * period.value);
+    }
+
+    @NonNull
+    protected final static Date periodEnd(@NonNull Date timestamp, @NonNull TimeInterval period) {
+        return new Date(((timestamp.secondsSinceUnixEpoch() / period.value) + 1) * period.value);
+    }
+
+    @NonNull
+    protected final static List<HistogramForPeriod> histogramForPeriods(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final TimeInterval period) {
+        final List<HistogramForPeriod> histograms = new ArrayList<>();
+        List<PointMeasurement> source = pointMeasurements;
+        while (!source.isEmpty()) {
+            final HistogramForPeriod histogramForPeriod = new HistogramForPeriod(source.get(0).timestamp, period, source);
+            histograms.add(histogramForPeriod);
+            source = subdata(source, histogramForPeriod.end);
+        }
+        return histograms;
+    }
+
+    @Nullable
+    protected final static HistogramForPeriod merge(@NonNull final List<HistogramForPeriod> histogramForPeriods) {
+        if (histogramForPeriods.isEmpty()) {
+            return null;
+        }
+        final Date start = histogramForPeriods.get(0).start;
+        final Date end = histogramForPeriods.get(histogramForPeriods.size() - 1).end;
+        final Histogram histogram = new Histogram(histogramForPeriods.get(0).histogram.min, histogramForPeriods.get(0).histogram.max);
+        for (final HistogramForPeriod histogramForPeriod : histogramForPeriods) {
+            histogram.add(histogramForPeriod.histogram);
+        }
+        return new HistogramForPeriod(start, end, histogram);
     }
 }

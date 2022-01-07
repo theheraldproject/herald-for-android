@@ -1,6 +1,7 @@
 package io.heraldprox.herald.sensor.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
@@ -101,14 +102,21 @@ public class RssiLogTests {
     // MARK: - Subdata tests
 
     @Test
-    public void subdata_empty() throws Exception {
+    public void subdata_start_end_empty() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(0), new Date(Long.MAX_VALUE));
         assertEquals(0, subdata.size());
     }
 
     @Test
-    public void subdata_one_to_one() throws Exception {
+    public void subdata_start_empty() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(0));
+        assertEquals(0, subdata.size());
+    }
+
+    @Test
+    public void subdata_start_end_one_to_one() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -10d, -12d));
         final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(1), new Date(2));
@@ -120,7 +128,19 @@ public class RssiLogTests {
     }
 
     @Test
-    public void subdata_one_to_zero_before() throws Exception {
+    public void subdata_start_one_to_one() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -10d, -12d));
+        final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(1));
+        assertEquals(1, subdata.size());
+        assertEquals(1, subdata.get(0).timestamp.secondsSinceUnixEpoch());
+        assertEquals("A", subdata.get(0).target.value);
+        assertEquals(-10d, subdata.get(0).rssi, Double.MIN_VALUE);
+        assertEquals(-12d, subdata.get(0).txPower, Double.MIN_VALUE);
+    }
+
+    @Test
+    public void subdata_start_end_one_to_zero_before() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(0), new TargetIdentifier("A"), -10d, -12d));
         final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(1), new Date(2));
@@ -128,7 +148,15 @@ public class RssiLogTests {
     }
 
     @Test
-    public void subdata_one_to_zero_after() throws Exception {
+    public void subdata_start_one_to_zero_before() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        list.add(new RssiLog.PointMeasurement(new Date(0), new TargetIdentifier("A"), -10d, -12d));
+        final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(1));
+        assertEquals(0, subdata.size());
+    }
+
+    @Test
+    public void subdata_start_end_one_to_zero_after() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(2), new TargetIdentifier("A"), -10d, -12d));
         final List<RssiLog.PointMeasurement> subdata = RssiLog.subdata(list, new Date(1), new Date(2));
@@ -177,7 +205,7 @@ public class RssiLogTests {
     @Test
     public void histogramOfRssi_empty() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
-        final Histogram histogram = RssiLog.histogramOfRssi(list, -100d, 0d);
+        final Histogram histogram = RssiLog.histogramOfRssi(list, -100, 0);
         assertEquals(0, histogram.count());
     }
 
@@ -185,7 +213,7 @@ public class RssiLogTests {
     public void histogramOfRssi_one() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50d, null));
-        final Histogram histogram = RssiLog.histogramOfRssi(list, -100d, 0d);
+        final Histogram histogram = RssiLog.histogramOfRssi(list, -100, 0);
         assertEquals(1, histogram.count());
         assertEquals(1, histogram.count(-50));
     }
@@ -194,7 +222,7 @@ public class RssiLogTests {
     public void histogramOfRssi_one_round_up() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50.4d, null));
-        final Histogram histogram = RssiLog.histogramOfRssi(list, -100d, 0d);
+        final Histogram histogram = RssiLog.histogramOfRssi(list, -100, 0);
         assertEquals(1, histogram.count());
         assertEquals(1, histogram.count(-50));
         assertEquals(0, histogram.count(-51));
@@ -204,7 +232,7 @@ public class RssiLogTests {
     public void histogramOfRssi_one_round_down() throws Exception {
         final List<RssiLog.PointMeasurement> list = new ArrayList<>();
         list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50.6d, null));
-        final Histogram histogram = RssiLog.histogramOfRssi(list, -100d, 0d);
+        final Histogram histogram = RssiLog.histogramOfRssi(list, -100, 0);
         assertEquals(1, histogram.count());
         assertEquals(0, histogram.count(-50));
         assertEquals(1, histogram.count(-51));
@@ -237,5 +265,108 @@ public class RssiLogTests {
         assertEquals(20, RssiLog.smoothAcrossBins(histogram, 5).count(5));
         assertEquals(20, RssiLog.smoothAcrossBins(histogram, 5).count(6));
         assertEquals(20, RssiLog.smoothAcrossBins(histogram, 5).count(7));
+    }
+
+    // MARK: - Histogram for periods
+
+    @Test
+    public void histogramForPeriods_empty() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        final List<RssiLog.HistogramForPeriod> histograms = RssiLog.histogramForPeriods(list, new TimeInterval(10));
+        assertEquals(0, histograms.size());
+
+    }
+
+    @Test
+    public void histogramForPeriods_one_to_one() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50d, null));
+        final List<RssiLog.HistogramForPeriod> histograms = RssiLog.histogramForPeriods(list, new TimeInterval(10));
+        assertEquals(1, histograms.size());
+        assertEquals(0, histograms.get(0).start.secondsSinceUnixEpoch());
+        assertEquals(10, histograms.get(0).end.secondsSinceUnixEpoch());
+        assertEquals(1, histograms.get(0).histogram.count());
+        assertEquals(1, histograms.get(0).histogram.count(-50));
+    }
+
+    @Test
+    public void histogramForPeriods_two_to_two() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50d, null));
+        list.add(new RssiLog.PointMeasurement(new Date(10), new TargetIdentifier("A"), -20d, null));
+        final List<RssiLog.HistogramForPeriod> histograms = RssiLog.histogramForPeriods(list, new TimeInterval(10));
+        assertEquals(2, histograms.size());
+        // Measurement 1 belongs to period 0-10
+        assertEquals(0, histograms.get(0).start.secondsSinceUnixEpoch());
+        assertEquals(10, histograms.get(0).end.secondsSinceUnixEpoch());
+        assertEquals(1, histograms.get(0).histogram.count());
+        assertEquals(1, histograms.get(0).histogram.count(-50));
+        // Measurement 2 belongs to period 10-20
+        assertEquals(10, histograms.get(1).start.secondsSinceUnixEpoch());
+        assertEquals(20, histograms.get(1).end.secondsSinceUnixEpoch());
+        assertEquals(1, histograms.get(1).histogram.count());
+        assertEquals(1, histograms.get(1).histogram.count(-20));
+    }
+
+    @Test
+    public void histogramForPeriods_three_to_two() throws Exception {
+        final List<RssiLog.PointMeasurement> list = new ArrayList<>();
+        list.add(new RssiLog.PointMeasurement(new Date(1), new TargetIdentifier("A"), -50d, null));
+        list.add(new RssiLog.PointMeasurement(new Date(10), new TargetIdentifier("A"), -20d, null));
+        list.add(new RssiLog.PointMeasurement(new Date(19), new TargetIdentifier("A"), -30d, null));
+        final List<RssiLog.HistogramForPeriod> histograms = RssiLog.histogramForPeriods(list, new TimeInterval(10));
+        assertEquals(2, histograms.size());
+        // Measurement 1 belongs to period 0-10
+        assertEquals(0, histograms.get(0).start.secondsSinceUnixEpoch());
+        assertEquals(10, histograms.get(0).end.secondsSinceUnixEpoch());
+        assertEquals(1, histograms.get(0).histogram.count());
+        assertEquals(1, histograms.get(0).histogram.count(-50));
+        // Measurement 2,3 belongs to period 10-20
+        assertEquals(10, histograms.get(1).start.secondsSinceUnixEpoch());
+        assertEquals(20, histograms.get(1).end.secondsSinceUnixEpoch());
+        assertEquals(2, histograms.get(1).histogram.count());
+        assertEquals(1, histograms.get(1).histogram.count(-20));
+        assertEquals(1, histograms.get(1).histogram.count(-30));
+    }
+
+    // MARK: - Merge
+
+    @Test
+    public void merge_empty() throws Exception {
+        final List<RssiLog.HistogramForPeriod> histograms = new ArrayList<>();
+        final RssiLog.HistogramForPeriod merged = RssiLog.merge(histograms);
+        assertNull(merged);
+    }
+
+    @Test
+    public void merge_one_to_one() throws Exception {
+        final List<RssiLog.HistogramForPeriod> histograms = new ArrayList<>();
+        final Histogram histogram = new Histogram(0,10);
+        histogram.add(5);
+        histograms.add(new RssiLog.HistogramForPeriod(new Date(0), new Date(10), histogram));
+        final RssiLog.HistogramForPeriod merged = RssiLog.merge(histograms);
+        assertNotNull(merged);
+        assertEquals(0, merged.start.secondsSinceUnixEpoch());
+        assertEquals(10, merged.end.secondsSinceUnixEpoch());
+        assertEquals(1, merged.histogram.count());
+        assertEquals(1, merged.histogram.count(5));
+    }
+
+    @Test
+    public void merge_two_to_one() throws Exception {
+        final List<RssiLog.HistogramForPeriod> histograms = new ArrayList<>();
+        final Histogram histogram1 = new Histogram(0,10);
+        histogram1.add(5);
+        histograms.add(new RssiLog.HistogramForPeriod(new Date(0), new Date(10), histogram1));
+        final Histogram histogram2 = new Histogram(0,10);
+        histogram1.add(7);
+        histograms.add(new RssiLog.HistogramForPeriod(new Date(10), new Date(20), histogram2));
+        final RssiLog.HistogramForPeriod merged = RssiLog.merge(histograms);
+        assertNotNull(merged);
+        assertEquals(0, merged.start.secondsSinceUnixEpoch());
+        assertEquals(20, merged.end.secondsSinceUnixEpoch());
+        assertEquals(2, merged.histogram.count());
+        assertEquals(1, merged.histogram.count(5));
+        assertEquals(1, merged.histogram.count(7));
     }
 }
