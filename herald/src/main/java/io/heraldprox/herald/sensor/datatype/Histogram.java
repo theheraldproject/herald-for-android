@@ -242,4 +242,12 @@ public class Histogram {
         final String content = toCsv();
         textFile.overwrite(content);
     }
+
+    @Override
+    public String toString() {
+        return "Histogram{" +
+                "samples=" + samples +
+                ", mode=" + mode +
+                '}';
+    }
 }

@@ -4,6 +4,9 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -25,5 +28,19 @@ public class DateTests {
     @Test
     public void testToString() {
         System.err.println(new Date(0));
+    }
+
+    @Test
+    public void beforeOrEqual() {
+        assertTrue(new Date(1).beforeOrEqual(new Date(2)));
+        assertTrue(new Date(2).beforeOrEqual(new Date(2)));
+        assertFalse(new Date(3).beforeOrEqual(new Date(2)));
+    }
+
+    @Test
+    public void afterOrEqual() {
+        assertTrue(new Date(3).afterOrEqual(new Date(2)));
+        assertTrue(new Date(2).afterOrEqual(new Date(2)));
+        assertFalse(new Date(1).afterOrEqual(new Date(2)));
     }
 }

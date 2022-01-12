@@ -41,17 +41,17 @@ public class ContactLog extends SensorDelegateLogger {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect) {
-        write(timestamp() + "," + sensor.name() + "," + csv(didDetect.value) + ",1,,,,,");
+        write(Timestamp.timestamp() + "," + sensor.name() + "," + csv(didDetect.value) + ",1,,,,,");
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
-        write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(payloadDataFormatter.shortFormat(didRead)));
+        write(Timestamp.timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,2,,,," + csv(payloadDataFormatter.shortFormat(didRead)));
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
-        final String prefix = timestamp() + "," + sensor.name() + "," + csv(fromTarget.value);
+        final String prefix = Timestamp.timestamp() + "," + sensor.name() + "," + csv(fromTarget.value);
         for (PayloadData payloadData : didShare) {
             write(prefix + ",,,,4,," + csv(payloadDataFormatter.shortFormat(payloadData)));
         }
@@ -59,11 +59,11 @@ public class ContactLog extends SensorDelegateLogger {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
-        write(timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,,3,,," + csv(didMeasure.description()));
+        write(Timestamp.timestamp() + "," + sensor.name() + "," + csv(fromTarget.value) + ",,,3,,," + csv(didMeasure.description()));
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
-        write(timestamp() + "," + sensor.name() + ",,,,,,5," + csv(didVisit.description()));
+        write(Timestamp.timestamp() + "," + sensor.name() + ",,,,,,5," + csv(didVisit.description()));
     }
 }

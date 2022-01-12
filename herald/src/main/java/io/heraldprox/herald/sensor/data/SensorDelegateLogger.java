@@ -9,10 +9,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
 
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 
@@ -20,7 +17,6 @@ import io.heraldprox.herald.sensor.DefaultSensorDelegate;
  * Default sensor delegate with convenient functions for writing data to log file.
  */
 public class SensorDelegateLogger extends DefaultSensorDelegate implements Resettable {
-    protected final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.UK);
     @Nullable
     protected final Context context;
     @Nullable
@@ -34,7 +30,6 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
     public SensorDelegateLogger(@NonNull final Context context, @NonNull final String filename) {
         this.context = context;
         this.textFile = new TextFile(context, filename);
-        this.dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         if (empty()) {
             writeNow(header());
         }
@@ -42,7 +37,7 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
 
     /**
      * Override this method to provide optional file header row.
-     * @return
+     * @return Header line.
      */
     protected String header() {
         return "";
@@ -55,24 +50,6 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
         }
         textFile.reset();
         writeNow(header());
-    }
-
-    /**
-     * Get given time as formatted timestamp "yyyy-MM-dd HH:mm:ss"
-     * @return Formatted timestamp for given time.
-     */
-    @NonNull
-    protected String timestamp(@NonNull Date date) {
-        return TextFile.csv(dateFormatter.format(date));
-    }
-
-    /**
-     * Get current time as formatted timestamp "yyyy-MM-dd HH:mm:ss"
-     * @return Formatted timestamp for current time.
-     */
-    @NonNull
-    protected String timestamp() {
-        return timestamp(new Date());
     }
 
     /**
@@ -110,7 +87,7 @@ public class SensorDelegateLogger extends DefaultSensorDelegate implements Reset
     /**
      * Write list of values as CSV row. This function will wrap individual values in quotes if necessary.
      * Null values will be outputted as empty string.
-     * @param values
+     * @param values CSV row values.
      */
     @NonNull
     protected String writeCsv(@NonNull final String... values) {

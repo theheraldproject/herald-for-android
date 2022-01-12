@@ -119,7 +119,7 @@ public class RssiLog extends SensorDelegateLogger {
 
     protected synchronized void append(@NonNull final PointMeasurement pointMeasurement) {
         // Add to CSV log file
-        final String timestamp = timestamp(pointMeasurement.timestamp);
+        final String timestamp = Timestamp.timestamp(pointMeasurement.timestamp);
         final String target = pointMeasurement.target.toString();
         final String rssi = pointMeasurement.rssi.toString();
         final String txPower = (null != pointMeasurement.txPower ? pointMeasurement.txPower.toString() : "");

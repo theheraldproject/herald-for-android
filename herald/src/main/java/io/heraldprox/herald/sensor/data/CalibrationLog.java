@@ -35,14 +35,14 @@ public class CalibrationLog extends SensorDelegateLogger {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget, @NonNull final PayloadData withPayload) {
-        write(timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
+        write(Timestamp.timestamp() + "," + csv(withPayload.shortName()) + "," + didMeasure.value + ",,,");
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Location didVisit) {
         if (didVisit.value instanceof InertiaLocationReference) {
             final InertiaLocationReference reference = (InertiaLocationReference) didVisit.value;
-            write(timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);
+            write(Timestamp.timestamp() + ",,," + reference.x + ","  + reference.y + "," + reference.z);
         }
     }
 }

@@ -13,8 +13,8 @@ import androidx.annotation.Nullable;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -25,7 +25,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
 public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
@@ -34,6 +33,13 @@ public class TextFile implements Resettable {
     private final File file;
     private final ConcurrentLinkedQueue<String> writeBuffer = new ConcurrentLinkedQueue<>();
     private final AtomicLong writeBufferSize = new AtomicLong();
+
+    /**
+     * Line consumer for forEachLine().
+     */
+    public interface TextFileLineConsumer {
+        void apply(@NonNull final String line);
+    }
 
     /**
      * Text file with 30 second write delay on write() calls.
@@ -181,21 +187,37 @@ public class TextFile implements Resettable {
      */
     @NonNull
     public synchronized String contentsOf() {
+        final StringBuilder stringBuilder = new StringBuilder();
+        forEachLine(new TextFileLineConsumer() {
+            @Override
+            public void apply(@NonNull String line) {
+                stringBuilder.append(line);
+                stringBuilder.append("\n");
+            }
+        });
+        return stringBuilder.toString();
+    }
+
+    /**
+     * Apply function to each line of the text file.
+     * @param consumer
+     */
+    public synchronized void forEachLine(@NonNull TextFileLineConsumer consumer) {
         try {
+            if (!file.exists()) {
+                return;
+            }
             final FileInputStream fileInputStream = new FileInputStream(file);
             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
             final StringBuilder stringBuilder = new StringBuilder();
             String line;
             while ((line = bufferedReader.readLine()) != null) {
-                stringBuilder.append(line);
-                stringBuilder.append("\n");
+                consumer.apply(line);
             }
             bufferedReader.close();
             fileInputStream.close();
-            return stringBuilder.toString();
         } catch (Throwable e) {
             logger.fault("read failed (file={})", file, e);
-            return "";
         }
     }
 

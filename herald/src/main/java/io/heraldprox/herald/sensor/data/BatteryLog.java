@@ -62,7 +62,7 @@ public class BatteryLog extends SensorDelegateLogger {
         final float batteryLevel = level * 100 / (float) scale;
 
         final String powerSource = (isCharging ? "external" : "battery");
-        write(timestamp() + "," + powerSource + "," + batteryLevel);
+        write(Timestamp.timestamp() + "," + powerSource + "," + batteryLevel);
         logger.debug("update (powerSource={},batteryLevel={})", powerSource, batteryLevel);
     }
 }
