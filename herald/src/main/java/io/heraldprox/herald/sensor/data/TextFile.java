@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TextFile implements Resettable {
@@ -32,7 +33,7 @@ public class TextFile implements Resettable {
     @NonNull
     private final File file;
     private final ConcurrentLinkedQueue<String> writeBuffer = new ConcurrentLinkedQueue<>();
-    private final AtomicLong writeBufferSize = new AtomicLong();
+    private final AtomicInteger writeBufferSize = new AtomicInteger();
 
     /**
      * Line consumer for forEachLine().
@@ -209,7 +210,6 @@ public class TextFile implements Resettable {
             }
             final FileInputStream fileInputStream = new FileInputStream(file);
             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
-            final StringBuilder stringBuilder = new StringBuilder();
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 consumer.apply(line);
@@ -262,18 +262,16 @@ public class TextFile implements Resettable {
         if (writeBuffer.isEmpty()) {
             return false;
         }
-        try {
-            final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
-            String line;
-            while ((line = writeBuffer.poll()) != null) {
-                fileOutputStream.write((line + "\n").getBytes());
+        final List<String> lines = new ArrayList<>(writeBuffer);
+        final StringBuilder content = new StringBuilder(writeBufferSize.get() + lines.size());
+        // Newline character is added to the end by writeNow()
+        for (int i=0; i<lines.size(); i++) {
+            if (i > 0) {
+                content.append('\n');
             }
-            fileOutputStream.flush();
-            fileOutputStream.close();
-            writeBufferSize.set(0);
-        } catch (Throwable e) {
-            logger.fault("flushWriteBuffer failed (file={})", file, e);
+            content.append(lines.get(i));
         }
+        writeNow(content.toString());
         return true;
     }
 

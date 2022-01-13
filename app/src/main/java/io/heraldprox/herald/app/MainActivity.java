@@ -40,7 +40,6 @@ import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.Distance;
-import io.heraldprox.herald.sensor.datatype.Histogram;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -390,7 +389,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     @Override
     protected void onDestroy() {
-        temporalHistogramModel.flushLog();
+        temporalHistogramModel.flush();
         Log.d(tag, "app (state=destroy)");
         super.onDestroy();
     }

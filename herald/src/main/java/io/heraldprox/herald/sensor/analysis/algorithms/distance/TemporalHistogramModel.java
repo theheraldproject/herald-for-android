@@ -153,7 +153,7 @@ public class TemporalHistogramModel {
                         // Parse errors shall reject the whole row
                         histogramForPeriod.histogram.add(values[i], Integer.parseInt(row[j]));
                     }
-                    // Duplicates may occur as data maybe flushed onDestroy(), keep the most recent version
+                    // Duplicates may occur as data maybe flushed onDestroy(), use the most recent version
                     currentHistogram = histogramForPeriod;
                     if (!histogramForPeriods.isEmpty() && histogramForPeriods.get(histogramForPeriods.size() - 1).start.equals(currentHistogram.start)) {
                         logger.debug("Read updating duplicate row (old={},new={})", histogramForPeriods.get(histogramForPeriods.size() - 1), currentHistogram);
@@ -167,10 +167,11 @@ public class TemporalHistogramModel {
         });
     }
 
-    public synchronized void flushLog() {
+    public synchronized void flush() {
         if (null == logFile) {
             return;
         }
+        flushQuantisationBuffer();
         if (null == currentHistogram) {
             return;
         }
@@ -182,7 +183,7 @@ public class TemporalHistogramModel {
     public synchronized void add(@NonNull final Date timestamp, @NonNull final String identifier, final int value) {
         // Flush buffer on period end
         if (null == quantisationPeriodEnd || timestamp.afterOrEqual(quantisationPeriodEnd)) {
-            flush();
+            flushQuantisationBuffer();
             quantisationPeriodStart = periodStart(timestamp, quantisationPeriod);
             quantisationPeriodEnd = periodEnd(timestamp, quantisationPeriod);
         }
@@ -216,7 +217,7 @@ public class TemporalHistogramModel {
     /**
      * Flush quantisation buffer.
      */
-    private synchronized void flush() {
+    private synchronized void flushQuantisationBuffer() {
         if (null == quantisationPeriodStart) {
             return;
         }
@@ -261,12 +262,14 @@ public class TemporalHistogramModel {
      * @param value Quantised value.
      */
     private void addToHistogram(@NonNull final Date timestamp, final int value) {
+        //logger.debug("addToHistogram(timestamp={},value={})", timestamp, value);
         if (null == currentHistogram || timestamp.afterOrEqual(currentHistogram.end)) {
-            // Write last period to log file
-            if (!histogramForPeriods.isEmpty()) {
-                final HistogramForPeriod mostRecentHistogram = histogramForPeriods.get(histogramForPeriods.size() - 1);
-                write(mostRecentHistogram.start, mostRecentHistogram.end, mostRecentHistogram.histogram);
+            // Write completed period to log file
+            if (null != currentHistogram) {
+                //logger.debug("addToHistogram.write(currentHistogram={})", currentHistogram);
+                write(currentHistogram.start, currentHistogram.end, currentHistogram.histogram);
             }
+            // Create new period
             final Date start = periodStart(timestamp, histogramPeriod);
             final Date end = periodEnd(timestamp, histogramPeriod);
             currentHistogram = new HistogramForPeriod(start, end, minValue, maxValue);
