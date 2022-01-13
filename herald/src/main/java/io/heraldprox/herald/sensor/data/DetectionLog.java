@@ -43,6 +43,13 @@ public class DetectionLog extends SensorDelegateLogger {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
     }
 
+    public DetectionLog(@NonNull final TextFile textFile, @NonNull final PayloadData payloadData) {
+        super(textFile);
+        this.payloadData = payloadData;
+        this.payloadDataFormatter = new ConcretePayloadDataFormatter();
+        write();
+    }
+
     private void read() {
         final String content = contentsOf();
         if (null == content || content.isEmpty()) {

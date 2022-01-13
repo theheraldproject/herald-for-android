@@ -26,6 +26,10 @@ public class CalibrationLog extends SensorDelegateLogger {
         super(context, filename);
     }
 
+    public CalibrationLog(@NonNull final TextFile textFile) {
+        super(textFile);
+    }
+
     @Override
     protected String header() {
         return "time,payload,rssi,x,y,z";

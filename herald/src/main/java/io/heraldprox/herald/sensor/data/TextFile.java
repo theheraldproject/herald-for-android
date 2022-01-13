@@ -104,7 +104,15 @@ public class TextFile implements Resettable {
 
     @Override
     public synchronized void reset() {
+        clearBuffer();
         overwrite("");
+    }
+
+    /**
+     * Discard pending writes
+     */
+    protected synchronized void clearBuffer() {
+        writeBuffer.clear();
     }
 
     // MARK: - I/O functions
@@ -200,6 +208,22 @@ public class TextFile implements Resettable {
     }
 
     /**
+     * Get contents of file as individual lines.
+     * @return File content as individual lines.
+     */
+    @NonNull
+    public synchronized List<String> lines() {
+        final List<String> lines = new ArrayList<>();
+        forEachLine(new TextFileLineConsumer() {
+            @Override
+            public void apply(@NonNull String line) {
+                lines.add(line);
+            }
+        });
+        return lines;
+    }
+
+    /**
      * Apply function to each line of the text file.
      * @param consumer
      */
@@ -272,6 +296,7 @@ public class TextFile implements Resettable {
             content.append(lines.get(i));
         }
         writeNow(content.toString());
+        clearBuffer();
         return true;
     }
 
@@ -295,8 +320,7 @@ public class TextFile implements Resettable {
      * @param content Text content
      */
     public synchronized void overwrite(@NonNull final String content) {
-        // Discard pending writes
-        writeBuffer.clear();
+        clearBuffer();
         try {
             // No longer writing to temporary file first as this caused the test to fail on latest Android version
             final FileOutputStream fileOutputStream = new FileOutputStream(file, false);
@@ -315,6 +339,9 @@ public class TextFile implements Resettable {
      */
     @NonNull
     public static String csv(@NonNull final String value) {
+        if (null == value) {
+            return "NULL";
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {
             return "\"" + value + "\"";
         } else {

@@ -42,6 +42,7 @@ public class TextFileBuffer extends TextFile {
 
     @Override
     public synchronized void overwrite(@NonNull String content) {
+        clearBuffer();
         buffer.delete(0, buffer.length());
         buffer.append(content);
     }

@@ -45,8 +45,12 @@ public class ConcreteSensorLogger implements SensorLogger, Resettable {
     public static void context(@Nullable final Context context) {
         if (context != null && context != ConcreteSensorLogger.context) {
             ConcreteSensorLogger.context = context;
-            logFile = new TextFile(context, "log.txt");
+            logFile(new TextFile(context, "log.txt"));
         }
+    }
+
+    public static void logFile(@NonNull final TextFile logFile) {
+        ConcreteSensorLogger.logFile = logFile;
     }
 
     private boolean suppress(@NonNull final SensorLoggerLevel level) {

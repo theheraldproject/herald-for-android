@@ -9,8 +9,6 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.Date;
-
 import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 
 /**
@@ -18,21 +16,21 @@ import io.heraldprox.herald.sensor.DefaultSensorDelegate;
  */
 public class SensorDelegateLogger extends DefaultSensorDelegate implements Resettable {
     @Nullable
-    protected final Context context;
-    @Nullable
     private final TextFile textFile;
 
     public SensorDelegateLogger() {
-        context = null;
         textFile = null;
     }
 
-    public SensorDelegateLogger(@NonNull final Context context, @NonNull final String filename) {
-        this.context = context;
-        this.textFile = new TextFile(context, filename);
+    public SensorDelegateLogger(@NonNull final TextFile textFile) {
+        this.textFile = textFile;
         if (empty()) {
             writeNow(header());
         }
+    }
+
+    public SensorDelegateLogger(@NonNull final Context context, @NonNull final String filename) {
+        this(new TextFile(context, filename));
     }
 
     /**

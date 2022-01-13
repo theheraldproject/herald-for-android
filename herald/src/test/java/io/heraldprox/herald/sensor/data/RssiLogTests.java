@@ -3,14 +3,21 @@ package io.heraldprox.herald.sensor.data;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.heraldprox.herald.sensor.datatype.Calibration;
+import io.heraldprox.herald.sensor.datatype.CalibrationMeasurementUnit;
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.Histogram;
+import io.heraldprox.herald.sensor.datatype.Proximity;
+import io.heraldprox.herald.sensor.datatype.ProximityMeasurementUnit;
+import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
@@ -368,5 +375,38 @@ public class RssiLogTests {
         assertEquals(2, merged.histogram.count());
         assertEquals(1, merged.histogram.count(5));
         assertEquals(1, merged.histogram.count(7));
+    }
+
+    // MARK: - Histogram
+
+    @Test
+    public void histogram() throws Exception {
+        final RssiLog rssiLog = new RssiLog();
+        final Histogram histogram0 = rssiLog.histogram();
+        assertEquals(0, histogram0.count());
+        rssiLog.sensor(SensorType.BLE, new Proximity(ProximityMeasurementUnit.RSSI, -1d), new TargetIdentifier("A"));
+        final Histogram histogram1 = rssiLog.histogram();
+        assertEquals(1, histogram1.count());
+        assertEquals(-1, histogram1.mode().intValue());
+    }
+
+    // MARK: - Log file content
+
+    @Test
+    public void logFile() throws Exception {
+        final TextFile logFile = new TextFileBuffer();
+        final RssiLog rssiLog = new RssiLog(logFile);
+        // Just header
+        assertEquals("time,id,rssi,txpower\n", logFile.contentsOf());
+        // A, where RSSI = -1, TxPower = 12
+        final Proximity proximity0 = new Proximity(ProximityMeasurementUnit.RSSI, -1d, new Calibration(CalibrationMeasurementUnit.BLETransmitPower, 12d));
+        rssiLog.sensor(SensorType.BLE, proximity0, new TargetIdentifier("A"));
+        logFile.flush();
+        assertTrue(logFile.contentsOf().endsWith(",A,-1.0,12.0\n"));
+        // B, where RSSI = -2, No TxPower
+        final Proximity proximity1 = new Proximity(ProximityMeasurementUnit.RSSI, -2d);
+        rssiLog.sensor(SensorType.BLE, proximity1, new TargetIdentifier("B"));
+        logFile.flush();
+        assertTrue(logFile.contentsOf().endsWith(",B,-2.0,\n"));
     }
 }

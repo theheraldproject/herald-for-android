@@ -32,6 +32,11 @@ public class ContactLog extends SensorDelegateLogger {
         this(context, filename, new ConcretePayloadDataFormatter());
     }
 
+    public ContactLog(@NonNull final TextFile textFile) {
+        super(textFile);
+        this.payloadDataFormatter = new ConcretePayloadDataFormatter();
+    }
+
     @Override
     protected String header() {
         return "time,sensor,id,detect,read,measure,share,visit,data";

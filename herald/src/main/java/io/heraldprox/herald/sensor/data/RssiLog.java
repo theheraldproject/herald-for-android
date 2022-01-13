@@ -85,8 +85,12 @@ public class RssiLog extends SensorDelegateLogger {
         super();
     }
 
-    public RssiLog(@NonNull Context context, @NonNull String filename) {
+    public RssiLog(@NonNull final Context context, @NonNull final String filename) {
         super(context, filename);
+    }
+
+    public RssiLog(@NonNull TextFile textFile) {
+        super(textFile);
     }
 
     @Override
@@ -111,7 +115,9 @@ public class RssiLog extends SensorDelegateLogger {
         if (null != historic) {
             histogram.add(historic.histogram);
         }
-        histogram.add(pending.histogram);
+        if (null != pending) {
+            histogram.add(pending.histogram);
+        }
         return histogram;
     }
 
