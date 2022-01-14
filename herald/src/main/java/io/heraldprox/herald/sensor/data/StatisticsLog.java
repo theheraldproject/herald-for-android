@@ -7,7 +7,9 @@ package io.heraldprox.herald.sensor.data;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.datatype.Distribution;
@@ -16,7 +18,6 @@ import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,27 +35,42 @@ public class StatisticsLog extends SensorDelegateLogger {
     public StatisticsLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
         super(context, filename);
         this.payloadData = payloadData;
+        write();
     }
 
-    private void add(@NonNull final TargetIdentifier identifier) {
+    public StatisticsLog(@NonNull final TextFile textFile, @NonNull final PayloadData payloadData) {
+        super(textFile);
+        this.payloadData = payloadData;
+        write();
+    }
+
+    protected void add(@NonNull final PayloadData didRead, @Nullable final TargetIdentifier fromTarget, @NonNull final Date timestamp) {
+        final String payload = didRead.shortName();
+        if (null != fromTarget) {
+            identifierToPayload.put(fromTarget, payload);
+        }
+        add(payload, timestamp);
+    }
+
+    protected void add(@NonNull final TargetIdentifier identifier, @NonNull final Date timestamp) {
         final String payload = identifierToPayload.get(identifier);
         if (null == payload) {
             return;
         }
-        add(payload);
+        add(payload, timestamp);
     }
 
-    private void add(@NonNull final String payload) {
+    protected void add(@NonNull final String payload, @NonNull final Date timestamp) {
         final Date time = payloadToTime.get(payload);
         final Distribution distribution = payloadToSample.get(payload);
         if (null == time || null == distribution) {
-            payloadToTime.put(payload, new Date());
+            payloadToTime.put(payload, timestamp);
             payloadToSample.put(payload, new Distribution());
             return;
         }
-        final Date now = new Date();
-        payloadToTime.put(payload, now);
-        distribution.add((now.getTime() - time.getTime()) / 1000d);
+        payloadToTime.put(payload, timestamp);
+        // Calculate difference at millisecond accuracy before rounding to second
+        distribution.add((timestamp.getTime() - time.getTime()) / 1000d);
         write();
     }
 
@@ -97,19 +113,18 @@ public class StatisticsLog extends SensorDelegateLogger {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final PayloadData didRead, @NonNull final TargetIdentifier fromTarget) {
-        identifierToPayload.put(fromTarget, didRead.shortName());
-        add(fromTarget);
+        add(didRead, fromTarget, new Date());
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final Proximity didMeasure, @NonNull final TargetIdentifier fromTarget) {
-        add(fromTarget);
+        add(fromTarget, new Date());
     }
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final List<PayloadData> didShare, @NonNull final TargetIdentifier fromTarget) {
         for (PayloadData payload : didShare) {
-            add(payload.shortName());
+            add(payload, null, new Date());
         }
     }
 }
