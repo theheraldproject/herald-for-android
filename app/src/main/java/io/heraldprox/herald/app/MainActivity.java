@@ -377,7 +377,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         updateCounts();
         updateTargets();
         updateSocialDistance(socialMixingScoreUnit);
-        updateTemporalHistogram(socialMixingScoreUnit);
+        updateTemporalHistogram(temporalHistogramUnit);
     }
 
     @Override

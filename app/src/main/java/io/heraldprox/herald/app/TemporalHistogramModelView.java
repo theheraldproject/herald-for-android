@@ -21,6 +21,7 @@ import io.heraldprox.herald.sensor.analysis.algorithms.distance.TemporalHistogra
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Date;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Histogram;
 
 public class TemporalHistogramModelView extends View {
@@ -105,6 +106,7 @@ public class TemporalHistogramModelView extends View {
         canvas.drawBitmap(bitmap, bitmapFrame, canvasFrame, null);
     }
 
+    @NonNull
     protected final static Histogram normalise(@NonNull final Histogram histogram, final long count) {
         final Histogram normalised = new Histogram(histogram.min, histogram.max);
         if (0 == histogram.count()) {
@@ -123,6 +125,7 @@ public class TemporalHistogramModelView extends View {
         return normalised;
     }
 
+    @NonNull
     protected final static Histogram quantise(@NonNull final Histogram histogram, final int bin) {
         final Histogram quantised = new Histogram(histogram.min / bin, histogram.max / bin);
         if (0 == histogram.count()) {
@@ -133,6 +136,21 @@ public class TemporalHistogramModelView extends View {
             quantised.add(quantisedValue, histogram.count(value));
         }
         return quantised;
+    }
+
+    protected final static Integer gravity(@NonNull final Histogram histogram) {
+        if (0 == histogram.count()) {
+            return null;
+        }
+        final Distribution distribution = new Distribution();
+        for (int value=histogram.min; value<=histogram.max; value++) {
+            final long count = histogram.count(value);
+            if (0 == count) {
+                continue;
+            }
+            distribution.add(value, count);
+        }
+        return (int) Math.round(distribution.mean());
     }
 
     protected Bitmap render(final int height) {
