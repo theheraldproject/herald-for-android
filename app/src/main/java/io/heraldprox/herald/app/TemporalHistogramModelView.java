@@ -3,7 +3,6 @@ package io.heraldprox.herald.app;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
@@ -13,7 +12,6 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,22 +86,41 @@ public class TemporalHistogramModelView extends View {
 
     /**
      * Set bin size.
-     * @param size
+     * @param size Size of histogram bin.
      */
     public void bin(final int size) {
         this.bin = size;
     }
 
+    @Nullable
+    private Rect bitmapFrame = null;
+    @NonNull
+    protected Rect bitmapFrame(@NonNull final Bitmap bitmap) {
+        if (null == bitmapFrame || bitmapFrame.width() != bitmap.getWidth() || bitmapFrame.height() != bitmap.getHeight()) {
+            bitmapFrame = new Rect(0,0, bitmap.getWidth(), bitmap.getHeight());
+        }
+        return bitmapFrame;
+    }
+
+    @Nullable
+    private Rect canvasFrame = null;
+    @NonNull
+    protected Rect canvasFrame(@NonNull final Canvas canvas) {
+        if (null == canvasFrame || canvasFrame.width() != canvas.getWidth() || canvasFrame.height() != canvas.getHeight()) {
+            canvasFrame = new Rect(0,0, canvas.getWidth(), canvas.getHeight());
+        }
+        return canvasFrame;
+    }
+
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        final Bitmap bitmap = render(canvas.getHeight());
+        final Bitmap bitmap = render(getHeight());
         if (null == bitmap) {
             return;
         }
-        final Rect bitmapFrame = new Rect(0,0, bitmap.getWidth(), bitmap.getHeight());
-        final Rect canvasFrame = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
-        canvas.drawBitmap(bitmap, bitmapFrame, canvasFrame, null);
+        canvas.drawBitmap(bitmap, bitmapFrame(bitmap), canvasFrame(canvas), null);
     }
 
     @NonNull
@@ -138,6 +155,7 @@ public class TemporalHistogramModelView extends View {
         return quantised;
     }
 
+    @Nullable
     protected final static Integer gravity(@NonNull final Histogram histogram) {
         if (0 == histogram.count()) {
             return null;
@@ -153,6 +171,7 @@ public class TemporalHistogramModelView extends View {
         return (int) Math.round(distribution.mean());
     }
 
+    @Nullable
     protected Bitmap render(final int height) {
         if (null == model || chartElements.isEmpty()) {
             return null;

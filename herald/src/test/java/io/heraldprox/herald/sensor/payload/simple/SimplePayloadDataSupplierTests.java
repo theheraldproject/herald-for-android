@@ -7,7 +7,6 @@ package io.heraldprox.herald.sensor.payload.simple;
 import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.TestUtil;
-import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Float16;
 import io.heraldprox.herald.sensor.datatype.PayloadTimestamp;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
@@ -23,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("ConstantConditions")
 public class SimplePayloadDataSupplierTests {

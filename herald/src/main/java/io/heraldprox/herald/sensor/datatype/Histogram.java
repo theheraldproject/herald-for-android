@@ -243,6 +243,7 @@ public class Histogram {
         textFile.overwrite(content);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "Histogram{" +

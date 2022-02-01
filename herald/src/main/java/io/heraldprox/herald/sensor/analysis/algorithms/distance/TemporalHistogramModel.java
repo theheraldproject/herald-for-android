@@ -55,6 +55,7 @@ public class TemporalHistogramModel {
             this.histogram = new Histogram(min, max);
         }
 
+        @NonNull
         @Override
         public String toString() {
             return "HistogramForPeriod{" +

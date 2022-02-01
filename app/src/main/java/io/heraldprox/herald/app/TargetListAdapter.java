@@ -46,15 +46,15 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
         statistics.append("R");
         if (target.didReadTimeInterval().mean() != null) {
             statistics.append("=");
-            statistics.append(decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didReadTimeInterval().mean())).append("s");
         }
         if (target.didMeasureTimeInterval().mean() != null) {
             statistics.append(",M=");
-            statistics.append(decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didMeasureTimeInterval().mean())).append("s");
         }
         if (target.didShareTimeInterval().mean() != null) {
             statistics.append(",S=");
-            statistics.append(decimalFormat.format(target.didShareTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didShareTimeInterval().mean())).append("s");
         }
         // Distance
         final StringBuilder distance = new StringBuilder();

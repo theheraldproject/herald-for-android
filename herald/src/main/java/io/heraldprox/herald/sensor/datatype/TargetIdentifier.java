@@ -9,7 +9,6 @@ import android.bluetooth.BluetoothDevice;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.lang.annotation.Target;
 import java.util.Objects;
 import java.util.UUID;
 

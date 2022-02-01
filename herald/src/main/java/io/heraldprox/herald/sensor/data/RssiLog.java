@@ -5,7 +5,6 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -286,7 +285,7 @@ public class RssiLog extends SensorDelegateLogger {
      * @return Histogram of integer RSSI values from the point measurements.
      */
     @NonNull
-    protected final static Histogram histogramOfRssi(@NonNull final List<PointMeasurement> pointMeasurements, @NonNull final int min, @NonNull final int max) {
+    protected final static Histogram histogramOfRssi(@NonNull final List<PointMeasurement> pointMeasurements, final int min, final int max) {
         final Histogram histogram = new Histogram(min, max);
         for (final PointMeasurement pointMeasurement : pointMeasurements) {
             // Out of range RSSI are filtered by add()

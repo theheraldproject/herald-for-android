@@ -6,14 +6,9 @@ package io.heraldprox.herald.sensor.data.security;
 
 import org.junit.Test;
 
-import java.io.PrintWriter;
-
-import io.heraldprox.herald.sensor.TestUtil;
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Int64;
-import io.heraldprox.herald.sensor.datatype.UIntBig;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

@@ -5,7 +5,6 @@
 package io.heraldprox.herald.sensor.data.security;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.datatype.Data;
 
