@@ -14,7 +14,6 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +40,13 @@ public class DetectionLog extends SensorDelegateLogger {
 
     public DetectionLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData) {
         this(context, filename, payloadData, new ConcretePayloadDataFormatter());
+    }
+
+    public DetectionLog(@NonNull final TextFile textFile, @NonNull final PayloadData payloadData) {
+        super(textFile);
+        this.payloadData = payloadData;
+        this.payloadDataFormatter = new ConcretePayloadDataFormatter();
+        write();
     }
 
     private void read() {

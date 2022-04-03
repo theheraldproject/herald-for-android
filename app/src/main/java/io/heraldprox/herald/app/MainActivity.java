@@ -5,6 +5,7 @@
 package io.heraldprox.herald.app;
 
 import android.Manifest;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,6 +27,7 @@ import io.heraldprox.herald.sensor.SensorDelegate;
 import io.heraldprox.herald.sensor.analysis.SocialDistance;
 import io.heraldprox.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
 import io.heraldprox.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;
+import io.heraldprox.herald.sensor.analysis.algorithms.distance.TemporalHistogramModel;
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisDelegateManager;
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisProviderManager;
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisRunner;
@@ -36,6 +38,7 @@ import io.heraldprox.herald.sensor.analysis.sampling.SampledID;
 import io.heraldprox.herald.sensor.analysis.views.Since;
 import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.TextFile;
+import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.Location;
@@ -48,12 +51,10 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
     // Test UI specific data, not required for production solution.
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
     private boolean foreground = false;
 
     // MARK:- Events
@@ -100,6 +100,13 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
     private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
 
+    // MARK:- Temporal histogram model
+    private TimeInterval temporalHistogramUnit = TimeInterval.hour;
+    private final TemporalHistogramModel temporalHistogramModel = new TemporalHistogramModel(
+            new TimeInterval(1), TimeInterval.hour,
+            -100, 0,
+            new TextFile(AppDelegate.getAppDelegate(), "rssi_histogram_model.csv"));
+
     @Override
     public synchronized void reset() {
         didDetect = 0;
@@ -121,6 +128,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 updateCounts();
                 updateTargets();
                 updateSocialDistance(socialMixingScoreUnit);
+                updateTemporalHistogram(temporalHistogramUnit);
             }
         });
     }
@@ -143,6 +151,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         final ListView targetsListView = ((ListView) findViewById(R.id.targets));
         targetsListView.setAdapter(targetListAdapter);
         targetsListView.setOnItemClickListener(this);
+        // - Temporal histogram model configuration
+        ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).model(temporalHistogramModel);
+        ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).bin(3);
 
         // Test programmatic control of sensor on/off
         final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
@@ -256,8 +267,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     // Update social distance score
-    private void updateSocialDistance(TimeInterval unit) {
-        final long millisecondsPerUnit = unit.value * 1000;
+    private void updateSocialDistance(@NonNull final TimeInterval unit) {
         final List<TextView> labels = new ArrayList<>();
         labels.add((TextView) findViewById(R.id.socialMixingScore00));
         labels.add((TextView) findViewById(R.id.socialMixingScore01));
@@ -271,11 +281,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         labels.add((TextView) findViewById(R.id.socialMixingScore09));
         labels.add((TextView) findViewById(R.id.socialMixingScore10));
         labels.add((TextView) findViewById(R.id.socialMixingScore11));
-        final long epoch = (new Date().getTime() / millisecondsPerUnit) - 11;
+        final long epoch = (new Date().secondsSinceUnixEpoch() / unit.value) - 11;
         for (int i=0; i<=11; i++) {
             // Compute score for time slot
-            final Date start = new Date((epoch + i) * millisecondsPerUnit);
-            final Date end = new Date((epoch + i + 1) * millisecondsPerUnit);
+            final Date start = new Date((epoch + i) * unit.value);
+            final Date end = new Date((epoch + i + 1) * unit.value);
             final double score = socialMixingScore.scoreByProximity(start, end, -25, -70);
             // Present textual score
             final String scoreForPresentation = Integer.toString((int) Math.round(score * 100));
@@ -323,6 +333,42 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         ((TextView) findViewById(R.id.didReceiveCount)).setText(Long.toString(this.didReceive));
     }
 
+    public void onClickTemporalHistoryUnit(View v) {
+        final Map<TextView, TimeInterval> mapping = new HashMap<>(12);
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitD7), TimeInterval.days(7));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitD2), TimeInterval.days(2));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitD1), TimeInterval.days(1));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitH8), TimeInterval.hours(8));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitH4), TimeInterval.hours(4));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitH2), TimeInterval.hours(2));
+        mapping.put((TextView) findViewById(R.id.temporalHistogramUnitH1), TimeInterval.hours(1));
+        final int active = ContextCompat.getColor(this, R.color.systemBlue);
+        final int inactive = ContextCompat.getColor(this, R.color.systemGray);
+        final TextView setTo = (TextView) v;
+        for (TextView key : mapping.keySet()) {
+            if (setTo.getId() == key.getId()) {
+                key.setTextColor(active);
+                temporalHistogramUnit = mapping.get(key);
+            } else {
+                key.setTextColor(inactive);
+            }
+        }
+        updateTemporalHistogram(temporalHistogramUnit);
+    }
+
+    private void updateTemporalHistogram(@NonNull final TimeInterval unit) {
+        final TemporalHistogramModelView view = ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram));
+        final Date timeNow = new Date();
+        final Date timeStart = new Date(timeNow.secondsSinceUnixEpoch() - unit.value);
+        final Date timeEpoch = new Date(timeStart.secondsSinceUnixEpoch() - unit.value);
+        final List<TemporalHistogramModelView.ChartElement> chartElements = new ArrayList<>(2);
+        chartElements.add(new TemporalHistogramModelView.ChartElement(timeEpoch, timeStart, Color.GRAY));
+        chartElements.add(new TemporalHistogramModelView.ChartElement(timeStart, timeNow, Color.BLUE));
+        view.chart(chartElements);
+        view.invalidate();
+    }
+
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -331,6 +377,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         updateCounts();
         updateTargets();
         updateSocialDistance(socialMixingScoreUnit);
+        updateTemporalHistogram(temporalHistogramUnit);
     }
 
     @Override
@@ -338,6 +385,13 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         foreground = false;
         Log.d(tag, "app (state=background)");
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        temporalHistogramModel.flush();
+        Log.d(tag, "app (state=destroy)");
+        super.onDestroy();
     }
 
     // MARK:- SensorDelegate
@@ -408,6 +462,9 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     @Override
     public void sensor(@NonNull SensorType sensor, @NonNull Proximity didMeasure, @NonNull TargetIdentifier fromTarget) {
+        if (didMeasure.unit == ProximityMeasurementUnit.RSSI && null != didMeasure.value) {
+            temporalHistogramModel.add(new Date(), fromTarget.value, (int) Math.round(didMeasure.value));
+        }
         this.didMeasure++;
         final PayloadData didRead = targetIdentifiers.get(fromTarget);
         if (didRead != null) {
@@ -435,6 +492,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                     textView.setText(text);
                     updateTargets();
                     updateSocialDistance(socialMixingScoreUnit);
+                    updateTemporalHistogram(temporalHistogramUnit);
                 }
             });
         }

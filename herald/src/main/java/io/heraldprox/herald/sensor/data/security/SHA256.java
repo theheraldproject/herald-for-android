@@ -5,9 +5,7 @@
 package io.heraldprox.herald.sensor.data.security;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
 

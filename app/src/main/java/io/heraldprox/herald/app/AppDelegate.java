@@ -26,6 +26,7 @@ import io.heraldprox.herald.sensor.data.BatteryLog;
 import io.heraldprox.herald.sensor.data.ContactLog;
 import io.heraldprox.herald.sensor.data.DetectionLog;
 import io.heraldprox.herald.sensor.data.EventTimeIntervalLog;
+import io.heraldprox.herald.sensor.data.RssiLog;
 import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.StatisticsLog;
 import io.heraldprox.herald.sensor.data.TextFile;
@@ -87,6 +88,7 @@ public class AppDelegate extends Application implements SensorDelegate {
             sensorDelegateLoggers.add(new ContactLog(this, "contacts.csv"));
             sensorDelegateLoggers.add(new StatisticsLog(this, "statistics.csv",payloadData));
             sensorDelegateLoggers.add(new DetectionLog(this,"detection.csv", payloadData));
+            sensorDelegateLoggers.add(new RssiLog(this, "rssi.csv"));
             sensorDelegateLoggers.add(new BatteryLog(this, "battery.csv"));
             if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never ||
                 (BLESensorConfiguration.interopOpenTraceEnabled && BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval != TimeInterval.never)) {

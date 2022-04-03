@@ -41,6 +41,14 @@ public class EventTimeIntervalLog extends SensorDelegateLogger {
         super(context, filename);
         this.payloadData = payloadData;
         this.eventType = eventType;
+        write();
+    }
+
+    public EventTimeIntervalLog(@NonNull final TextFile textFile, @NonNull final PayloadData payloadData, @NonNull final EventType eventType) {
+        super(textFile);
+        this.payloadData = payloadData;
+        this.eventType = eventType;
+        write();
     }
 
     private void add(@NonNull final String payload) {
@@ -63,7 +71,7 @@ public class EventTimeIntervalLog extends SensorDelegateLogger {
         final String event = csv(eventType.name());
         final String centralPayload = csv(payloadData.shortName());
         for (final String payload : payloadToSample.keySet()) {
-            if (payload.equals(payloadData.shortName())) {
+            if (EventType.visit != eventType && payload.equals(payloadData.shortName())) {
                 continue;
             }
             payloadList.add(payload);
