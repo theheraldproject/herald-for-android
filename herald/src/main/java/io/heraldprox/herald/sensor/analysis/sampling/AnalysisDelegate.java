@@ -15,6 +15,8 @@ public interface AnalysisDelegate<T extends DoubleValue> extends CallableForNewS
 
     void reset();
 
+    void removeSamplesFor(SampledID sampled);
+
     @NonNull
     SampleList<T> samples();
 }

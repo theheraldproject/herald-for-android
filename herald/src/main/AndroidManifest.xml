@@ -10,8 +10,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- for v2.1 pairing with wearables -->
     <!-- Pre Android 12 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- Not needed on Android 12+ -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- Not needed on Android 12+ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -25,8 +25,8 @@ import io.heraldprox.herald.sensor.Sensor;
 import io.heraldprox.herald.sensor.SensorArray;
 import io.heraldprox.herald.sensor.SensorDelegate;
 import io.heraldprox.herald.sensor.analysis.SocialDistance;
-import io.heraldprox.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
-import io.heraldprox.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;
+//import io.heraldprox.herald.sensor.analysis.algorithms.distance.SmoothedLinearModelAnalyser;
+//import io.heraldprox.herald.sensor.analysis.algorithms.distance.SelfCalibratedModel;
 import io.heraldprox.herald.sensor.analysis.algorithms.distance.TemporalHistogramModel;
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisDelegateManager;
 import io.heraldprox.herald.sensor.analysis.sampling.AnalysisProviderManager;
@@ -36,8 +36,10 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.analysis.sampling.SampleList;
 import io.heraldprox.herald.sensor.analysis.sampling.SampledID;
 import io.heraldprox.herald.sensor.analysis.views.Since;
+import io.heraldprox.herald.sensor.ble.BLESensorConfiguration;
 import io.heraldprox.herald.sensor.data.Resettable;
 import io.heraldprox.herald.sensor.data.TextFile;
+import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.Distance;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
@@ -50,6 +52,11 @@ import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
+import io.heraldprox.herald.sensor.datatype.UInt16;
+import io.heraldprox.herald.sensor.datatype.UInt8;
+import io.heraldprox.herald.sensor.payload.extended.ConcreteExtendedDataSectionV1;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer5MessageType;
+import io.heraldprox.herald.sensor.protocol.GPDMPMessageListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,11 +65,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
-public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener, Resettable {
+public class MainActivity extends AppCompatActivity implements SensorDelegate, AdapterView.OnItemClickListener, Resettable, GPDMPMessageListener {
     private final static String tag = MainActivity.class.getName();
     // REQUIRED: Unique permission request code, used by requestPermission and onRequestPermissionsResult.
     private final static int permissionRequestCode = 1249951875;
@@ -82,7 +90,14 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private final SocialDistance socialMixingScore = new SocialDistance();
     private TimeInterval socialMixingScoreUnit = new TimeInterval(60);
 
+    // MARK:- GPDMP and SecuredPayload
+    private final UUID defaultChannelId = UUID.fromString("12345678-9012-1234-1234-123456789012");
+    private UUID mySenderRecipientId = null;
+
     // MARK:- Distance estimation
+
+    // Removed due to performance issues on old phone for https://github.com/theheraldproject/herald-for-android/issues/239
+
     // Demonstration model assumes, on average, distance between people is zero metres for up
     // to 5 minutes/day, and within 3.7 metres for up to 8 hours/day (e.g. work and home).
     // These are initial estimates based on proxemics data (Hall, 1966) for social distance
@@ -90,15 +105,15 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     // data to understand the distribution of distances between people and use normalisation
     // across the population using a common model (see histogram equalisation in RssiHistogram).
     // - Hall, E. (1966). The Hidden Dimension. Anchor Books. ISBN 978-0-385-08476-5
-    private final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
-            new Distance(0), new Distance(3.7),
-            TimeInterval.minutes(5), TimeInterval.hours(8),
-            new TextFile(AppDelegate.getAppDelegate(), "rssi_histogram.csv"));
-    private final SmoothedLinearModelAnalyser smoothedLinearModelAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(1), new TimeInterval(60), smoothedLinearModel);
-    private final AnalysisProviderManager analysisProviderManager = new AnalysisProviderManager(smoothedLinearModelAnalyser);
+//    private final SelfCalibratedModel<RSSI> smoothedLinearModel = new SelfCalibratedModel<>(
+//            new Distance(0), new Distance(3.7),
+//            TimeInterval.minutes(5), TimeInterval.hours(8),
+//            new TextFile(AppDelegate.getAppDelegate(), "rssi_histogram.csv"));
+//    private final SmoothedLinearModelAnalyser smoothedLinearModelAnalyser = new SmoothedLinearModelAnalyser(new TimeInterval(1), new TimeInterval(60), smoothedLinearModel);
+    private final AnalysisProviderManager analysisProviderManager = new AnalysisProviderManager(/*smoothedLinearModelAnalyser*/);
     private final ConcreteAnalysisDelegate<Distance> analysisDelegate = new ConcreteAnalysisDelegate<>(Distance.class, 5);
     private final AnalysisDelegateManager analysisDelegateManager = new AnalysisDelegateManager(analysisDelegate);
-    private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1200);
+    private final AnalysisRunner analysisRunner = new AnalysisRunner(analysisProviderManager, analysisDelegateManager, 1*60*5); // 1 per second for last 5 minutes
 
     // MARK:- Temporal histogram model
     private TimeInterval temporalHistogramUnit = TimeInterval.hour;
@@ -120,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         targets.clear();
 
         socialMixingScore.reset();
-        smoothedLinearModel.reset();
+//        smoothedLinearModel.reset();
 
         runOnUiThread(new Runnable() {
             @Override
@@ -135,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.i(tag, "MainActivity.onCreate() called.");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -146,7 +162,18 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         sensor.add(this);
         sensor.add(socialMixingScore);
         ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
-        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData().shortName());
+        PayloadData payloadData = ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData();
+        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + payloadData.shortName());
+
+        if (BLESensorConfiguration.gpdmpEnabled) {
+            // We generate a static identified and use this for the TEST payload, and for the channel UUID
+            // DO NOT DO THIS IN PRODUCTION - this is JUST for THIS demo app
+            mySenderRecipientId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aa" + payloadData.hexEncodedString().substring(10));
+            Log.d(tag, "Setting my own GPDMP channel ID (channelID=" + mySenderRecipientId.toString() + ")");
+            // Listen for any and all data sent on the default GPDMP channel
+            ((SensorArray) sensor).getGPDMPMessageListenerManager().addMessageListener(defaultChannelId, this);
+        }
+
         targetListAdapter = new TargetListAdapter(this, targets);
         final ListView targetsListView = ((ListView) findViewById(R.id.targets));
         targetsListView.setAdapter(targetListAdapter);
@@ -174,8 +201,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         // server remote commands.
         final AutomatedTestClient automatedTestClient = AppDelegate.getAppDelegate().automatedTestClient;
         if (null == automatedTestClient) {
-            sensor.start();
+            sensor.stop();
+            sensor.start(); // called again (first called by AppDelegate constructor) to ensure permissions are forced
         } else {
+            sensor.stop();
             automatedTestClient.add(this);
         }
     }
@@ -186,12 +215,21 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private void requestPermissions() {
         // Check and request permissions
         final List<String> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add(Manifest.permission.BLUETOOTH);
-        requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Required since Android 12 (SDK 31)
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_SCAN);
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+        } else {
+            // Legacy permissions
+            // See https://developer.android.com/guide/topics/connectivity/bluetooth/permissions
+            requiredPermissions.add(Manifest.permission.BLUETOOTH);
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
         }
         requiredPermissions.add(Manifest.permission.WAKE_LOCK);
         final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
@@ -268,6 +306,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
     // Update social distance score
     private void updateSocialDistance(@NonNull final TimeInterval unit) {
+        // Don't waste cycles updating UI if backgrounded - onResume handles the update
+        if (!foreground) {
+            return;
+        }
         final List<TextView> labels = new ArrayList<>();
         labels.add((TextView) findViewById(R.id.socialMixingScore00));
         labels.add((TextView) findViewById(R.id.socialMixingScore01));
@@ -326,6 +368,10 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     private void updateCounts() {
+        // Don't waste cycles updating UI if backgrounded - onResume handles the update
+        if (!foreground) {
+            return;
+        }
         ((TextView) findViewById(R.id.didDetectCount)).setText(Long.toString(this.didDetect));
         ((TextView) findViewById(R.id.didReadCount)).setText(Long.toString(this.didRead));
         ((TextView) findViewById(R.id.didMeasureCount)).setText(Long.toString(this.didMeasure));
@@ -357,6 +403,14 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     private void updateTemporalHistogram(@NonNull final TimeInterval unit) {
+        // Don't waste cycles updating UI if backgrounded - onResume handles the update
+        if (!foreground) {
+            return;
+        }
+
+        // Update samples (note: Has overhead - should be via a timer every few minutes in prod
+        analysisRunner.run();
+
         final TemporalHistogramModelView view = ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram));
         final Date timeNow = new Date();
         final Date timeStart = new Date(timeNow.secondsSinceUnixEpoch() - unit.value);
@@ -408,6 +462,21 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                     textView.setText(text);
                 }
             });
+        }
+    }
+
+    @Override
+    public void sensor(@NonNull SensorType sensor, boolean available, @NonNull TargetIdentifier didDeleteOrDetect) {
+        // TODO mark device as now being out of range and unavailable in the UI too
+        if (!available) {
+            // Remove all past readings from analysis delegate (Fix for https://github.com/theheraldproject/herald-for-android/issues/239)
+            // Note: This won't be affected by payload changes as those occur before the
+            // Bluetooth database times out an old device
+            final PayloadData didRead = targetIdentifiers.get(didDeleteOrDetect);
+            if (didRead != null) {
+                final SampledID sampledID = new SampledID(didRead);
+                analysisDelegate.removeSamplesFor(sampledID);
+            }
         }
     }
 
@@ -476,10 +545,15 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
                 if (didMeasure.unit == ProximityMeasurementUnit.RSSI) {
                     final SampledID sampledID = new SampledID(didRead);
                     analysisRunner.newSample(sampledID, new Sample<>(new RSSI((int) Math.round(didMeasure.value))));
+
+                    // Note: Moving the below to the updateTemporalHistogram function, as
+                    // reliability testing is showing a progressively slower response time, and
+                    // that would fit with more and more data being analysed via the below call.
+
                     // Analysis runner doesn't need to be executed as often as updates
                     // but the overhead is minimal as the demonstration distance analyser
                     // will only perform calculations and offer updates at fixed intervals
-                    analysisRunner.run();
+                    // analysisRunner.run();
                 }
             }
         }
@@ -548,7 +622,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     }
 
     // MARK:- OnItemClickListener
-
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         final Target target = targetListAdapter.getItem(i);
@@ -557,9 +630,75 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final boolean result = sensor.immediateSend(payloadData, target.targetIdentifier());
-                Log.d(tag, "immediateSend (to=" + target.payloadData().shortName() + ",result=" + result + ")");
+                // Disabling immediate send for now so I can test GPDMP
+
+                if (BLESensorConfiguration.gpdmpEnabled) {
+                    ArrayList<ConcreteExtendedDataSectionV1> sections = new ArrayList<>();
+                    // TODO make this entered via the UI rather than just my Payload ID
+                    ConcreteExtendedDataSectionV1 s1 = new ConcreteExtendedDataSectionV1(
+                            new UInt8(0), new UInt8(payloadData.length()), payloadData);
+                    sections.add(s1);
+
+                    final UUID sentMessageId = sensor.gpdmpSend(defaultChannelId,
+                            new Date(), new Date(), new UInt16(6),
+                            new UInt16(3), new UInt16(9), mySenderRecipientId, sections);
+                    Log.d(tag, "gpdmpSend (to=" + target.payloadData().shortName() + ",result=" + sentMessageId.toString() + ")");
+                }
+
+                // Immediate Send
+                // final boolean result = sensor.immediateSend(payloadData, target.targetIdentifier());
+                // Log.d(tag, "immediateSend (to=" + target.payloadData().shortName() + ",result=" + result + ")");
+
             }
         }).start();
+    }
+
+    // MARK:- GPDMPMessageListener
+    @Override
+    public void received(TargetIdentifier from, UUID channelIdEncoded, Date timeToAccess,
+                         Date timeout, UInt16 ttl, UInt16 minTransmissions, UInt16 maxTransmissions,
+                         UUID channelId, UUID messageId, UInt16 fragmentSeqNum,
+                         UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
+                         UInt16 fragmentsCurrentlyAvailable, GPDMPLayer5MessageType sessionMessageType,
+                         UUID senderRecipientId, boolean messageIsValid,
+                         List<ConcreteExtendedDataSectionV1> sections) {
+        if (!BLESensorConfiguration.gpdmpEnabled) {
+            return;
+        }
+        if (0 == sections.size()) {
+            return;
+        }
+        // Concatenate all sections as a single UTF-8 string
+        String msg = "";
+        Data fullMessage = new Data();
+        for (ConcreteExtendedDataSectionV1 section: sections) {
+            fullMessage.append(section.data);
+        }
+        if (0 == fullMessage.length()) {
+            return;
+        }
+        for (byte b: fullMessage.value) {
+            msg += String.valueOf((char)b);
+        }
+        final PayloadData pd = targetIdentifiers.get(from);
+        final Target target = payloads.get(pd);
+        if (target != null) {
+            target.receivedText(msg);
+        }
+        // 'foreground' removed from this, as if testing messaging you'll likely be stood
+        // a long way away from the device, causing the message to not appear and the tester to
+        // think there's an issue when there is not, and so this will be very inconvenient!
+        if (/* foreground && */ msg.length() > 0) {
+            this.didReceive++;
+            final String text = Long.toString(this.didReceive);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    final TextView textView = findViewById(R.id.didReceiveCount);
+                    textView.setText(text);
+                    updateTargets();
+                }
+            });
+        }
     }
 }

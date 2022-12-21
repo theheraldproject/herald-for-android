@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -26,6 +26,14 @@ public interface SensorDelegate {
      * @param didDetect
      */
     void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect);
+
+    /**
+     * Indicates whether a device has dropped out of being accessible (E.g. removed from BLEDatabase)
+     * @param sensor The sensor type detected (available AND Herald device) or deleted (unavailable)
+     * @param available Whether the device is now available to communicate with
+     * @param didDeleteOrDetect The unique identified of this target via this sensor type
+     */
+    void sensor(@NonNull final SensorType sensor, final boolean available, @NonNull final TargetIdentifier didDeleteOrDetect);
 
     /**
      * Read payload data from target, e.g. encrypted device identifier from BLE peripheral after successful connection.

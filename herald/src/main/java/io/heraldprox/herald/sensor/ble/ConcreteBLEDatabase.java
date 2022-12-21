@@ -133,15 +133,21 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
         }
         // Add external entropy to RandomSource
         BLESensorConfiguration.pseudoDeviceAddressRandomisation.addEntropy(scanResult.getDevice().getAddress());
-        // HERALD pseudo device address
-        if (null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor)) {
-            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.manufacturerIdForSensor);
+        // HERALD pseudo device address (Registered with the Bluetooth SIG)
+        if (null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.linuxFoundationManufacturerIdForSensor)) {
+            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.linuxFoundationManufacturerIdForSensor);
             if (data != null && data.length == 6) {
                 return new PseudoDeviceAddress(data);
             }
-        }
-        // OpenTrace device id
-        else if (BLESensorConfiguration.interopOpenTraceEnabled &&
+            // LEGACY Herald manufacturer ID (Was unregistered with the Bluetooth SIG)
+        } else if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
+                null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.legacyHeraldManufacturerIdForSensor)) {
+            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.legacyHeraldManufacturerIdForSensor);
+            if (data != null && data.length == 6) {
+                return new PseudoDeviceAddress(data);
+            }
+            // OpenTrace device id
+        } else if (BLESensorConfiguration.interopOpenTraceEnabled &&
                 null != scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId)) {
             final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.interopOpenTraceManufacturerId);
             if (null != data && data.length > 0) {

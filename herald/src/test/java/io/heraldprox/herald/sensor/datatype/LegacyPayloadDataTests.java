@@ -24,7 +24,7 @@ public class LegacyPayloadDataTests {
         for (int i=0; i<1000; i++) {
             final byte[] data = new byte[i];
             random.nextBytes(data);
-            final LegacyPayloadData payloadData = new LegacyPayloadData(BLESensorConfiguration.serviceUUID, data);
+            final LegacyPayloadData payloadData = new LegacyPayloadData(BLESensorConfiguration.linuxFoundationServiceUUID, data);
             assertArrayEquals(data, payloadData.value);
             assertNotNull(payloadData.shortName());
             assertEquals(payloadData.toString(), payloadData.shortName());
@@ -36,7 +36,7 @@ public class LegacyPayloadDataTests {
         assertEquals(LegacyPayloadData.ProtocolName.NOT_AVAILABLE, new LegacyPayloadData(null, new byte[0]).protocolName());
         assertEquals(LegacyPayloadData.ProtocolName.OPENTRACE, new LegacyPayloadData(BLESensorConfiguration.interopOpenTraceServiceUUID, new byte[0]).protocolName());
         assertEquals(LegacyPayloadData.ProtocolName.ADVERT, new LegacyPayloadData(BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID, new byte[0]).protocolName());
-        assertEquals(LegacyPayloadData.ProtocolName.HERALD, new LegacyPayloadData(BLESensorConfiguration.serviceUUID, new byte[0]).protocolName());
+        assertEquals(LegacyPayloadData.ProtocolName.HERALD, new LegacyPayloadData(BLESensorConfiguration.linuxFoundationServiceUUID, new byte[0]).protocolName());
         assertEquals(LegacyPayloadData.ProtocolName.UNKNOWN, new LegacyPayloadData(UUID.fromString("A6BA4286-0000-0000-0000-9467EF0B31A8"), new byte[0]).protocolName());
     }
 
