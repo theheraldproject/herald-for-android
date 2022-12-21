@@ -383,5 +383,27 @@ public class DataTests {
         // Should not be possible due to @NonNull but good to check anyway
         assertEquals(0, new Data((byte[]) null).size());
     }
+
+    @Test
+    public void testReversed() {
+        byte[] bytes = new byte[] {0,1,2,3};
+        Data d = new Data(bytes);
+        assertEquals(4,d.length());
+        assertEquals(0,d.uint8(0).value);
+        assertEquals(1,d.uint8(1).value);
+        assertEquals(2,d.uint8(2).value);
+        assertEquals(3,d.uint8(3).value);
+
+        Data rev = d.reversed();
+        assertEquals(4,rev.length());
+        assertEquals(0,rev.uint8(3).value);
+        assertEquals(1,rev.uint8(2).value);
+        assertEquals(2,rev.uint8(1).value);
+        assertEquals(3,rev.uint8(0).value);
+
+        Data back = rev.reversed();
+        assertEquals(4,back.length());
+        assertEquals(d,back);
+    }
 }
 

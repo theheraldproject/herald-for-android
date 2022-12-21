@@ -30,7 +30,11 @@ public class ConcreteGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLaye
         GPDMPLayer5MessageType messageType = GPDMPLayer5MessageType.MESSAGE;
         UInt16 senderPartialHash = l5ChannelEncryptedFragmentData.uint16(0);
         for (GPDMPSession session: sessions) {
+            System.out.println("Evaluating session for remoteRecipient: " + session.getRemoteRecipientId() +
+                    " with MSB: " + ((new UInt16((int)(session.getRemoteRecipientId().getMostSignificantBits() & 0xffff)))).toString() +
+                    " against partial hash: " + senderPartialHash.toString());
             if (!session.isPartialSession() && session.senderMatchesPartialHash(timeToAccess, senderPartialHash)) {
+                System.out.println("Matches!");
                 // We've found our session
                 // If we don't recognise the sender we can't decrypt the data, so don't pass it on to layer 6 (the above if)
                 PayloadData data = new PayloadData();
