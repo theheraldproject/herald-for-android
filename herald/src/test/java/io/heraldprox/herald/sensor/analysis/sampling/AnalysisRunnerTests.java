@@ -329,6 +329,11 @@ public class AnalysisRunnerTests {
             lastSampledID = new SampledID(0);
         }
 
+        @Override
+        public void removeSamplesFor(SampledID sampled) {
+            // Do nothing - not relevant to the test
+        }
+
         @NonNull
         @Override
         public SampleList<Distance> samples() {

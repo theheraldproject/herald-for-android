@@ -4,6 +4,7 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -18,11 +19,14 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 
 import io.heraldprox.herald.BuildConfig;
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
@@ -166,7 +170,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
-     * 
+     *
      * @param context The Herald execution environment Context
      * @param bluetoothStateManager To determine whether Bluetooth is enabled
      * @param timer Used to register a need for periodic events to occur
@@ -320,6 +324,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         @Override
         public void bleTimer(final long now) {
+            logger.debug("scanLoopTask, bleTimer");
             switch (scanLoopState) {
                 case processed: {
                     if (receiverEnabled.get() && bluetoothStateManager.state() == BluetoothState.poweredOn) {
@@ -428,27 +433,39 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
         // Scan for HERALD protocol service on Android or iOS (foreground) devices
         filter.add(new ScanFilter.Builder().setServiceUuid(
-                new ParcelUuid(BLESensorConfiguration.serviceUUID),
-                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                        new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
+                        new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                 .build());
         // Scan for OpenTrace protocol service on iOS and Android devices
         if (BLESensorConfiguration.interopOpenTraceEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
-                    new ParcelUuid(BLESensorConfiguration.interopOpenTraceServiceUUID),
-                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            new ParcelUuid(BLESensorConfiguration.interopOpenTraceServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                    .build());
+        }
+        if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled) {
+            filter.add(new ScanFilter.Builder().setServiceUuid(
+                            new ParcelUuid(BLESensorConfiguration.legacyHeraldServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                     .build());
         }
         // Scan for legacy advert only protocol service
         if (BLESensorConfiguration.interopAdvertBasedProtocolEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
-                    new ParcelUuid(BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID),
-                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            new ParcelUuid(BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                     .build());
         }
         final ScanSettings settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)
                 .build();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("scanForPeripherals, no BLUETOOTH_SCAN permission");
+                return;
+            }
+        }
         bluetoothLeScanner.startScan(filter, settings, scanCallback);
     }
 
@@ -481,6 +498,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             @Override
             public void run() {
                 try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                            logger.fault("stopScan, no BLUETOOTH_SCAN permission");
+                            return;
+                        }
+                    }
                     bluetoothLeScanner.stopScan(scanCallback);
                     logger.debug("stopScan, stopped scanner");
                 } catch (Throwable e) {
@@ -622,7 +645,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return false;
         }
         for (final ParcelUuid serviceUuid : serviceUuids) {
-            if (serviceUuid.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+            if (serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
+                return true;
+            }
+            if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
+                serviceUuid.getUuid().equals(BLESensorConfiguration.legacyHeraldServiceUUID)) {
                 return true;
             }
         }
@@ -846,6 +873,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         final BluetoothDevice peripheral = device.peripheral();
         BluetoothGatt gatt = null;
         if (null != peripheral) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("taskConnectDevice, no BLUETOOTH_CONNECT permission");
+                    return false;
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 // API 23 and above - force Low Energy only
                 gatt = peripheral.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
@@ -956,8 +989,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         logger.debug("onConnectionStateChange (device={},status={},state={})", device, bleStatus(status), bleState(newState));
         if (BluetoothProfile.STATE_CONNECTED == newState) {
             device.state(BLEDeviceState.connected);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("onConnectionStateChange, no BLUETOOTH_CONNECT permission");
+                    return;
+                }
+            }
             gatt.discoverServices();
         } else if (BluetoothProfile.STATE_DISCONNECTED == newState) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("onConnectionStateChange, no BLUETOOTH_CONNECT permission");
+                    return;
+                }
+            }
             gatt.close();
             device.state(BLEDeviceState.disconnected);
             if (0 != status) {
@@ -974,9 +1019,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         logger.debug("onServicesDiscovered (device={},status={})", device, bleStatus(status));
 
         // Sensor characteristics
-        BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
+        BluetoothGattService service = gatt.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
         if (null == service && BLESensorConfiguration.interopOpenTraceEnabled) {
             service = gatt.getService(BLESensorConfiguration.interopOpenTraceServiceUUID);
+        }
+        if (null == service && BLESensorConfiguration.legacyHeraldServiceDetectionEnabled) {
+            service = gatt.getService(BLESensorConfiguration.legacyHeraldServiceUUID);
         }
         if (null == service) {
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
@@ -987,6 +1035,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // time and try again in the near future.
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        logger.fault("onServicesDiscovered, no BLUETOOTH_CONNECT permission");
+                        return;
+                    }
                 }
                 gatt.disconnect();
                 return;
@@ -1012,9 +1066,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.debug("onServicesDiscovered, found payload characteristic (device={})", device);
                     device.payloadCharacteristic(characteristic);
                 } else if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
-                	logger.debug("onServicesDiscovered, found legacy payload characteristic (device={})", device);
+                    logger.debug("onServicesDiscovered, found legacy payload characteristic (device={})", device);
                     device.legacyPayloadCharacteristic(characteristic);
-					// If they have the legacy characteristic we know it a COVID app and can set the OS to be confirmed
+                    // If they have the legacy characteristic we know it a COVID app and can set the OS to be confirmed
 	                if (device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
 	                    device.operatingSystem(BLEDeviceOperatingSystem.android);
 	                } else if (device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
@@ -1194,6 +1248,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private void nextTask(@NonNull final BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("nextTask, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         switch (nextTask) {
             case readModel: {
                 final BluetoothGattCharacteristic modelCharacteristic = device.modelCharacteristic();
@@ -1322,6 +1383,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private void writeSignalCharacteristic(@NonNull final BluetoothGatt gatt, @NonNull final NextTask task, @NonNull final byte[] data) {
         final BLEDevice device = database.device(gatt.getDevice());
         final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("writeSignalCharacteristic, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         if (null == signalCharacteristic) {
             logger.fault("writeSignalCharacteristic failed (task={},device={},reason=missingSignalCharacteristic)", task, device);
             gatt.disconnect();
@@ -1378,6 +1446,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return WriteAndroidSignalCharacteristicResult.complete;
         }
         logger.debug("writeAndroidSignalCharacteristic (device={},queue={})", device, device.signalCharacteristicWriteQueue.size());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("writeAndroidSignalCharacteristic, no BLUETOOTH_CONNECT permission");
+                return WriteAndroidSignalCharacteristicResult.failed;
+            }
+        }
         final byte[] data = device.signalCharacteristicWriteQueue.poll();
         signalCharacteristic.setValue(data);
         signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
@@ -1421,6 +1496,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onMtuChanged(@NonNull final BluetoothGatt gatt, final int mtu, final int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onMtuChanged (device={},status={})", device, bleStatus(status));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("onMtuChanged, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         final BluetoothGattCharacteristic characteristic = device.legacyPayloadCharacteristic();
         bluetoothGattProxy.proxy(gatt);
         if (BluetoothGatt.GATT_SUCCESS == status && null != characteristic && gatt.readCharacteristic(characteristic)) {
@@ -1445,6 +1527,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 characteristic.setValue(legacyPayloadData.value);
                 characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                 bluetoothGattProxy.proxy(gatt);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        logger.fault("writeLegacyPayload, no BLUETOOTH_CONNECT permission");
+                        return;
+                    }
+                }
                 if (gatt.writeCharacteristic(characteristic)) {
                     // onCharacteristicWrite
                     logger.debug("writeLegacyPayload requested (device={})", device);
@@ -1525,6 +1614,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onCharacteristicWrite(@NonNull final BluetoothGatt gatt, @NonNull final BluetoothGattCharacteristic characteristic, final int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onCharacteristicWrite (device={},status={})", device, bleStatus(status));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("onCharacteristicWrite, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
         // OpenTrace payload characteristic write support
         if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {

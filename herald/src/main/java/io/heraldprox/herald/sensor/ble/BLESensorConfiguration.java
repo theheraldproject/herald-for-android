@@ -32,7 +32,23 @@ public class BLESensorConfiguration {
      *  <br>- Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
      */
     @NonNull
-    public static UUID serviceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
+    public static UUID legacyHeraldServiceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
+    public static boolean legacyHeraldServiceDetectionEnabled = true;
+
+    /**
+     * Service UUID for beacon service. This is a fixed UUID to enable iOS devices to find each other even
+     *  in background mode. Android devices will need to find Apple devices first using the manufacturer code
+     *  then discover services to identify actual beacons.
+     *  <br>- Service and characteristic UUIDs are V4 UUIDs that have been randomly generated and tested
+     *    for uniqueness by conducting web searches to ensure it returns no results.
+     *    Default UUID for HERALD from v2.1.0 is the Linux Foundation id: 0000FCF6-0000-1000-8000-00805F9B34FB.
+     *    Default UUID for HERALD prior to v2.1.0 is 428132af-4746-42d3-801e-4572d65bfd9b.
+     *  <br>
+     *  <br>- Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
+     */
+    @NonNull
+    public static UUID linuxFoundationServiceUUID = UUID.fromString("0000FCF6-0000-1000-8000-00805F9B34FB");
+
     /**
      * Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
      * <br>- Characteristic UUID is randomly generated V4 UUIDs that has been tested for uniqueness by conducting web searches to ensure it returns no results.
@@ -143,10 +159,17 @@ public class BLESensorConfiguration {
     public final static UUID bluetoothDeviceInformationServiceTxPowerCharacteristicUUID = UUID.fromString("00002a07-0000-1000-8000-00805f9b34fb");
 
     /**
-     *  Manufacturer data is being used on Android to store pseudo device address
-     *  <br>- Pending update to dedicated ID
+     *  The pre v2.1.0 Manufacturer data is being used on Android to store pseudo device address
+     *  <br>- Was updated from this value in v2.1.0 of Herald. @see linuxFoundationManufacturerIdForSensor
      */
-    public final static int manufacturerIdForSensor = 65530;
+    public final static int legacyHeraldManufacturerIdForSensor = 65530;
+
+    /**
+     *  Manufacturer data is being used on Android to store pseudo device address
+     *  <br>- Changed in v2.1.0 to 1521 (aka 0x05f1) - the Linux Foundation manufacturer ID
+     */
+    public final static int linuxFoundationManufacturerIdForSensor = 1521; // aka 0x05F1
+
     /**
      *  BLE advert manufacturer ID for Apple, for scanning of background iOS devices
      */
@@ -221,6 +244,34 @@ public class BLESensorConfiguration {
     public static RandomSource pseudoDeviceAddressRandomisation = new NonBlockingSecureRandom();
 
     /**
+     * Determines whether Android devices advertise a pseudo random Bluetooth MAC address
+     * equivalent in their manufacturer advertising data.
+     * <br>This is required for some older (Pre Android 10) devices, and some manufacturers devices
+     * (Huawei, or Samsung's older Exynos chipset phones) to be detected without being constantly
+     * asked for their Herald Payload. Without this enabled those devices will have poorer
+     * performance.
+     * <br><br>
+     * This was introduced in v2.1.0-beta4 as a controllable flag. Prior to this the feature was
+     * always enabled. Additional Pseudo mac logic and read logic on iOS was added in the v2.1.0
+     * release such that this is only required on very old/misbehaving Android sets. It has been
+     * decided to DISABLE this from v2.1.0 onwards. If required, extra logic will be added to Herald
+     * to detect on an Android device when it is 'misbehaving' by rotating it's MAC too much, and
+     * if this is the case, this flag will be dynamically enabled for just that device.
+     * <br><br>
+     * This is to reduce cross talk. It appears Apple's iOS now always assigns two 'Peripheral ID'
+     * UUIDs to every remote device, even if they only advertise one Bluetooth MAC address.
+     * This is a peculiarity of Apple's Core Bluetooth API. One of these shows services AND
+     * advetisement RSSIs, whilst the other only shows services and only passes RSSIs when they
+     * are from the initial single discovery call or from connection events.
+     * <br><br>
+     * Although this mechanism is primarily aimed at very old and very badly behaved handsets,
+     * it will allow us to still be efficient on iOS devices now too.
+     *
+     * @since v2.1.0-beta4
+     */
+    public static boolean pseudoDeviceAddressEnabled = false;
+
+    /**
      *  Interrogate standard Bluetooth services to obtain device make/model data
      */
     public static boolean deviceIntrospectionEnabled = false;
@@ -261,6 +312,16 @@ public class BLESensorConfiguration {
      *  <br>- This is used for automated capture of RSSI at different distances, where the didVisit data is used as markers
      */
     public static boolean inertiaSensorEnabled = false;
+
+    /**
+     * Whether the General Purpose Distribution Messaging Protocol (GPDMP) is enabled
+     */
+    public static boolean gpdmpEnabled = false;
+
+    /**
+     * To be used if the Operating System cannot be trusted to allow scanning whilst also advertising
+     */
+    public static boolean manuallyEnforceAdvertGaps = false;
 }
 
 
