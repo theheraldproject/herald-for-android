@@ -17,7 +17,7 @@ public interface GPDMPLayer7Manager extends GPDMPMessageListenerManager {
     GPDMPLayer7Incoming getIncomingInterface();
 
     UUID sendOutgoing(UUID channelId, Date timeToAccess, Date timeout, UInt16 ttl,
-                             UInt16 minTransmissions, UInt16 maxTransmissions,
-                             UUID mySenderRecipientId,
-                             List<ConcreteExtendedDataSectionV1> sections);
+                      UInt16 minTransmissions, UInt16 maxTransmissions,
+                      UUID mySenderRecipientId,
+                      List<ConcreteExtendedDataSectionV1> sections);
 }

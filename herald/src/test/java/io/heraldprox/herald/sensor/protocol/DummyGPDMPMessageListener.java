@@ -27,7 +27,6 @@ public class DummyGPDMPMessageListener implements GPDMPMessageListener {
     public UInt16 lastTotalFragmentsExpected;
     public UInt16 lastFragmentsCurrentlyAvailable;
     public GPDMPLayer5MessageType lastSessionMessageType;
-    public UInt16 lastSenderPartialHash;
     public UUID lastSenderRecipientId;
     public boolean lastMessageIsValid;
     public List<ConcreteExtendedDataSectionV1> lastSections;
@@ -38,7 +37,7 @@ public class DummyGPDMPMessageListener implements GPDMPMessageListener {
                          UUID channelId, UUID messageId, UInt16 fragmentSeqNum,
                          UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
                          UInt16 fragmentsCurrentlyAvailable,
-                         GPDMPLayer5MessageType sessionMessageType, UInt16 senderPartialHash,
+                         GPDMPLayer5MessageType sessionMessageType,
                          UUID senderRecipientId, boolean messageIsValid,
                          List<ConcreteExtendedDataSectionV1> sections) {
         lastFrom = from;
@@ -55,7 +54,6 @@ public class DummyGPDMPMessageListener implements GPDMPMessageListener {
         lastTotalFragmentsExpected = totalFragmentsExpected;
         lastFragmentsCurrentlyAvailable = fragmentsCurrentlyAvailable;
         lastSessionMessageType = sessionMessageType;
-        lastSenderPartialHash = senderPartialHash;
         lastSenderRecipientId = senderRecipientId;
         lastMessageIsValid = messageIsValid;
         lastSections = sections;

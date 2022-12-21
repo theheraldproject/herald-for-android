@@ -69,7 +69,6 @@ public class GPDMPLayer7Tests {
         UInt16 fragmentsCurrentlyAvailable = new UInt16(1); // the first one of 4
 
         // Layer 5 data
-        UInt16 senderPartialHash = new UInt16(1);
         UUID senderRecipientId = UUID.fromString("11111111-1111-1111-1111-222222222222");
         boolean valid = true;
         ArrayList<ConcreteExtendedDataSectionV1> sections = new ArrayList<>();
@@ -82,7 +81,7 @@ public class GPDMPLayer7Tests {
                 maxTransmissions,
                 channelId, messageId, fragmentSeqNum, fragmentPartialHash, totalFragmentsExpected,
                 fragmentsCurrentlyAvailable,
-                GPDMPLayer5MessageType.MESSAGE, senderPartialHash, senderRecipientId, valid,
+                GPDMPLayer5MessageType.MESSAGE, senderRecipientId, valid,
                 sections); // TODO rework this for the correct data
         // Test output at dummy layer 7
         assertEquals(ti, listener.lastFrom);
@@ -96,7 +95,7 @@ public class GPDMPLayer7Tests {
                 maxTransmissions,
                 channelId, messageId, fragmentSeqNum, fragmentPartialHash, totalFragmentsExpected,
                 fragmentsCurrentlyAvailable,
-                GPDMPLayer5MessageType.MESSAGE, senderPartialHash, senderRecipientId, valid,
+                GPDMPLayer5MessageType.MESSAGE, senderRecipientId, valid,
                 sections); // TODO rework this for the correct data
         assertNull(listener.lastFrom);
 

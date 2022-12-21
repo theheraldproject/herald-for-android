@@ -4,20 +4,20 @@
 
 package io.heraldprox.herald.sensor.protocol;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.UInt16;
-import io.heraldprox.herald.sensor.datatype.UInt64;
 
 public class ConcreteGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLayer5Incoming,
         GPDMPLayer5Outgoing {
-    // TODO state storage here
-
     private GPDMPLayer4Outgoing outgoingInterface = null;
     private GPDMPLayer6Incoming incomingInterface = null;
+
+    private ArrayList<GPDMPSession> sessions = new ArrayList<>();
 
     @Override
     public void incoming(TargetIdentifier from, UUID channelIdEncoded, Date timeToAccess,
@@ -28,14 +28,44 @@ public class ConcreteGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLaye
                          PayloadData l5ChannelEncryptedFragmentData) {
 
         GPDMPLayer5MessageType messageType = GPDMPLayer5MessageType.MESSAGE;
-        // TODO decode rather than pass through
-//        PayloadData data = new PayloadData();
-        PayloadData data = l5ChannelEncryptedFragmentData;
+        UInt16 senderPartialHash = l5ChannelEncryptedFragmentData.uint16(0);
+        for (GPDMPSession session: sessions) {
+            if (!session.isPartialSession() && session.senderMatchesPartialHash(timeToAccess, senderPartialHash)) {
+                // We've found our session
+                // If we don't recognise the sender we can't decrypt the data, so don't pass it on to layer 6 (the above if)
+                PayloadData data = new PayloadData();
+                data.append(session.decrypt(timeToAccess,l5ChannelEncryptedFragmentData.subdata(2)));
 
-        // TODO decode the data instead before passing on
-        incomingInterface.incoming(from,channelIdEncoded,timeToAccess,timeout,ttl,minTransmissions,
-                maxTransmissions,channelId,messageId,fragmentSeqNum,fragmentPartialHash,
-                totalFragmentsExpected,fragmentsCurrentlyAvailable,messageType,data);
+                incomingInterface.incoming(from,channelIdEncoded,timeToAccess,timeout,ttl,minTransmissions,
+                        maxTransmissions,channelId,messageId,fragmentSeqNum,fragmentPartialHash,
+                        totalFragmentsExpected,fragmentsCurrentlyAvailable,messageType,session.getRemoteRecipientId(),data);
+            }
+        }
+    }
+
+    @Override
+    public void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch,
+                         UUID remoteRecipientId) {
+        GPDMPSession newSession = new GPDMPSession(channelId, mySenderRecipientId, channelEpoch,
+                remoteRecipientId);
+        sessions.add(newSession);
+    }
+
+    @Override
+    public void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch) {
+        GPDMPSession newSession = new GPDMPSession(channelId, mySenderRecipientId, channelEpoch);
+        sessions.add(newSession);
+    }
+
+    @Override
+    public void addRemoteRecipientToSession(UUID channelId, UUID mySenderRecipientId,
+                                            UUID remoteRecipientId) {
+        for (GPDMPSession session: sessions) {
+            if (session.isPartialSession() && session.getChannelId().equals(channelId) &&
+                session.getMySenderRecipientId().equals(mySenderRecipientId)) {
+                session.setRemoteRecipientId(remoteRecipientId);
+            }
+        }
     }
 
     @Override
@@ -60,11 +90,22 @@ public class ConcreteGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLaye
 
     @Override
     public UUID outgoing(Date timeToAccess, Date timeout, UInt16 ttl, UInt16 minTransmissions,
-                         UInt16 maxTransmissions, UUID channelId, UInt16 senderPartialHash,
+                         UInt16 maxTransmissions, UUID channelId, UUID mySenderRecipientId,
                          PayloadData l6SenderEncryptedData) {
-        PayloadData l5EncData = new PayloadData();
-        // TODO encode data rather than passthrough
-        return outgoingInterface.outgoing(timeToAccess,timeout,ttl,minTransmissions,
-                maxTransmissions,channelId,l6SenderEncryptedData);
+        // NOTE: UNENCRYPTED PACKET FORMAT FOLLOWS
+        // 8 bytes: Most Significant 64 bits of the sender UUID
+        // 3+ bytes: l6 payload data
+        for (GPDMPSession session: sessions) {
+            if (!session.isPartialSession() &&
+                    session.getMySenderRecipientId() == mySenderRecipientId) {
+                PayloadData l5EncData = new PayloadData();
+                l5EncData.append(session.getMySenderPartialHash(timeToAccess));
+                l5EncData.append(session.encrypt(timeToAccess,l6SenderEncryptedData));
+
+                return outgoingInterface.outgoing(timeToAccess,timeout,ttl,minTransmissions,
+                        maxTransmissions,channelId,l5EncData);
+            }
+        }
+        return null;
     }
 }

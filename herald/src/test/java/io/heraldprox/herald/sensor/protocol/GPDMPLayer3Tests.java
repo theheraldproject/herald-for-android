@@ -52,11 +52,13 @@ public class GPDMPLayer3Tests {
 
         // Pass appropriate data to dummy Layer 2
         TargetIdentifier ti = new TargetIdentifier("00:00:00:FF:00:00");
-        PayloadData fromNetwork = new PayloadData("010203040506");
+        // A valid L3 payload is at least 41 bytes!
+        PayloadData fromNetwork = new PayloadData("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        assertTrue(fromNetwork.length() > 41); // Validity check before invoking test
         layer2.sendIncomingData(ti,fromNetwork);
         // Test output at dummy layer 3
         assertEquals(ti, layer4.lastFrom);
-        assertEquals(fromNetwork, layer4.lastL4Data);
+        assertEquals(fromNetwork.length() - 14, layer4.lastL4Data.length());
         // TODO validate other fields too
     }
 
@@ -89,12 +91,15 @@ public class GPDMPLayer3Tests {
 
         // TODO we need to modify the below so that we're sure it supports secure messaging, NOT just the Herald Payload
         // Ensure we detect one for didRead (i.e. has Herald payload)
-        PayloadData heraldPayload = new PayloadData("010203040506");
+        PayloadData heraldPayload = new PayloadData("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+        assertTrue(heraldPayload.length() > 41); // Validity check before invoking test
         layer3.sensor(SensorType.BLE,heraldPayload,ti);
+        layer3.sensor(SensorType.BLE,true,ti);
         assertEquals(1, layer3.getPotentialRecipientsCount());
 
         // Ensure we don't count duplicates
         layer3.sensor(SensorType.BLE,heraldPayload,ti);
+        layer3.sensor(SensorType.BLE,true,ti);
         assertEquals(1, layer3.getPotentialRecipientsCount());
 
         // Note: Newly added didDisappear() callback support in SensorDelegate for return to 0

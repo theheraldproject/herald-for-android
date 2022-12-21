@@ -4,6 +4,10 @@
 
 package io.heraldprox.herald.sensor.protocol;
 
+import java.util.UUID;
+
+import io.heraldprox.herald.sensor.datatype.Date;
+
 public interface GPDMPLayer5Manager {
     void setIncoming(GPDMPLayer6Incoming in);
 
@@ -12,4 +16,13 @@ public interface GPDMPLayer5Manager {
     GPDMPLayer5Incoming getIncomingInterface();
 
     GPDMPLayer5Outgoing getOutgoingInterface();
+
+    void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch,
+                       UUID remoteRecipientId);
+
+    void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch);
+
+    void addRemoteRecipientToSession(UUID channelId, UUID mySenderRecipientId,
+                                     UUID remoteRecipientId);
+
 }

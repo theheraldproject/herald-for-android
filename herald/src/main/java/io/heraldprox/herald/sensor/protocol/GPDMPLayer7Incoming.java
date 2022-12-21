@@ -29,7 +29,6 @@ public interface GPDMPLayer7Incoming {
      * @param totalFragmentsExpected Metadata from this or previous fragments, total fragments expected
      * @param fragmentsCurrentlyAvailable Metadata from all fragments, fragments now available
      * @param sessionMessageType The message type as assessed by Layer5 (Only Message type need passing on)
-     * @param senderPartialHash The partial hash to help identify the sender's recipient ID on this channel
      * @param senderRecipientId The full recipientId (A valid V4 UUID) to allow replies.
      * @param messageIsValid If the message is correctly decrypted and is valid (i.e. we have the key)
      * @param sections The payload data sections decoded from the fragments in this message
@@ -43,7 +42,7 @@ public interface GPDMPLayer7Incoming {
                   UInt16 fragmentSeqNum, UInt16 fragmentPartialHash, // L4
                   UInt16 totalFragmentsExpected, UInt16 fragmentsCurrentlyAvailable, // L4
                   GPDMPLayer5MessageType sessionMessageType, // L5 - Not used today. May be used for joining channels or group DH in future
-                  UInt16 senderPartialHash, UUID senderRecipientId, // L6
+                  UUID senderRecipientId, // L5
                   boolean messageIsValid, // L6
                   List<ConcreteExtendedDataSectionV1> sections);
 }

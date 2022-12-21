@@ -30,7 +30,7 @@ public class ConcreteGPDMPLayer7Manager implements GPDMPLayer7Manager, GPDMPLaye
                          UUID channelId, UUID messageId, UInt16 fragmentSeqNum,
                          UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
                          UInt16 fragmentsCurrentlyAvailable,
-                         GPDMPLayer5MessageType sessionMessageType, UInt16 senderPartialHash,
+                         GPDMPLayer5MessageType sessionMessageType,
                          UUID senderRecipientId, boolean messageIsValid,
                          List<ConcreteExtendedDataSectionV1> sections) {
         // Hand off to relevant listeners (one per channel of interest)
@@ -39,7 +39,7 @@ public class ConcreteGPDMPLayer7Manager implements GPDMPLayer7Manager, GPDMPLaye
                 ((GPDMPMessageListener)listener.b).received(from,channelIdEncoded,timeToAccess,
                         timeout,ttl,minTransmissions,maxTransmissions,channelId,messageId,
                         fragmentSeqNum,fragmentPartialHash,totalFragmentsExpected,
-                        fragmentsCurrentlyAvailable,sessionMessageType,senderPartialHash,
+                        fragmentsCurrentlyAvailable,sessionMessageType,
                         senderRecipientId, messageIsValid, sections);
             }
         }

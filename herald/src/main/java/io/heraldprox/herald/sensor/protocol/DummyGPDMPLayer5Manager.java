@@ -87,8 +87,23 @@ public class DummyGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLayer5I
     }
 
     @Override
+    public void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch, UUID remoteRecipientId) {
+        // TODO use this information
+    }
+
+    @Override
+    public void createSession(UUID channelId, UUID mySenderRecipientId, Date channelEpoch) {
+        // TODO use this information
+    }
+
+    @Override
+    public void addRemoteRecipientToSession(UUID channelId, UUID mySenderRecipientId, UUID remoteRecipientId) {
+        // TODO use this information
+    }
+
+    @Override
     public UUID outgoing(Date timeToAccess, Date timeout, UInt16 ttl, UInt16 minTransmissions,
-                         UInt16 maxTransmissions, UUID channelId, UInt16 senderPartialHash,
+                         UInt16 maxTransmissions, UUID channelId, UUID senderRecipientId,
                          PayloadData l6SenderEncryptedData) {
         lastMessageId = dummyMessageId;
 
@@ -110,10 +125,11 @@ public class DummyGPDMPLayer5Manager implements GPDMPLayer5Manager, GPDMPLayer5I
                                  UInt16 fragmentSeqNum, UInt16 fragmentPartialHash,
                                  UInt16 totalFragmentsExpected, UInt16 fragmentsCurrentlyAvailable,
                                  GPDMPLayer5MessageType messageType,
+                                 UUID senderRecipientId,
                                  PayloadData l6ChannelDecryptedFragmentData) {
         incomingInterface.incoming(from,channelIdEncoded,timeToAccess,timeout,ttl,
                 minTranmissions,maxTransmissions,channelId,messageId,fragmentSeqNum,
                 fragmentPartialHash,totalFragmentsExpected,fragmentsCurrentlyAvailable,
-                messageType, l6ChannelDecryptedFragmentData);
+                messageType, senderRecipientId, l6ChannelDecryptedFragmentData);
     }
 }

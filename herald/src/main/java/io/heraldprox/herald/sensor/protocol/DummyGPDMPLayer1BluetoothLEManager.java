@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.protocol;
 
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.UUID;
 
 import io.heraldprox.herald.sensor.datatype.Data;
@@ -21,6 +22,18 @@ public class DummyGPDMPLayer1BluetoothLEManager implements GPDMPLayer1BluetoothL
     private GPDMPLayer2BluetoothLEIncoming layer2 = null;
     public ArrayList<Tuple<TargetIdentifier,PayloadData>> outgoingData = new ArrayList<>();
 
+    public Hashtable<TargetIdentifier, DummyGPDMPLayer1BluetoothLEManager> nearby = new Hashtable<>();
+
+    public TargetIdentifier identifier;
+
+    public DummyGPDMPLayer1BluetoothLEManager(TargetIdentifier me) {
+        identifier = me;
+    }
+
+    public DummyGPDMPLayer1BluetoothLEManager() {
+        identifier = new TargetIdentifier(); // Random identifier - fine for a mock
+    }
+
     /// MARK DUMMY METHODS THAT MOCK PHYSICAL BLE NETWORK ACTIVITY
 
     public void sendConnectionInitiated(TargetIdentifier from) {
@@ -31,6 +44,12 @@ public class DummyGPDMPLayer1BluetoothLEManager implements GPDMPLayer1BluetoothL
         // Null op for now
     }
 
+    /**
+     * The method to call when this mock (Bluetooth) device receives data
+     *
+     * @param from The remote device sending us GPDMP data
+     * @param sent The GPDMP payload data we've received
+     */
     public void sendHeraldProtocolV1SecureCharacteristicData(TargetIdentifier from, PayloadData sent) {
         layer2.incoming(from, sent);
     }
@@ -59,6 +78,18 @@ public class DummyGPDMPLayer1BluetoothLEManager implements GPDMPLayer1BluetoothL
     // Layer 1 outgoing as invoked by Layer 2 layer
     public void outgoing(TargetIdentifier sendTo, PayloadData data, UUID gpdmpMessageTransportRequestId) {
         outgoingData.add(new Tuple<>(sendTo,data));
+        if (nearby.containsKey(sendTo)) {
+            nearby.get(sendTo).sendHeraldProtocolV1SecureCharacteristicData(identifier,data);
+        }
+    }
+
+    /// MARK Mock methods to allow multiple virtual Bluetooth node testing
+    public void advertisementSeen(TargetIdentifier target,DummyGPDMPLayer1BluetoothLEManager mockInterface) {
+        nearby.put(target,mockInterface);
+    }
+
+    public void advertisementCeases(TargetIdentifier target) {
+        nearby.remove(target);
     }
 
 }

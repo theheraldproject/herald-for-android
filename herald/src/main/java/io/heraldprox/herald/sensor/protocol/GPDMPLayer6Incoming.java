@@ -30,6 +30,7 @@ public interface GPDMPLayer6Incoming {
      * @param totalFragmentsExpected Metadata from this or previous fragments, total fragments expected
      * @param fragmentsCurrentlyAvailable Metadata from all fragments, fragments now available
      * @param sessionMessageType The message type as assessed by Layer5 (Only Message type need passing on)
+     * @param senderRecipientId The unencrypted UUID of the sender
      * @param l6ChannelDecryptedData The message data to be assessed by layer 6
      */
     void incoming(TargetIdentifier from, // L2
@@ -41,5 +42,6 @@ public interface GPDMPLayer6Incoming {
                   UInt16 fragmentSeqNum, UInt16 fragmentPartialHash, // L4
                   UInt16 totalFragmentsExpected, UInt16 fragmentsCurrentlyAvailable, // L4
                   GPDMPLayer5MessageType sessionMessageType, // L5 - Not used today. May be used for joining channels or group DH in future
+                  UUID senderRecipientId, // Extracted by layer 5 for layer 6
                   PayloadData l6ChannelDecryptedData);
 }

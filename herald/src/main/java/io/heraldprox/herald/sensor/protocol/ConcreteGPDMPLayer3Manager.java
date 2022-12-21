@@ -24,6 +24,7 @@ import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.Tuple;
 import io.heraldprox.herald.sensor.datatype.UInt16;
+import io.heraldprox.herald.sensor.datatype.UInt32;
 
 public class ConcreteGPDMPLayer3Manager implements SensorDelegate, GPDMPLayer3Manager, GPDMPLayer3Incoming, GPDMPLayer3Outgoing {
     private ArrayList<Tuple<SensorType,TargetIdentifier>> potentialRoutes = new ArrayList<>();
@@ -128,12 +129,33 @@ public class ConcreteGPDMPLayer3Manager implements SensorDelegate, GPDMPLayer3Ma
     /// MARK: Layer 3 Incoming functions
     @Override
     public void incoming(TargetIdentifier from, PayloadData data) {
+        // Interpret packet format
+        if (data.size() < 41) {
+            // Invalid packet
+            // TODO log issue
+            return;
+        }
+        UInt32 rawTimeToAccess = data.uint32(0);
+        UInt32 rawTimeout = data.uint32(4);
+        UInt16 ttl = data.uint16(8);
+        UInt16 minTransmissions = data.uint16(10);
+        UInt16 maxTransmissions = data.uint16(12);
+        Date timeToAccess = new Date(new java.util.Date(rawTimeToAccess.value));
+        Date timeout = new Date(new java.util.Date(rawTimeout.value));
+        PayloadData encryptedL4DataFragment = new PayloadData();
+        encryptedL4DataFragment.append(data.subdata(14));
+
         // TODO process data and pass up as Layer4Incoming data
         // TODO fix dummy values in next line
+//        incomingInterface.incoming(from,
+//                new UUID(1,2),
+//                new Date(), new Date(), new UInt16(1), new UInt16(2), new UInt16(4),
+//                data);
+        // TODO determine why/how channel ID can be here when it's a L4 concern?
         incomingInterface.incoming(from,
                 new UUID(1,2),
-                new Date(), new Date(), new UInt16(1), new UInt16(2), new UInt16(4),
-                data);
+                timeToAccess, timeout, ttl, minTransmissions, maxTransmissions,
+                encryptedL4DataFragment);
     }
 
     /// MARK: Layer 3 Outgoing functions
@@ -141,6 +163,23 @@ public class ConcreteGPDMPLayer3Manager implements SensorDelegate, GPDMPLayer3Ma
     public UUID outgoing(Date timeToAccess, Date timeout, UInt16 ttl,
                          UInt16 minTransmissions, UInt16 maxTransmissions,
                          PayloadData encryptedL4DataFragment) {
+        // NOTE: UNENCRYPTED PACKET FORMAT FOLLOWS:-
+        // 4 bytes: timeToAccess as unsigned long int 32 bit
+        // 4 bytes: timeout as unsigned long int 32 bit
+        // 2 bytes: ttl as unsigned int 16 bit
+        // 2 bytes: minTransmissions
+        // 2 bytes: maxTransmissions
+        // 27+ bytes: l4 payload data
+        // For a total of 41+ bytes of data
+        PayloadData l3EncData = new PayloadData();
+        l3EncData.append(new UInt32(timeToAccess.secondsSinceUnixEpoch()));
+        l3EncData.append(new UInt32(timeout.secondsSinceUnixEpoch()));
+        l3EncData.append(ttl);
+        l3EncData.append(minTransmissions);
+        l3EncData.append(maxTransmissions);
+        l3EncData.append(encryptedL4DataFragment);
+
+        // Now decide on the message ID, and where to send it
         UUID messageID = UUID.randomUUID();
         // TODO generate outgoing PayloadData packet
         // TODO save message info metadata and payload data and message id in cache
@@ -150,7 +189,7 @@ public class ConcreteGPDMPLayer3Manager implements SensorDelegate, GPDMPLayer3Ma
         for (Tuple<SensorType, TargetIdentifier> t: potentialRoutes) {
             targets.add(t.b);
         }
-        outgoingInterface.outgoing(targets,encryptedL4DataFragment,messageID);
+        outgoingInterface.outgoing(targets,l3EncData,messageID);
         return messageID;
     }
 

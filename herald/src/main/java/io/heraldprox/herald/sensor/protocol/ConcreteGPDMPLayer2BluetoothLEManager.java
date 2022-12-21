@@ -51,7 +51,7 @@ public class ConcreteGPDMPLayer2BluetoothLEManager implements GPDMPLayer2Bluetoo
 
     @Override
     public void incoming(TargetIdentifier from, PayloadData data) {
-        // TODO actually process data. Just passing through dummy data for now
+        // TODO actually process data and ensure it's GPDMP relevant data
         incomingIface.incoming(from, data);
     }
 

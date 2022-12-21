@@ -47,6 +47,7 @@ public class DummyGPDMPLayer6Manager implements GPDMPLayer6Manager, GPDMPLayer6I
                          UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
                          UInt16 fragmentsCurrentlyAvailable,
                          GPDMPLayer5MessageType sessionMessageType,
+                         UUID mySenderRecipientId,
                          PayloadData l6ChannelDecryptedData) {
         lastFrom = from;
         lastChannelIdEncoded = channelIdEncoded;
@@ -62,6 +63,7 @@ public class DummyGPDMPLayer6Manager implements GPDMPLayer6Manager, GPDMPLayer6I
         lastTotalFragmentsExpected = totalFragmentsExpected;
         lastFragmentsCurrentlyAvailable = fragmentsCurrentlyAvailable;
         lastSessionMessageType = sessionMessageType;
+        lastMySenderRecipientId = mySenderRecipientId;
         lastL6ChannelDecryptedData = l6ChannelDecryptedData;
     }
 
@@ -107,12 +109,12 @@ public class DummyGPDMPLayer6Manager implements GPDMPLayer6Manager, GPDMPLayer6I
                              UUID channelId, UUID messageId, UInt16 fragmentSeqNum,
                              UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
                              UInt16 fragmentsCurrentlyAvailable,
-                             GPDMPLayer5MessageType sessionMessageType, UInt16 senderPartialHash,
+                             GPDMPLayer5MessageType sessionMessageType,
                              UUID senderRecipientId, boolean messageIsValid,
                              List<ConcreteExtendedDataSectionV1> sections) {
         incomingInterface.incoming(from,channelIdEncoded,timeToAccess,timeout,ttl,minTransmissions,
                 maxTransmissions,channelId,messageId,fragmentSeqNum,fragmentPartialHash,
                 totalFragmentsExpected,fragmentsCurrentlyAvailable,sessionMessageType,
-                senderPartialHash,senderRecipientId,messageIsValid,sections);
+                senderRecipientId,messageIsValid,sections);
     }
 }
