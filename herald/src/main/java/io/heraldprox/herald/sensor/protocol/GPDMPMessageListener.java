@@ -18,7 +18,7 @@ public interface GPDMPMessageListener {
                   UUID channelId, UUID messageId, UInt16 fragmentSeqNum,
                   UInt16 fragmentPartialHash, UInt16 totalFragmentsExpected,
                   UInt16 fragmentsCurrentlyAvailable,
-                  GPDMPLayer5MessageType sessionMessageType, UInt16 senderPartialHash,
+                  GPDMPLayer5MessageType sessionMessageType,
                   UUID senderRecipientId, boolean messageIsValid,
                   List<ConcreteExtendedDataSectionV1> sections);
 }
