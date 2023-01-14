@@ -24,6 +24,7 @@ import io.heraldprox.herald.sensor.datatype.UInt8;
 import io.heraldprox.herald.sensor.payload.extended.ConcreteExtendedDataSectionV1;
 
 public class GPDMPBasicNetworkTests {
+    // Disabled for the v2.1.0 Beta release of GPDMP
 //    @Test
 //    public void testSimpleNetwork() {
 //        // 1. Create a network of three nodes where A can see B, and B can see A and C, and C can see B
@@ -97,13 +98,24 @@ public class GPDMPBasicNetworkTests {
 //        assertEquals(2, layer3B.getPotentialRecipientsCount());
 //        assertEquals(1, layer3C.getPotentialRecipientsCount());
 //
+//        // Session data
+//        Date channelEpoch = new Date(); // now
+//        UUID senderRecipientIdA = UUID.randomUUID();
+//        UUID senderRecipientIdB = UUID.randomUUID();
+//
+//        // Set up layer 5s too
+//        ConcreteGPDMPLayer5Manager layer5A = (ConcreteGPDMPLayer5Manager)stackA.getLayer5();
+////        ConcreteGPDMPLayer5Manager layer5B = (ConcreteGPDMPLayer5Manager)stackB.getLayer5(); // Transit Only
+//        ConcreteGPDMPLayer5Manager layer5C = (ConcreteGPDMPLayer5Manager)stackC.getLayer5();
+//        layer5A.createSession(mutualChannel,senderRecipientIdA,channelEpoch,senderRecipientIdB);
+//        layer5C.createSession(mutualChannel,senderRecipientIdB,channelEpoch,senderRecipientIdA);
+//
 //        // 3. Now send a message from A to C on the mutual channel
 //        Date timeToAccess = new Date(); // now
 //        Date timeout = new Date(timeToAccess.secondsSinceUnixEpoch() + (60 * 60 * 24));
 //        UInt16 ttl = new UInt16(7);
 //        UInt16 min = new UInt16(3);
 //        UInt16 max = new UInt16(60);
-//        UUID mySenderChannelUniqueId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 //        ArrayList sections = new ArrayList<ConcreteExtendedDataSectionV1>();
 //        Data sentData = new Data((byte)6,4);
 //        ConcreteExtendedDataSectionV1 s1 = new ConcreteExtendedDataSectionV1(new UInt8(0),new UInt8(4),sentData);
@@ -111,10 +123,11 @@ public class GPDMPBasicNetworkTests {
 ////        sections.add(new ConcreteExtendedDataSectionV1(new UInt8(2),new UInt8(7),new Data((byte)5,7)));
 //
 //        UUID messageId = layer7A.sendOutgoing(mutualChannel, timeToAccess, timeout, ttl,
-//                min,max,mySenderChannelUniqueId, sections);
+//                min,max,senderRecipientIdA, sections);
 //
 //        // NOTE: The below will only work once we have added in message routing at layer 3
 //        // Remember we received VIA B, so this needs to be B!:-
+////        assertEquals(layer1A.identifier, layer7B.lastFrom);
 //        assertEquals(layer1B.identifier, layer7C.lastFrom);
 //        List<ConcreteExtendedDataSectionV1> receivedSections = layer7C.lastSections;
 //        assertEquals(sections.size(),receivedSections.size());

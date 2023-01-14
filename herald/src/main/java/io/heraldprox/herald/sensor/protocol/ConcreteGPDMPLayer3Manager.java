@@ -130,7 +130,7 @@ public class ConcreteGPDMPLayer3Manager implements SensorDelegate, GPDMPLayer3Ma
     @Override
     public void incoming(TargetIdentifier from, PayloadData data) {
         // Interpret packet format
-        if (data.size() < 41) {
+        if (data.size() < 14) {
             // Invalid packet
             // TODO log issue
             return;

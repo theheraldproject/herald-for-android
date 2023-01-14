@@ -8,7 +8,7 @@ Continuous proximity detection across iOS and Android devices in background mode
 
 ![Epidemiology](images/epidemiology.png)
 
-All files are copyright 2020-2021 Herald Project Contributors and
+All files are copyright 2020-2023 Herald Project Contributors and
 are provided under the Apache 2.0 license.
 
 See LICENSE.txt and NOTICE.txt for details.

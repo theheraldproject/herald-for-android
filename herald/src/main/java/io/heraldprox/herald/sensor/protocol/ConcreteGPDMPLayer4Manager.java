@@ -31,7 +31,7 @@ public class ConcreteGPDMPLayer4Manager implements GPDMPLayer4Manager, GPDMPLaye
 //        String hex = "";
 //        hex += uuidMsb.hexEncodedString();
 //        hex += uuidLsb.hexEncodedString();
-        UUID channelIdDecoded = UUID.fromString(l4Data.subdata(0,16).hexEncodedString());
+        UUID channelIdDecoded = l4Data.uuid(0);
 
         PayloadData l5Data = new PayloadData();
         l5Data.append(l4Data.subdata(16));
@@ -77,10 +77,7 @@ public class ConcreteGPDMPLayer4Manager implements GPDMPLayer4Manager, GPDMPLaye
         // 32 bytes: channelId (IN THE PLAIN WHEN UNENCRYPTED)
         // 11+ bytes: l5 payload data (FRAGMENT)
         PayloadData l4EncData = new PayloadData();
-        l4EncData.append(new UInt64(channelId.getMostSignificantBits()));
-        l4EncData.append(new UInt64(channelId.getLeastSignificantBits()));
-//        l4EncData.append(new UInt16((int)channelId.getMostSignificantBits()));
-//        l4EncData.append(new UInt16((int)channelId.getLeastSignificantBits()));
+        l4EncData.append(channelId); // TODO encode/encrypt this UUID
         l4EncData.append(l5SessionEncryptedData);
         // TODO implement fragmentation of data as necessary
         return outgoingInterface.outgoing(timeToAccess,timeout,ttl,minTransmissions,

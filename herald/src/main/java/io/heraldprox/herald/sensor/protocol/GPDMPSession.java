@@ -67,7 +67,7 @@ public class GPDMPSession {
         if (null == remoteRecipientId) {
             return false;
         }
-        return (new UInt16((int)remoteRecipientId.getMostSignificantBits())).equals(senderPartialHash);
+        return (new UInt16((int)(remoteRecipientId.getMostSignificantBits() & 0xffff))).equals(senderPartialHash);
     }
 
     /**
@@ -79,7 +79,7 @@ public class GPDMPSession {
      */
     public UInt16 getMySenderPartialHash(Date timeToAccess) {
         // NOTE: THIS IS UNENCRYPTED FOR NOW
-        return new UInt16((int)mySenderRecipientId.getMostSignificantBits());
+        return new UInt16((int)(mySenderRecipientId.getMostSignificantBits() & 0xFFFF));
     }
 
     public UUID getChannelId() {
