@@ -215,8 +215,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
     private void requestPermissions() {
         // Check and request permissions
         final List<String> requiredPermissions = new ArrayList<>();
-        requiredPermissions.add(Manifest.permission.BLUETOOTH);
-        requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
 
         // The next two ARE ***BOTH*** STILL NEEDED for Android 12 in order for didMeasure and didRead to work!
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
@@ -226,17 +224,6 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE);
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Required since Android 12 (SDK 31)
-            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT);
-            requiredPermissions.add(Manifest.permission.BLUETOOTH_SCAN);
-            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE);
-        } else {
-            // Legacy permissions
-            // See https://developer.android.com/guide/topics/connectivity/bluetooth/permissions
-            requiredPermissions.add(Manifest.permission.BLUETOOTH);
-            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
-        }
         requiredPermissions.add(Manifest.permission.WAKE_LOCK);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // The following is only needed if this device advertises (i.e. uses BLETransmitter) (the demo app does)
@@ -244,11 +231,11 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
             // The following is only needed if this device scans (i.e. uses BLEReceiver) (the demo app does)
             requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT);
             requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE);
-//        } else {
-            // IF YOU DO NOT REQUEST ***BOTH*** THE FOLLOWING FOR ANDROID 12 TOO, THEN YOU WONT GET DidMeasure or DidRead callbacks!!!
-            // The following are for prior to Android 12 (Code S, above)
-//            requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-//            requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        } else {
+            // Legacy permissions
+            // See https://developer.android.com/guide/topics/connectivity/bluetooth/permissions
+            requiredPermissions.add(Manifest.permission.BLUETOOTH);
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
         }
         final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
