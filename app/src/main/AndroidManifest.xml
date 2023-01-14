@@ -6,6 +6,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.heraldprox.herald.app">
 
+    <!-- Enables HTTP communication with automated test server -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name="io.heraldprox.herald.app.AppDelegate"
         android:allowBackup="true"
@@ -13,9 +16,13 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
+        <!-- usesCleartextTraffic="true" option enables clear text HTTP traffic to automated test server -->
+        <!-- exported=true is required for Android 12 (SDK 31) and above, else app will crash -->
         <activity
             android:name="io.heraldprox.herald.app.MainActivity"
+            android:exported="true"
             android:configChanges="orientation"
             android:screenOrientation="portrait">
             <intent-filter>

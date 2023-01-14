@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Unsigned integer (16 bits)
+/**
+ * Unsigned integer (16 bits)
+ */
 public class UInt16 implements DoubleValue {
     public final static int bitWidth = 16;
     public final static UInt16 min = new UInt16(0);

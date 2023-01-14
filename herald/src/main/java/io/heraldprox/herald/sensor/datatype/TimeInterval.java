@@ -10,7 +10,9 @@ import androidx.annotation.Nullable;
 import java.util.Date;
 import java.util.Objects;
 
-/// Time interval in seconds.
+/**
+ * Time interval in seconds.
+ */
 public class TimeInterval implements DoubleValue {
     public final long value;
     public static final TimeInterval day = new TimeInterval(24*60*60);
@@ -29,6 +31,11 @@ public class TimeInterval implements DoubleValue {
 
     public TimeInterval(@NonNull final Date from, @NonNull final Date to) {
         this.value = (to.getTime() - from.getTime()) / 1000;
+    }
+
+    @NonNull
+    public static TimeInterval days(final long days) {
+        return new TimeInterval(day.value * days);
     }
 
     @NonNull

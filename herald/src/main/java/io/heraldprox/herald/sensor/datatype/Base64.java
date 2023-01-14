@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
 
-/// Base64 encoding and decoding without relying on Android API 26+
+/**
+ * Base64 encoding and decoding without relying on Android API 26+
+ */
 public class Base64 {
     private final static char[] encodeTable = {
             'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',

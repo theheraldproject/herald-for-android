@@ -38,6 +38,7 @@ public class TimeIntervalTests {
         assertEquals("60", TimeInterval.seconds(60).toString());
         assertEquals("60", TimeInterval.minutes(1).toString());
         assertEquals("120", TimeInterval.minutes(2).toString());
+        assertEquals("86400", TimeInterval.days(1).toString());
     }
 
     @Test

@@ -8,7 +8,9 @@ import androidx.annotation.NonNull;
 
 import io.heraldprox.herald.sensor.datatype.Data;
 
-/// Matching key
+/**
+ * Matching key
+ */
 public class MatchingKey extends Data {
 
     public MatchingKey(@NonNull final Data value) {

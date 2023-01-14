@@ -4,6 +4,7 @@
 
 package io.heraldprox.herald.sensor.ble;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -18,24 +19,29 @@ import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 
+import io.heraldprox.herald.BuildConfig;
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
 import io.heraldprox.herald.sensor.SensorDelegate;
-import io.heraldprox.herald.sensor.analysis.Sample;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertParser;
 import io.heraldprox.herald.sensor.ble.filter.BLEAdvertServiceData;
 import io.heraldprox.herald.sensor.ble.filter.BLEDeviceFilter;
 import io.heraldprox.herald.sensor.ble.filter.BLEScanResponseData;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
+import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.BluetoothState;
 import io.heraldprox.herald.sensor.datatype.Callback;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.Histogram;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.LegacyPayloadData;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
@@ -67,9 +73,48 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private final static long scanRestDurationMillis = TimeInterval.seconds(1).millis();
     private final static long scanProcessDurationMillis = TimeInterval.seconds(60).millis();
     private final static long scanOffDurationMillis = TimeInterval.seconds(2).millis();
-    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(12).millis();
-    private final static Sample timeToConnectDevice = new Sample();
-    private final static Sample timeToProcessDevice = new Sample();
+    /**
+     * Connection timeout data collected from 34,394 successful connections
+     * from 6 Android phones along with 4 iPhones (10 in total) over 15 hours.
+     * <table>
+     *   <col width="25%"/>
+     *   <col width="75%"/>
+     *   <thead>
+     *     <tr><th>Timeout (seconds)</th><th>Cumulative count</th><th>Cumulative distribution (%)</th></tr>
+     *   <thead>
+     *   <tbody>
+     *      <tr><td>0</td><td>20099</td><td>58.4%</td></tr>
+     *      <tr><td>1</td><td>30694</td><td>89.2%</td></tr>
+     *      <tr><td>2</td><td>33041</td><td>96.1%</td></tr>
+     *      <tr><td>3</td><td>33746</td><td>98.1%</td></tr>
+     *      <tr><td>4</td><td>34066</td><td>99.0%</td></tr>
+     *      <tr><td>5</td><td>34289</td><td>99.7%</td></tr>
+     *      <tr><td>6</td><td>34337</td><td>99.8%</td></tr>
+     *      <tr><td>7</td><td>34347</td><td>99.9%</td></tr>
+     *      <tr><td>8</td><td>34354</td><td>99.9%</td></tr>
+     *      <tr><td>9</td><td>34358</td><td>99.9%</td></tr>
+     *      <tr><td>10</td><td>34358</td><td>99.9%</td></tr>
+     *      <tr><td>11</td><td>34360</td><td>99.9%</td></tr>
+     *      <tr><td>12</td><td>34367</td><td>99.9%</td></tr>
+     *      <tr><td>13</td><td>34370</td><td>99.9%</td></tr>
+     *      <tr><td>14</td><td>34373</td><td>99.9%</td></tr>
+     *      <tr><td>15</td><td>34377</td><td>100.0%</td></tr>
+     *      <tr><td>16</td><td>34385</td><td>100.0%</td></tr>
+     *      <tr><td>17</td><td>34387</td><td>100.0%</td></tr>
+     *      <tr><td>18</td><td>34389</td><td>100.0%</td></tr>
+     *      <tr><td>19</td><td>34393</td><td>100.0%</td></tr>
+     *      <tr><td>20</td><td>34394</td><td>100.0%</td></tr>
+     *   </tbody>
+     * </table>
+     * 10 device test was conducted using 12s, 8s, 7s, 6s, and 3s timeouts. Test results show
+     * 8s timeout offers optimal performance, achieving 98.9% continuity and 2.78%/hr battery drain.
+     */
+    private final static long timeToConnectDeviceLimitMillis = TimeInterval.seconds(8).millis();
+    // Collect connection and processing statistics to determine timeouts based on actual data
+    @NonNull
+    private final Histogram timeToConnectDevice;
+    @NonNull
+    private final Histogram timeToProcessDevice;
     private final static int defaultMTU = 20;
     // Proxy for fixing CVE-2020-12856
     private final BLEBluetoothGattProxy bluetoothGattProxy = new BLEBluetoothGattProxy();
@@ -125,7 +170,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     /**
      * Receiver starts automatically when Bluetooth is enabled.
-     * 
+     *
      * @param context The Herald execution environment Context
      * @param bluetoothStateManager To determine whether Bluetooth is enabled
      * @param timer Used to register a need for periodic events to occur
@@ -155,6 +200,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // Standard rule-based filter
             this.deviceFilter = new BLEDeviceFilter();
         }
+        // Only collect and store histogram of connection and processing time in debug mode
+        this.timeToConnectDevice = (BuildConfig.DEBUG ? new Histogram(0, 20, TimeInterval.minute, new TextFile(context, "timeToConnectDevice.csv")) : null);
+        this.timeToProcessDevice = (BuildConfig.DEBUG ? new Histogram(0, 60, TimeInterval.minute, new TextFile(context, "timeToProcessDevice.csv")) : null);
     }
 
     // MARK:- BLEReceiver
@@ -276,6 +324,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         @Override
         public void bleTimer(final long now) {
+            logger.debug("scanLoopTask, bleTimer");
             switch (scanLoopState) {
                 case processed: {
                     if (receiverEnabled.get() && bluetoothStateManager.state() == BluetoothState.poweredOn) {
@@ -341,7 +390,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     }
 
 
-    /// Get BLE scanner and start scan
+    /**
+     * Start scan.
+     * @param bluetoothLeScanner BLE scanner
+     * @param callback Callback for start scan result
+     */
     private void startScan(@NonNull final BluetoothLeScanner bluetoothLeScanner, @Nullable final Callback<Boolean> callback) {
         logger.debug("startScan");
         operationQueue.execute(new Runnable() {
@@ -363,13 +416,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         });
     }
 
-
-    /// Scan for devices advertising sensor service and all Apple devices as
-    // iOS background advert does not include service UUID. There is a risk
-    // that the sensor will spend time communicating with Apple devices that
-    // are not running the sensor code repeatedly, but there is no reliable
-    // way of filtering this as the service may be absent only because of
-    // transient issues. This will be handled in taskConnect.
+    /**
+     * Scan for devices advertising sensor service and all Apple devices as
+     * iOS background advert does not include service UUID. There is a risk
+     * that the sensor will spend time communicating with Apple devices that
+     * are not running the sensor code repeatedly, but there is no reliable
+     * way of filtering this as the service may be absent only because of
+     * transient issues. This will be handled in taskConnect.
+     * @param bluetoothLeScanner BLE scanner
+     */
     private void scanForPeripherals(@NonNull final BluetoothLeScanner bluetoothLeScanner) {
         logger.debug("scanForPeripherals");
         final List<ScanFilter> filter = new ArrayList<>(4);
@@ -378,27 +433,39 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
         // Scan for HERALD protocol service on Android or iOS (foreground) devices
         filter.add(new ScanFilter.Builder().setServiceUuid(
-                new ParcelUuid(BLESensorConfiguration.serviceUUID),
-                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                        new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
+                        new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                 .build());
         // Scan for OpenTrace protocol service on iOS and Android devices
         if (BLESensorConfiguration.interopOpenTraceEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
-                    new ParcelUuid(BLESensorConfiguration.interopOpenTraceServiceUUID),
-                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            new ParcelUuid(BLESensorConfiguration.interopOpenTraceServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                    .build());
+        }
+        if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled) {
+            filter.add(new ScanFilter.Builder().setServiceUuid(
+                            new ParcelUuid(BLESensorConfiguration.legacyHeraldServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                     .build());
         }
         // Scan for legacy advert only protocol service
         if (BLESensorConfiguration.interopAdvertBasedProtocolEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
-                    new ParcelUuid(BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID),
-                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            new ParcelUuid(BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
                     .build());
         }
         final ScanSettings settings = new ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .setReportDelay(0)
                 .build();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("scanForPeripherals, no BLUETOOTH_SCAN permission");
+                return;
+            }
+        }
         bluetoothLeScanner.startScan(filter, settings, scanCallback);
     }
 
@@ -420,13 +487,23 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         });
     }
 
-    /// Get BLE scanner and stop scan
+    /**
+     * Stop scan.
+     * @param bluetoothLeScanner BLE scanner
+     * @param callback Callback for stop scan result
+     */
     private void stopScan(@NonNull final BluetoothLeScanner bluetoothLeScanner, @NonNull final Callback<Boolean> callback) {
         logger.debug("stopScan");
         operationQueue.execute(new Runnable() {
             @Override
             public void run() {
                 try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                            logger.fault("stopScan, no BLUETOOTH_SCAN permission");
+                            return;
+                        }
+                    }
                     bluetoothLeScanner.stopScan(scanCallback);
                     logger.debug("stopScan, stopped scanner");
                 } catch (Throwable e) {
@@ -449,7 +526,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- Process scan results
 
-    /// Process scan results.
+    /**
+     * Process all recent scan results.
+     */
     private void processScanResults() {
         final long t0 = System.currentTimeMillis();
         logger.debug("processScanResults (results={})", scanResults.size());
@@ -523,7 +602,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // Filter device by advert messages unless it is already confirmed ios device
                 final BLEDeviceFilter.MatchingPattern matchingPattern = deviceFilter.match(device);
                 if (device.operatingSystem() != BLEDeviceOperatingSystem.ios && null != matchingPattern) {
-                    logger.fault("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
+                    logger.debug("didDiscover, ignoring filtered device (device={},pattern={},message={})", device, matchingPattern.filterPattern.regularExpression, matchingPattern.message);
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
                 }
                 // Possibly an iOS device offering sensor service in background mode,
@@ -551,7 +630,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return devices;
     }
 
-    /// Does scan result include advert for sensor service?
+    /**
+     * Does scan result include advert for sensor service?
+     * @param scanResult Scan result
+     * @return True if result includes advert for sensor service, false otherwise
+     */
     private static boolean hasSensorService(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
         if (null == scanRecord) {
@@ -562,14 +645,22 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return false;
         }
         for (final ParcelUuid serviceUuid : serviceUuids) {
-            if (serviceUuid.getUuid().equals(BLESensorConfiguration.serviceUUID)) {
+            if (serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
+                return true;
+            }
+            if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
+                serviceUuid.getUuid().equals(BLESensorConfiguration.legacyHeraldServiceUUID)) {
                 return true;
             }
         }
         return false;
     }
 
-    /// Does scan result indicate device was manufactured by Apple?
+    /**
+     * Does scan result indicate device was manufactured by Apple?
+     * @param scanResult Scan result
+     * @return True if Apple device, false otherwise.
+     */
     private static boolean isAppleDevice(@NonNull final ScanResult scanResult) {
         final ScanRecord scanRecord = scanResult.getScanRecord();
         if (null == scanRecord) {
@@ -579,7 +670,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return null != data;
     }
 
-    /// Does scan result indicate device is OpenTrace Android (true) or iOS (false) device?
+    /**
+     * Does scan result indicate device is OpenTrace Android (true) or iOS (false) device?
+     * @param scanResult Scan result
+     * @return True for OpenTrace Android devices, false otherwise
+     */
     private static boolean isOpenTraceAndroidDevice(@NonNull final ScanResult scanResult) {
         if (!BLESensorConfiguration.interopOpenTraceEnabled) {
             return false;
@@ -595,7 +690,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return null != data;
     }
 
-    /// Does scan result include advert for OpenTrace service?
+    /**
+     * Does scan result include advert for OpenTrace service?
+     * @param scanResult Scan result
+     * @return True for adverts containing OpenTrace service, false otherwise
+     */
     private static boolean hasOpenTraceService(@NonNull final ScanResult scanResult) {
         if (!BLESensorConfiguration.interopOpenTraceEnabled) {
             return false;
@@ -635,7 +734,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Extract messages from manufacturer specific data
+    /**
+     * Extract messages from manufacturer specific data.
+     * @param device BLE device
+     */
     private void processLegacyAdvertOnlyProtocolServiceData(@NonNull final BLEDevice device) {
         // Test if device has legacy advert only protocol service
         if (!hasLegacyAdvertOnlyProtocolServiceService(device)) {
@@ -669,7 +771,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Does device include advert for legacy advertising only protocol service?
+    /**
+     * Does device include advert for legacy advertising only protocol service?
+     * @param device BLE device
+     * @return True for devices with advert for legacy advertising only protocol service, false otherwise
+     */
     private static boolean hasLegacyAdvertOnlyProtocolServiceService(@Nullable final BLEDevice device) {
         if (null == device) {
             return false;
@@ -693,9 +799,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
     // MARK:- House keeping tasks
 
-    /// Remove devices that have not been updated for over 15 minutes, as the UUID
-    // is likely to have changed after being out of range for over 20 minutes,
-    // so it will require discovery. Discovery is fast and cheap on Android.
+    /**
+     * Remove devices that have not been updated for over 15 minutes, as the UUID is likely
+     * to have changed after being out of range for over 20 minutes, so it will require
+     * discovery. Discovery is fast and cheap on Android.
+     */
     private void taskRemoveExpiredDevices() {
         final List<BLEDevice> devicesToRemove = new ArrayList<>();
         for (final BLEDevice device : database.devices()) {
@@ -709,7 +817,10 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Connections should not be held for more than 1 minute, likely to have not received onConnectionStateChange callback.
+    /**
+     * Connections should not be held for more than 1 minute, likely to have not received
+     * onConnectionStateChange callback.
+     */
     private void taskCorrectConnectionStatus() {
         for (final BLEDevice device : database.devices()) {
             if (device.state() == BLEDeviceState.connected && device.timeIntervalSinceConnected().value > TimeInterval.minute.value) {
@@ -756,13 +867,18 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             logger.debug("taskConnectDevice, already connected to transmitter (device={})", device);
             return true;
         }
-        // Connect (timeout at 95% = 2 SD)
         final long timeConnect = System.currentTimeMillis();
         logger.debug("taskConnectDevice, connect (device={})", device);
         device.state(BLEDeviceState.connecting);
         final BluetoothDevice peripheral = device.peripheral();
         BluetoothGatt gatt = null;
         if (null != peripheral) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("taskConnectDevice, no BLUETOOTH_CONNECT permission");
+                    return false;
+                }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 // API 23 and above - force Low Energy only
                 gatt = peripheral.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
@@ -808,10 +924,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             // capability, but that was deemed too unreliable for minimal gain in
             // performance, as the target device plays a big part in determining the
             // connection time, and that can be unpredictable due to environment factors.
-            final long connectElapsed = System.currentTimeMillis() - timeConnect;
+            final long timeToConnectMillis = System.currentTimeMillis() - timeConnect;
             // Add sample to adaptive connection timeout
-            timeToConnectDevice.add(connectElapsed);
-            logger.debug("taskConnectDevice, connected (device={},elapsed={}ms,statistics={})", device, connectElapsed, timeToConnectDevice);
+            if (null != timeToConnectDevice) {
+                timeToConnectDevice.add((int) (timeToConnectMillis / 1000));
+            }
+            logger.debug("taskConnectDevice, connected (device={},elapsed={}ms)", device, timeToConnectMillis);
         }
         // Wait for disconnection
         // Device is connected at this point, and all the actual work is being
@@ -847,13 +965,14 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // Always set state to .disconnected at the end
         device.state(BLEDeviceState.disconnected);
-        final long timeDisconnect = System.currentTimeMillis();
-        final long timeElapsed = (timeDisconnect - timeConnect);
+        final long timeToProcessMillis = (System.currentTimeMillis() - timeConnect);
         if (success) {
-            timeToProcessDevice.add(timeElapsed);
-            logger.debug("taskConnectDevice, complete (success=true,device={},elapsed={}ms,statistics={})", device, timeElapsed, timeToProcessDevice);
+            if (null != timeToProcessDevice) {
+                timeToProcessDevice.add((int) (timeToProcessMillis / 1000));
+            }
+            logger.debug("taskConnectDevice, complete (success=true,device={},elapsed={}ms)", device, timeToProcessMillis);
         } else {
-            logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeElapsed);
+            logger.fault("taskConnectDevice, complete (success=false,device={},elapsed={}ms)", device, timeToProcessMillis);
         }
         // Train device filter
         if (BLESensorConfiguration.deviceFilterTrainingEnabled) {
@@ -870,8 +989,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         logger.debug("onConnectionStateChange (device={},status={},state={})", device, bleStatus(status), bleState(newState));
         if (BluetoothProfile.STATE_CONNECTED == newState) {
             device.state(BLEDeviceState.connected);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("onConnectionStateChange, no BLUETOOTH_CONNECT permission");
+                    return;
+                }
+            }
             gatt.discoverServices();
         } else if (BluetoothProfile.STATE_DISCONNECTED == newState) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    logger.fault("onConnectionStateChange, no BLUETOOTH_CONNECT permission");
+                    return;
+                }
+            }
             gatt.close();
             device.state(BLEDeviceState.disconnected);
             if (0 != status) {
@@ -888,9 +1019,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         logger.debug("onServicesDiscovered (device={},status={})", device, bleStatus(status));
 
         // Sensor characteristics
-        BluetoothGattService service = gatt.getService(BLESensorConfiguration.serviceUUID);
+        BluetoothGattService service = gatt.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
         if (null == service && BLESensorConfiguration.interopOpenTraceEnabled) {
             service = gatt.getService(BLESensorConfiguration.interopOpenTraceServiceUUID);
+        }
+        if (null == service && BLESensorConfiguration.legacyHeraldServiceDetectionEnabled) {
+            service = gatt.getService(BLESensorConfiguration.legacyHeraldServiceUUID);
         }
         if (null == service) {
             logger.fault("onServicesDiscovered, missing sensor service (device={})", device);
@@ -901,6 +1035,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // time and try again in the near future.
                 if (!(device.operatingSystem() == BLEDeviceOperatingSystem.ios || device.operatingSystem() == BLEDeviceOperatingSystem.android)) {
                     device.operatingSystem(BLEDeviceOperatingSystem.ignore);
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        logger.fault("onServicesDiscovered, no BLUETOOTH_CONNECT permission");
+                        return;
+                    }
                 }
                 gatt.disconnect();
                 return;
@@ -926,9 +1066,9 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     logger.debug("onServicesDiscovered, found payload characteristic (device={})", device);
                     device.payloadCharacteristic(characteristic);
                 } else if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {
-                	logger.debug("onServicesDiscovered, found legacy payload characteristic (device={})", device);
+                    logger.debug("onServicesDiscovered, found legacy payload characteristic (device={})", device);
                     device.legacyPayloadCharacteristic(characteristic);
-					// If they have the legacy characteristic we know it a COVID app and can set the OS to be confirmed
+                    // If they have the legacy characteristic we know it a COVID app and can set the OS to be confirmed
 	                if (device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
 	                    device.operatingSystem(BLEDeviceOperatingSystem.android);
 	                } else if (device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
@@ -963,7 +1103,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         nextTask(gatt);
     }
 
-    /// Get Bluetooth service characteristic, or null if not found.
+    /**
+     * Get Bluetooth service characteristic, or null if not found.
+     * @param gatt GATT
+     * @param service Service UUID
+     * @param characteristic Characteristic UUID
+     * @return Characteristic, or null if not found
+     */
     @Nullable
     private BluetoothGattCharacteristic serviceCharacteristic(@NonNull final BluetoothGatt gatt, @NonNull final UUID service, @NonNull final UUID characteristic) {
         try {
@@ -980,16 +1126,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Establish the next task for a device, given its current state.
-    /// This is necessary because all BLE activities are asynchronous,
-    /// thus the BLEDevice object acts as a repository for collating all
-    /// device state and information updates from the asynchronous calls.
-    /// This function inspects the device state and information to
-    /// determine the next task to perform, if any, for the device
-    /// while it is connected. Please note, service and characteristic
-    /// discovery must be performed (cannot be cached) on the device
-    /// on each connection, thus it makes sense to do as much as possible
-    /// once a connection has been established with the target device.
+    /**
+     * Establish the next task for a device, given its current state.
+     * This is necessary because all BLE activities are asynchronous,
+     * thus the BLEDevice object acts as a repository for collating all
+     * device state and information updates from the asynchronous calls.
+     * This function inspects the device state and information to
+     * determine the next task to perform, if any, for the device
+     * while it is connected. Please note, service and characteristic
+     * discovery must be performed (cannot be cached) on the device
+     * on each connection, thus it makes sense to do as much as possible
+     * once a connection has been established with the target device.
+     * @param device BLE device
+     * @return Next task for the device
+     */
     @NonNull
     private NextTask nextTaskForDevice(@NonNull final BLEDevice device) {
         // No task for devices marked as .ignore
@@ -1087,14 +1237,24 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return NextTask.nothing;
     }
 
-    /// Given an open connection, perform the next task for the device.
-    /// Use this function to define the actual code for implementing
-    /// a task on the device (e.g. readPayload). The actual priority
-    /// of tasks is defined in the function nextTaskForDevice().
-    /// See function nextTaskForDevice() for additional design details.
+    /**
+     * Given an open connection, perform the next task for the device.
+     * Use this function to define the actual code for implementing
+     * a task on the device (e.g. readPayload). The actual priority
+     * of tasks is defined in the function nextTaskForDevice().
+     * See function nextTaskForDevice() for additional design details.
+     * @param gatt GATT
+     */
     private void nextTask(@NonNull final BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         final NextTask nextTask = nextTaskForDevice(device);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("nextTask, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         switch (nextTask) {
             case readModel: {
                 final BluetoothGattCharacteristic modelCharacteristic = device.modelCharacteristic();
@@ -1223,6 +1383,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     private void writeSignalCharacteristic(@NonNull final BluetoothGatt gatt, @NonNull final NextTask task, @NonNull final byte[] data) {
         final BLEDevice device = database.device(gatt.getDevice());
         final BluetoothGattCharacteristic signalCharacteristic = device.signalCharacteristic();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("writeSignalCharacteristic, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         if (null == signalCharacteristic) {
             logger.fault("writeSignalCharacteristic failed (task={},device={},reason=missingSignalCharacteristic)", task, device);
             gatt.disconnect();
@@ -1279,6 +1446,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return WriteAndroidSignalCharacteristicResult.complete;
         }
         logger.debug("writeAndroidSignalCharacteristic (device={},queue={})", device, device.signalCharacteristicWriteQueue.size());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("writeAndroidSignalCharacteristic, no BLUETOOTH_CONNECT permission");
+                return WriteAndroidSignalCharacteristicResult.failed;
+            }
+        }
         final byte[] data = device.signalCharacteristicWriteQueue.poll();
         signalCharacteristic.setValue(data);
         signalCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
@@ -1292,7 +1466,11 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
     }
 
-    /// Split data into fragments, where each fragment has length <= mtu
+    /**
+     * Split data into fragments, where each fragment has length <= mtu.
+     * @param data Data
+     * @return Data fragments
+     */
     @NonNull
     private Queue<byte[]> fragmentDataByMtu(@NonNull final byte[] data) {
         final Queue<byte[]> fragments = new ConcurrentLinkedQueue<>();
@@ -1305,14 +1483,26 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         return fragments;
     }
 
-    /// Interoperability with OpenTrace
-    /// If nextTask=readPayload, rather than calling readCharacteristic directly, OpenTrace requires
-    /// MTU to be set to 512, before reading the actual payload. While HERALD handles fragmentation
-    /// internally, OpenTrace relies on setting the MTU to support reading of large payloads.
+    /**
+     * Interoperability with OpenTrace.
+     * If nextTask=readPayload, rather than calling readCharacteristic directly, OpenTrace requires
+     * MTU to be set to 512, before reading the actual payload. While HERALD handles fragmentation
+     * internally, OpenTrace relies on setting the MTU to support reading of large payloads.
+     * @param gatt GATT
+     * @param mtu Actual MTU following change
+     * @param status Change status
+     */
     @Override
     public void onMtuChanged(@NonNull final BluetoothGatt gatt, final int mtu, final int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onMtuChanged (device={},status={})", device, bleStatus(status));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("onMtuChanged, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         final BluetoothGattCharacteristic characteristic = device.legacyPayloadCharacteristic();
         bluetoothGattProxy.proxy(gatt);
         if (BluetoothGatt.GATT_SUCCESS == status && null != characteristic && gatt.readCharacteristic(characteristic)) {
@@ -1322,8 +1512,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         gatt.disconnect();
     }
 
-    /// Write payload to legacy OpenTrace device
-    /// OpenTrace protocol : read payload -> write payload -> disconnect
+    /**
+     * Write payload to legacy OpenTrace device
+     * <br>
+     * OpenTrace protocol : read payload -> write payload -> disconnect
+     * @param gatt GATT
+     */
     private void writeLegacyPayload(@NonNull final BluetoothGatt gatt) {
         final BLEDevice device = database.device(gatt.getDevice());
         if (device.protocolIsOpenTrace()) {
@@ -1333,6 +1527,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 characteristic.setValue(legacyPayloadData.value);
                 characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                 bluetoothGattProxy.proxy(gatt);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        logger.fault("writeLegacyPayload, no BLUETOOTH_CONNECT permission");
+                        return;
+                    }
+                }
                 if (gatt.writeCharacteristic(characteristic)) {
                     // onCharacteristicWrite
                     logger.debug("writeLegacyPayload requested (device={})", device);
@@ -1413,6 +1614,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
     public void onCharacteristicWrite(@NonNull final BluetoothGatt gatt, @NonNull final BluetoothGattCharacteristic characteristic, final int status) {
         final BLEDevice device = database.device(gatt.getDevice());
         logger.debug("onCharacteristicWrite (device={},status={})", device, bleStatus(status));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                logger.fault("onCharacteristicWrite, no BLUETOOTH_CONNECT permission");
+                return;
+            }
+        }
         final boolean success = (status == BluetoothGatt.GATT_SUCCESS);
         // OpenTrace payload characteristic write support
         if (characteristic.getUuid().equals(BLESensorConfiguration.interopOpenTracePayloadCharacteristicUUID)) {

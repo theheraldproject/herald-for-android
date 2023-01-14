@@ -7,12 +7,11 @@ package io.heraldprox.herald.sensor.analysis;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
+import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
-import io.heraldprox.herald.sensor.data.TextFile;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Encounter;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.Proximity;
@@ -27,45 +26,56 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/// Log of interactions for recording encounters (time, proximity, and identity).
-/// This is can be used as basis for maintaining a persistent log
-/// of encounters for on-device or centralised matching.
-public class Interactions extends DefaultSensorDelegate {
+/**
+ * Log of interactions for recording encounters (time, proximity, and identity).
+ * This is can be used as basis for maintaining a persistent log of encounters
+ * for on-device or centralised matching.
+ */
+public class Interactions extends SensorDelegateLogger {
     @SuppressWarnings("FieldCanBeLocal")
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Analysis.EncounterLog");
-    @Nullable
-    private final TextFile textFile;
     @NonNull
     private List<Encounter> encounters = new ArrayList<>();
 
     public Interactions() {
-        textFile = null;
+        super();
     }
 
     public Interactions(@NonNull final Context context, @NonNull final String filename) {
-        textFile = new TextFile(context, filename);
-        if (textFile.empty()) {
-            textFile.write("time,proximity,unit,payload");
-        } else {
-            final String content = textFile.contentsOf();
-            for (String line : content.split("\n")) {
-                final Encounter encounter = new Encounter(line);
-                if (encounter.isValid()) {
-                    encounters.add(encounter);
-                }
+        super(context, filename);
+        for (String line : contentsOf().split("\n")) {
+            final Encounter encounter = new Encounter(line);
+            if (encounter.isValid()) {
+                encounters.add(encounter);
             }
-            logger.debug("Loaded historic encounters (count={})", encounters.size());
+        }
+        logger.debug("Loaded historic encounters (count={})", encounters.size());
+    }
+
+    @Override
+    public synchronized void reset() {
+        super.reset();
+        encounters.clear();
+    }
+
+    private void writeHeader() {
+        if (empty()) {
+            write("time,proximity,unit,payload");
         }
     }
 
     public synchronized void append(@NonNull final Encounter encounter) {
-        if (textFile != null) {
-            textFile.write(encounter.csvString());
-        }
+        writeHeader();
+        write(encounter.csvString());
         encounters.add(encounter);
     }
 
-    /// Get encounters from start date (inclusive) to end date (exclusive)
+    /**
+     * Get encounters from start date (inclusive) to end date (exclusive)
+     * @param start Start date (inclusive)
+     * @param end End date (exclusive)
+     * @return Encounters in requested period.
+     */
     @NonNull
     public synchronized List<Encounter> subdata(@NonNull final Date start, @NonNull final Date end) {
         final long startTime = start.getTime();
@@ -83,7 +93,11 @@ public class Interactions extends DefaultSensorDelegate {
         return subdata;
     }
 
-    /// Get all encounters from start date (inclusive)
+    /**
+     * Get all encounters from start date (inclusive)
+     * @param start Start date (inclusive)
+     * @return Encounters from start date to now.
+     */
     @NonNull
     public synchronized List<Encounter> subdata(@NonNull final Date start) {
         final long startTime = start.getTime();
@@ -100,17 +114,20 @@ public class Interactions extends DefaultSensorDelegate {
         return subdata;
     }
 
-    /// Remove all log records before date (exclusive). Use this function to implement data retention policy.
+    /**
+     * Remove all log records before date (exclusive). Use this function to implement
+     * data retention policy.
+     * @param before Cut off date (exclusive)
+     */
     public synchronized void remove(@NonNull final Date before) {
         final StringBuilder content = new StringBuilder();
+        content.append("time,proximity,unit,payload\n");
         final List<Encounter> subdata = subdata(before);
         for (final Encounter encounter : subdata) {
             content.append(encounter.csvString());
             content.append("\n");
         }
-        if (textFile != null) {
-            textFile.overwrite(content.toString());
-        }
+        overwrite(content.toString());
         encounters = subdata;
     }
 
@@ -126,10 +143,12 @@ public class Interactions extends DefaultSensorDelegate {
 
     // MARK:- Analysis functions
 
-    /// Herald achieves > 93% continuity for 30 second windows, thus quantising encounter timestamps into 60 second
-    /// windows will offer a reasonable estimate of the different number of devices within detection range over time. The
-    /// result is a timeseries of different payloads acquired during each 60 second window, along with the proximity data
-    /// for each payload.
+    /**
+     * Herald achieves > 93% continuity for 30 second windows, thus quantising encounter timestamps into 60 second
+     * windows will offer a reasonable estimate of the different number of devices within detection range over time. The
+     * result is a timeseries of different payloads acquired during each 60 second window, along with the proximity data
+     * for each payload.
+     */
     public final static class InteractionsForTime {
         public final Date time;
         @NonNull
@@ -186,18 +205,20 @@ public class Interactions extends DefaultSensorDelegate {
         return result;
     }
 
-    /// Get all target devices, duration and proximity distribution. The result is a table of payload data
-    /// and summary information, including last seen at time, total duration of exposure, and distribution
-    /// of proximity (RSSI) values.
+    /**
+     * Get all target devices, duration and proximity distribution. The result is a table of payload data
+     * and summary information, including last seen at time, total duration of exposure, and distribution
+     * of proximity (RSSI) values.
+     */
     public final static class InteractionsForTarget {
         @NonNull
         public final Date lastSeenAt;
         @NonNull
         public final TimeInterval duration;
         @NonNull
-        public final Sample proximity;
+        public final Distribution proximity;
 
-        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Sample proximity) {
+        public InteractionsForTarget(@NonNull final Date lastSeenAt, @NonNull final TimeInterval duration, @NonNull final Distribution proximity) {
             this.lastSeenAt = lastSeenAt;
             this.duration = duration;
             this.proximity = proximity;
@@ -227,7 +248,7 @@ public class Interactions extends DefaultSensorDelegate {
             final InteractionsForTarget triple = targets.get(encounter.payload);
             if (null == triple) {
                 // One encounter is assumed to be at least 1 second minimum
-                final Sample proximity = new Sample(encounter.proximity.value, 1);
+                final Distribution proximity = new Distribution(encounter.proximity.value, 1);
                 targets.put(encounter.payload, new InteractionsForTarget(encounter.timestamp, new TimeInterval(1), proximity));
                 continue;
             }
@@ -246,7 +267,11 @@ public class Interactions extends DefaultSensorDelegate {
         return targets;
     }
 
-    /// Histogram of exposure offers an esimate of exposure, while avoiding resolution of actual payload identity.
+    /**
+     * Histogram of exposure offers an estimate of exposure, while avoiding resolution of actual payload identity.
+     * @param encounters List of encounters.
+     * @return Histogram of proximity (time duration at each RSSI value)
+     */
     @NonNull
     public static Map<Double,TimeInterval> reduceByProximity(@NonNull final List<Encounter> encounters) {
         return reduceByProximity(encounters, ProximityMeasurementUnit.RSSI, 1d);

@@ -21,10 +21,19 @@ public interface BLEReceiver extends Sensor {
     @NonNull
     Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
 
-    /// Immediate send data.
+    /**
+     * Immediate send data to target device.
+     * @param data Data to be sent immediately
+     * @param targetIdentifier Target device
+     * @return True on success, false otherwise
+     */
     boolean immediateSend(@NonNull final Data data, @NonNull final TargetIdentifier targetIdentifier);
 
-    // Immediate send to all (connected / recent / nearby)
+    /**
+     * Immediate send to all (connected / recent / nearby) devices.
+     * @param data Data to be sent immediately
+     * @return True on success, false otherwise
+     */
     @SuppressWarnings("SameReturnValue")
     boolean immediateSendAll(@NonNull final Data data);
 }

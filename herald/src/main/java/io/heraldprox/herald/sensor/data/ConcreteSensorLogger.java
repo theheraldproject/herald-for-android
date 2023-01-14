@@ -19,7 +19,7 @@ import android.annotation.SuppressLint;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class ConcreteSensorLogger implements SensorLogger {
+public class ConcreteSensorLogger implements SensorLogger, Resettable {
     private final String subsystem, category;
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     static {
@@ -37,11 +37,20 @@ public class ConcreteSensorLogger implements SensorLogger {
         this.category = category;
     }
 
+    @Override
+    public synchronized void reset() {
+        logFile.reset();
+    }
+
     public static void context(@Nullable final Context context) {
         if (context != null && context != ConcreteSensorLogger.context) {
             ConcreteSensorLogger.context = context;
-            logFile = new TextFile(context, "log.txt");
+            logFile(new TextFile(context, "log.txt"));
         }
+    }
+
+    public static void logFile(@NonNull final TextFile logFile) {
+        ConcreteSensorLogger.logFile = logFile;
     }
 
     private boolean suppress(@NonNull final SensorLoggerLevel level) {

@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -14,6 +14,7 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -25,7 +26,10 @@ import io.heraldprox.herald.sensor.data.BatteryLog;
 import io.heraldprox.herald.sensor.data.ContactLog;
 import io.heraldprox.herald.sensor.data.DetectionLog;
 import io.heraldprox.herald.sensor.data.EventTimeIntervalLog;
+import io.heraldprox.herald.sensor.data.RssiLog;
+import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.StatisticsLog;
+import io.heraldprox.herald.sensor.data.TextFile;
 import io.heraldprox.herald.sensor.datatype.ImmediateSendData;
 import io.heraldprox.herald.sensor.datatype.LegacyPayloadData;
 import io.heraldprox.herald.sensor.datatype.Location;
@@ -41,6 +45,7 @@ import io.heraldprox.herald.sensor.service.NotificationService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class AppDelegate extends Application implements SensorDelegate {
     private final static String tag = AppDelegate.class.getName();
@@ -48,18 +53,19 @@ public class AppDelegate extends Application implements SensorDelegate {
     private final static int NOTIFICATION_ID = NOTIFICATION_CHANNEL_ID.hashCode();
     private static AppDelegate appDelegate = null;
 
+    // Test automation, set to null to disable automation.
+    // Set to "http://serverAddress:port" to enable automation.
+    private final static String automatedTestServer = null;
+    @Nullable
+    public AutomatedTestClient automatedTestClient = null;
+
     // Sensor for proximity detection
     private SensorArray sensor = null;
-
-    /// Generate unique and consistent device identifier for testing detection and tracking
-    private int identifier() {
-        final String text = Build.MODEL + ":" + Build.BRAND;
-        return text.hashCode();
-    }
 
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.i(tag, "AppDelegate.onCreate() called.");
 
         appDelegate = this;
         // Initialise foreground service to keep application running in background
@@ -70,33 +76,58 @@ public class AppDelegate extends Application implements SensorDelegate {
         sensor = new SensorArray(getApplicationContext(), payloadDataSupplier);
         // Add appDelegate as listener for detection events for logging and start sensor
         sensor.add(this);
+        // Sensor will start and stop with UI switch (default ON) and bluetooth state
+        // Or remotely controlled by test server.
+        if (null != automatedTestServer) {
+            automatedTestClient = new AutomatedTestClient(automatedTestServer, this, sensor, TimeInterval.minute);
+            sensor.add(automatedTestClient);
+        }
         // Efficacy Loggers
-        PayloadData payloadData = sensor.payloadData();
         if (BuildConfig.DEBUG) {
-            sensor.add(new ContactLog(this, "contacts.csv"));
-            sensor.add(new StatisticsLog(this, "statistics.csv",payloadData));
-            sensor.add(new DetectionLog(this,"detection.csv", payloadData));
-            new BatteryLog(this, "battery.csv");
+            final PayloadData payloadData = sensor.payloadData();
+            final List<SensorDelegateLogger> sensorDelegateLoggers = new ArrayList<>();
+            sensorDelegateLoggers.add(new ContactLog(this, "contacts.csv"));
+            // Removed due to performance issues on old phone for https://github.com/theheraldproject/herald-for-android/issues/239
+            //sensorDelegateLoggers.add(new StatisticsLog(this, "statistics.csv",payloadData));
+            sensorDelegateLoggers.add(new DetectionLog(this,"detection.csv", payloadData));
+            // Removed due to performance issues on old phone for https://github.com/theheraldproject/herald-for-android/issues/239
+            //sensorDelegateLoggers.add(new RssiLog(this, "rssi.csv"));
+            sensorDelegateLoggers.add(new BatteryLog(this, "battery.csv"));
             if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never ||
                 (BLESensorConfiguration.interopOpenTraceEnabled && BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval != TimeInterval.never)) {
-                sensor.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+                sensorDelegateLoggers.add(new EventTimeIntervalLog(this, "statistics_didRead.csv", payloadData, EventTimeIntervalLog.EventType.read));
+            }
+            for (final SensorDelegateLogger sensorDelegateLogger : sensorDelegateLoggers) {
+                sensor.add(sensorDelegateLogger);
+                if (null != automatedTestClient) {
+                    automatedTestClient.add(sensorDelegateLogger);
+                }
             }
         }
-        // Sensor will start and stop with UI switch (default ON) and bluetooth state
+
+        // Auto start tweak added in v2.1 for when the OS restarts the app, but not the UI
+        sensor.start(); // This will fail before we have permissions, but we need this to ensure it runs on background restart
     }
 
     @Override
     public void onTerminate() {
+        Log.i(tag, "AppDelegate.onTerminate() called.");
         sensor.stop();
         super.onTerminate();
     }
 
-    /// Get app delegate
+    /**
+     * Get app delegate after onCreate() has been called.
+     * @return App delegate, or null if onCreate() hasn't been called yet.
+     */
     public static AppDelegate getAppDelegate() {
         return appDelegate;
     }
 
-    /// Get sensor
+    /**
+     * Get sensor array after onCreate() has been called.
+     * @return Sensor array, or null if onCreate() hasn't been called yet.
+     */
     public Sensor sensor() {
         return sensor;
     }
@@ -106,6 +137,16 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(@NonNull SensorType sensor, @NonNull TargetIdentifier didDetect) {
         Log.i(tag, sensor.name() + ",didDetect=" + didDetect);
+    }
+
+    @Override
+    public void sensor(@NonNull SensorType sensor, boolean available, @NonNull TargetIdentifier didDeleteOrDetect) {
+        String avail = "N";
+        if (available) {
+            avail = "Y";
+        }
+        Log.i(tag, sensor.name() + ",didDeleteOrDetect=" + didDeleteOrDetect +
+                ",available=" + avail);
     }
 
     @Override
@@ -190,7 +231,8 @@ public class AppDelegate extends Application implements SensorDelegate {
     private Notification getForegroundNotification() {
         final Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        // FLAG_MUTABLE was the default prior to Android 12. Required to be explicitly set since 12 (SDK 31)
+        final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
         final NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(io.heraldprox.herald.R.drawable.ic_notification)
                 .setContentTitle(this.getString(R.string.notification_content_title))
@@ -200,5 +242,31 @@ public class AppDelegate extends Application implements SensorDelegate {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         final Notification notification = builder.build();
         return notification;
+    }
+
+    // MARK: - Generate random unique identifier
+
+    /**
+     * Generate unique and consistent device identifier for testing detection and tracking.
+     * The method will offer a consistent identifier for an installation of the app. This
+     * identifier will change if the app is uninstalled and installed again.
+     */
+    private int identifier() {
+        final TextFile identifierFile = new TextFile(this, "identifier.txt");
+        Integer identifier = null;
+        // Try reading identifier from file
+        try {
+            identifier = Integer.parseInt(identifierFile.contentsOf().trim());
+            Log.i(tag, "identifier read from file (identifier=" + identifier + ")");
+        } catch (Throwable e) {
+            Log.i(tag, "identifier cannot be read from file", e);
+        }
+        // Failing that generate a new identifier
+        if (null == identifier) {
+            identifier = UUID.randomUUID().hashCode();
+            identifierFile.overwrite(identifier.toString());
+            Log.i(tag, "identifier generated and written to file (identifier=" + identifier + ")");
+        }
+        return identifier;
     }
 }

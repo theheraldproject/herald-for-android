@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.payload.simple;
 
+import androidx.annotation.NonNull;
+
 import io.heraldprox.herald.sensor.TestUtil;
 import io.heraldprox.herald.sensor.datatype.Float16;
 import io.heraldprox.herald.sensor.datatype.PayloadTimestamp;
@@ -20,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("ConstantConditions")
 public class SimplePayloadDataSupplierTests {
@@ -90,89 +91,103 @@ public class SimplePayloadDataSupplierTests {
 
     @Test
     public void testMatchingKeys() {
-        // Generate same secret keys
+        // Generate same secret keys (ks1, ks2) and a different secret key (ks3)
         final SecretKey ks1 = new SecretKey((byte) 0, 2048);
         final SecretKey ks2 = new SecretKey((byte) 0, 2048);
-        // Generate a different secret key
         final SecretKey ks3 = new SecretKey((byte) 1, 2048);
+        assertEquals(ks1, ks2);
+        assertNotEquals(ks1, ks3);
+        assertNotEquals(ks2, ks3);
 
-        // Generate matching keys based on the same secret key
-        final MatchingKey[] km1 = K.matchingKeys(ks1);
-        final MatchingKey[] km2 = K.matchingKeys(ks2);
-        // Generate matching keys based on a different secret key
-        final MatchingKey[] km3 = K.matchingKeys(ks3);
+        // Same secret key should generate the same matching key seed on the same day,
+        // different secret keys should generate different seeds on the same day
+        final MatchingKeySeed kms1 = K.matchingKeySeed(ks1, 0);
+        final MatchingKeySeed kms2 = K.matchingKeySeed(ks2, 0);
+        final MatchingKeySeed kms3 = K.matchingKeySeed(ks3, 0);
+        assertEquals(kms1, kms2);
+        assertNotEquals(kms1, kms3);
+        assertNotEquals(kms2, kms3);
 
-        // 2001 matching keys in total (key 2000 is not used)
-        assertEquals(km1.length, 2001);
-        assertEquals(km2.length, 2001);
-        assertEquals(km3.length, 2001);
+        // Same matching key seed should generate the same matching key,
+        // different matching key seeds should generate different keys on the same day
+        final MatchingKey km1 = K.matchingKey(kms1);
+        final MatchingKey km2 = K.matchingKey(kms2);
+        final MatchingKey km3 = K.matchingKey(kms3);
+        assertEquals(km1, km2);
+        assertNotEquals(km1, km3);
+        assertNotEquals(km2, km3);
 
         // Matching key is 32 bytes
-        assertEquals(km1[0].value.length, 32);
-
-        // Same secret key for same matching keys
-        assertTrue(Arrays.deepEquals(km1, km2));
-        // Different secret keys for different matching keys
-        assertFalse(Arrays.deepEquals(km1, km3));
-        assertFalse(Arrays.deepEquals(km2, km3));
+        assertEquals(km1.value.length, 32);
+        assertEquals(km2.value.length, 32);
+        assertEquals(km3.value.length, 32);
     }
 
     @Test
     public void testContactKeys() {
-        // Generate secret and matching keys
-        final SecretKey ks1 = new SecretKey((byte) 0, 2048);
-        final MatchingKey[] km1 = K.matchingKeys(ks1);
+        // Generate same matching keys (km1, km2) and a different matching key (km3)
+        final MatchingKey km1 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 0, 2048), 0));
+        final MatchingKey km2 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 0, 2048), 0));
+        final MatchingKey km3 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 1, 2048), 0));
 
-        // Generate contact keys based on the same matching key
-        final ContactKey[] kc1 = K.contactKeys(km1[0]);
-        final ContactKey[] kc2 = K.contactKeys(km1[0]);
-        // Generate contact keys based on a different matching key
-        final ContactKey[] kc3 = K.contactKeys(km1[1]);
+        // Same matching key should generate the same contact key seed from the same period,
+        // different matching keys should generate different seeds for the same period
+        final ContactKeySeed kcs1 = K.contactKeySeed(km1, 0);
+        final ContactKeySeed kcs2 = K.contactKeySeed(km2, 0);
+        final ContactKeySeed kcs3 = K.contactKeySeed(km3, 0);
+        assertEquals(kcs1, kcs2);
+        assertNotEquals(kcs1, kcs3);
+        assertNotEquals(kcs2, kcs3);
 
-        // 241 contact keys per day (key 241 is not used)
-        assertEquals(kc1.length, 241);
-        assertEquals(kc2.length, 241);
-        assertEquals(kc3.length, 241);
+        // Same contact key seed should generate the same contact key,
+        // different contact key seeds should generate different keys
+        final ContactKey kc1 = K.contactKey(kcs1);
+        final ContactKey kc2 = K.contactKey(kcs2);
+        final ContactKey kc3 = K.contactKey(kcs3);
+        assertEquals(kc1, kc2);
+        assertNotEquals(kc1, kc3);
+        assertNotEquals(kc2, kc3);
 
         // Contact key is 32 bytes
-        assertEquals(kc1[0].value.length, 32);
-
-        // Same contact keys for same matching key
-        assertTrue(Arrays.deepEquals(kc1, kc2));
-        // Different contact keys for different matching keys
-        assertFalse(Arrays.deepEquals(kc1, kc3));
-        assertFalse(Arrays.deepEquals(kc2, kc3));
+        assertEquals(kc1.value.length, 32);
+        assertEquals(kc2.value.length, 32);
+        assertEquals(kc3.value.length, 32);
 
         // Contact key changes throughout the day
-        for (int i=0; i<239; i++) {
-            for (int j=(i+1); j<240; j++) {
-                assertFalse(Arrays.equals(kc1[i].value, kc1[j].value));
-                assertFalse(Arrays.equals(kc2[i].value, kc2[j].value));
-                assertFalse(Arrays.equals(kc3[i].value, kc3[j].value));
+        for (int i=0; i<=239; i++) {
+            final ContactKey kc1i = K.contactKey(K.contactKeySeed(km1, i));
+            for (int j=(i+1); j<=240; j++) {
+                final ContactKey kc1j = K.contactKey(K.contactKeySeed(km1, j));
+                assertNotEquals(kc1i, kc1j);
             }
         }
     }
 
     @Test
     public void testContactIdentifier() {
-        // Generate secret and matching keys
-        final SecretKey ks1 = new SecretKey((byte) 0, 2048);
-        final MatchingKey[] km1 = K.matchingKeys(ks1);
+        // Generate same matching keys (km1, km2) and a different matching key (km3)
+        final MatchingKey km1 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 0, 2048), 0));
+        final MatchingKey km2 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 0, 2048), 0));
+        final MatchingKey km3 = K.matchingKey(K.matchingKeySeed(new SecretKey((byte) 1, 2048), 0));
 
-        // Generate contact keys based on the same matching key
-        final ContactKey[] kc1 = K.contactKeys(km1[0]);
+        // Generate same contact keys (kc1, kc2) and a different contact key (kc3)
+        final ContactKey kc1 = K.contactKey(K.contactKeySeed(km1, 0));
+        final ContactKey kc2 = K.contactKey(K.contactKeySeed(km2, 0));
+        final ContactKey kc3 = K.contactKey(K.contactKeySeed(km3, 0));
 
-        // Generate contact identifier based on contact key
-        final ContactIdentifier Ic1 = K.contactIdentifier(kc1[0]);
-        final ContactIdentifier Ic2 = K.contactIdentifier(kc1[0]);
-        final ContactIdentifier Ic3 = K.contactIdentifier(kc1[1]);
+        // Same contact key should generate the same contact identifier,
+        // different contact keys should generate different identifiers
+        final ContactIdentifier Ic1 = K.contactIdentifier(kc1);
+        final ContactIdentifier Ic2 = K.contactIdentifier(kc2);
+        final ContactIdentifier Ic3 = K.contactIdentifier(kc3);
+        assertEquals(Ic1, Ic2);
+        assertNotEquals(Ic1, Ic3);
+        assertNotEquals(Ic2, Ic3);
 
         // Contact identifier is 16 bytes
         assertEquals(Ic1.value.length, 16);
-
-        // Same contact identifier for same contact key
-        assertEquals(Ic1, Ic2);
-        assertNotEquals(Ic2, Ic3);
+        assertEquals(Ic2.value.length, 16);
+        assertEquals(Ic3.value.length, 16);
     }
 
     @Test
@@ -213,7 +228,12 @@ public class SimplePayloadDataSupplierTests {
         final MatchingKey km1 = new MatchingKey((byte) 0, 32);
         final long t0 = System.currentTimeMillis();
         for (int i=0; i<1000; i++) {
-            ConcreteSimplePayloadDataSupplier.contactIdentifiers(km1);
+            K.forEachContactIdentifier(km1, new K.ForEachContactIdentifierAction() {
+                @Override
+                public void consume(@NonNull ContactIdentifier contactIdentifier, int period) {
+                    // Ignored
+                }
+            });
         }
         final long t1 = System.currentTimeMillis();
     }
@@ -231,16 +251,18 @@ public class SimplePayloadDataSupplierTests {
     @Test
     public void testContactIdentifierCrossPlatform() throws Exception {
         final PrintWriter out = TestUtil.androidPrintWriter("contactIdentifier.csv");
-        out.println("day,period,matchingKey,contactKey,contactIdentifier");
+        out.println("day,period,matchingKeySeed,matchingKey,contactKeySeed,contactKey,contactIdentifier");
         // Generate secret and matching keys
-        final SecretKey ks1 = new SecretKey((byte) 0, 2048);
-        final MatchingKey[] km1 = K.matchingKeys(ks1);
+        final SecretKey secretKey = new SecretKey((byte) 0, 2048);
         // Print first 10 days of contact keys for comparison across iOS and Android implementations
         for (int day=0; day<=10; day++) {
-            final ContactKey[] kc1 = K.contactKeys(km1[day]);
+            final MatchingKeySeed matchingKeySeed = K.matchingKeySeed(secretKey, day);
+            final MatchingKey matchingKey = K.matchingKey(matchingKeySeed);
             for (int period=0; period<=240; period++) {
-                final ContactIdentifier Ic1 = K.contactIdentifier(kc1[period]);
-                out.println(day + "," + period + "," + km1[day].base64EncodedString() + "," + kc1[period].base64EncodedString() + "," + Ic1.base64EncodedString());
+                final ContactKeySeed contactKeySeed = K.contactKeySeed(matchingKey, period);
+                final ContactKey contactKey = K.contactKey(contactKeySeed);
+                final ContactIdentifier contactIdentifier = K.contactIdentifier(contactKey);
+                out.println(day + "," + period + "," + matchingKeySeed.base64EncodedString() + "," + matchingKey.base64EncodedString() + "," + contactKeySeed.base64EncodedString() + "," + contactKey.base64EncodedString() + "," + contactIdentifier.base64EncodedString());
             }
         }
         out.flush();

@@ -13,7 +13,9 @@ import androidx.annotation.Nullable;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 
-/// Foreground service for enabling continuous BLE operation in background
+/**
+ * Foreground service for enabling continuous BLE operation in background
+ */
 public class ForegroundService extends Service {
     public static final String ACTION_START = "ACTION_START_FOREGROUND_SERVICE";
     public static final String ACTION_STOP = "ACTION_STOP_FOREGROUND_SERVICE";

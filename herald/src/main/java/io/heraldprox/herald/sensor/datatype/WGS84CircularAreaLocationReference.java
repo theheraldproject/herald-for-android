@@ -6,7 +6,9 @@ package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
 
-/// GPS coordinates and region radius, e.g. latitude and longitude in decimal format and radius in meters.
+/**
+ * GPS coordinates and region radius, e.g. latitude and longitude in decimal format and radius in meters.
+ */
 public class WGS84CircularAreaLocationReference implements LocationReference {
     @NonNull
     public final Double latitude, longitude, altitude, radius;

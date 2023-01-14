@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Signed integer (64 bits)
+/**
+ * Signed integer (64 bits)
+ */
 public class Int64 implements DoubleValue {
     public final static int bitWidth = 64;
     public final static Int64 min = new Int64(Long.MIN_VALUE);

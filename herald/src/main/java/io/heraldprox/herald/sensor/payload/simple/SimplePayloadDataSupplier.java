@@ -6,6 +6,8 @@ package io.heraldprox.herald.sensor.payload.simple;
 
 import io.heraldprox.herald.sensor.PayloadDataSupplier;
 
-/// Simple payload data supplier. Payload data is 23 bytes.
+/**
+ * Simple payload data supplier. Payload data is 23 bytes.
+ */
 public interface SimplePayloadDataSupplier extends PayloadDataSupplier {
 }

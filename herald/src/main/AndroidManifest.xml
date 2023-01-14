@@ -5,15 +5,15 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <!-- Permissions for Bluetooth LE as background process -->
-    <!-- Android 12+ -->
+    <!-- Android 12+ Only -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> <!-- for v2.1 pairing with wearables -->
-    <!-- Pre Android 12 -->
+    <!-- Android 12 and earlier -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- Not needed on Android 12+ -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- Not needed on Android 12+ -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- THIS IS STILL needed on Android 12+ -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- THIS IS STILL needed on Android 12+ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 

@@ -4,6 +4,8 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
+import androidx.annotation.NonNull;
+
 import org.junit.Test;
 
 import java.io.PrintWriter;
@@ -106,6 +108,7 @@ public class UIntBigTests {
                 for (short k=1; j*k<=i && k>0; k*=11) {
                     final UIntBig a = new UIntBig(i);
                     final UIntBig b = new UIntBig(j);
+                    //noinspection UnnecessaryLocalVariable
                     final short multiplier = k;
                     a.minus(b, multiplier, 0);
                     assertEquals(i-j*k, a.uint64());
@@ -122,6 +125,7 @@ public class UIntBigTests {
                     final UIntBig a = new UIntBig(i);
                     final UIntBig b = new UIntBig(j);
                     if (a.magnitude().length >= b.magnitude().length + 1) {
+                        //noinspection UnnecessaryLocalVariable
                         final short multiplier = k;
                         a.minus(b, multiplier, 1);
                         assertEquals(i - (j << 16) * k, a.uint64());
@@ -182,6 +186,7 @@ public class UIntBigTests {
         }
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Test
     public void testModPowPerformance() {
         final Random random = new Random();
@@ -210,7 +215,7 @@ public class UIntBigTests {
                 assertEquals(e0, e1);
                 t0 += (tE0 - tS0);
                 t1 += (tE1 - tS1);
-                if (x % samples == 0 && x > 0) {
+                if (x > 0 && (x % samples == 0)) {
                     System.err.println("sample=" + x + ",hardware=" + (t0 / x) + "ns/call,UIntBig=" + (t1 / x) + "ns/call");
                 }
             }
@@ -249,7 +254,7 @@ public class UIntBigTests {
         public MockRandom() {
         }
         @Override
-        public void nextBytes(byte[] bytes) {
+        public void nextBytes(@NonNull byte[] bytes) {
             for (int i=bytes.length; i-->0;) {
                 bytes[i] = (byte) 0xFF;
             }

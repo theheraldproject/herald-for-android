@@ -4,12 +4,20 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
-/// Sensor state
+/**
+ * Sensor state
+ */
 public enum SensorState {
-    /// Sensor is powered on, active and operational
+    /**
+     * Sensor is powered on, active and operational
+     */
     on,
-    /// Sensor is powered off, inactive and not operational
+    /**
+     * Sensor is powered off, inactive and not operational
+     */
     off,
-    /// Sensor is not available
+    /**
+     * Sensor is not available
+     */
     unavailable
 }

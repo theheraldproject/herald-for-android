@@ -20,7 +20,9 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
-/// Target list adapter for presenting list of targets on UI
+/**
+ * Target list adapter for presenting list of targets on UI.
+ */
 public class TargetListAdapter extends ArrayAdapter<Target> {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final static SimpleDateFormat dateFormatterTime = new SimpleDateFormat("HH:mm:ss");
@@ -44,15 +46,15 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
         statistics.append("R");
         if (target.didReadTimeInterval().mean() != null) {
             statistics.append("=");
-            statistics.append(decimalFormat.format(target.didReadTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didReadTimeInterval().mean())).append("s");
         }
         if (target.didMeasureTimeInterval().mean() != null) {
             statistics.append(",M=");
-            statistics.append(decimalFormat.format(target.didMeasureTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didMeasureTimeInterval().mean())).append("s");
         }
         if (target.didShareTimeInterval().mean() != null) {
             statistics.append(",S=");
-            statistics.append(decimalFormat.format(target.didShareTimeInterval().mean()) + "s");
+            statistics.append(decimalFormat.format(target.didShareTimeInterval().mean())).append("s");
         }
         // Distance
         final StringBuilder distance = new StringBuilder();
@@ -69,7 +71,8 @@ public class TargetListAdapter extends ArrayAdapter<Target> {
             labelText.append(distance.toString());
         }
         final String didReceive = (target.didReceive() == null ? "" : " (receive " + dateFormatterTime.format(target.didReceive()) + ")");
-        textLabel.setText(labelText.toString() + didReceive);
+        final String msg = (null == target.receivedText() ? "" : " (decrypted: " + target.receivedText() + ")");
+        textLabel.setText(labelText.toString() + didReceive + msg);
         detailedTextLabel.setText(dateFormatter.format(target.lastUpdatedAt()) + " [" + statistics.toString() + "]");
         return convertView;
     }

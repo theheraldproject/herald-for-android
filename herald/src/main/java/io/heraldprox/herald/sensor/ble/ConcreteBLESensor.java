@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -22,32 +22,43 @@ import io.heraldprox.herald.sensor.PayloadDataSupplier;
 import io.heraldprox.herald.sensor.SensorDelegate;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import io.heraldprox.herald.sensor.datatype.TimeInterval;
+import io.heraldprox.herald.sensor.protocol.ConcreteGPDMPProtocolStack;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer1BluetoothLEIncoming;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer1BluetoothLEManager;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer1BluetoothLEOutgoing;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer2BluetoothLEIncoming;
 
 import java.util.Date;
 import java.util.Map;
 import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, BluetoothStateManagerDelegate {
+public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, BluetoothStateManagerDelegate, GPDMPLayer1BluetoothLEManager, GPDMPLayer1BluetoothLEOutgoing, GPDMPLayer1BluetoothLEIncoming {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLE.ConcreteBLESensor");
     private final Queue<SensorDelegate> delegates = new ConcurrentLinkedQueue<>();
+    @NonNull
+    private final BluetoothStateManager bluetoothStateManager;
+    @NonNull
+    private final BLETimer timer;
     @NonNull
     private final BLETransmitter transmitter;
     @NonNull
     private final BLEReceiver receiver;
+    private GPDMPLayer2BluetoothLEIncoming gpdmpIncoming = null;
+    private final BLEDatabase database = new ConcreteBLEDatabase();
     private final ExecutorService operationQueue = Executors.newSingleThreadExecutor();
     // Record payload data to enable de-duplication
     private final Map<PayloadData, Date> didReadPayloadData = new ConcurrentHashMap<>();
 
     public ConcreteBLESensor(@NonNull final Context context, @NonNull final PayloadDataSupplier payloadDataSupplier) {
-        final BluetoothStateManager bluetoothStateManager = new ConcreteBluetoothStateManager(context);
-        final BLEDatabase database = new ConcreteBLEDatabase();
-        final BLETimer timer = new BLETimer(context);
+        bluetoothStateManager = new ConcreteBluetoothStateManager(context);
+        timer = new BLETimer(context);
         bluetoothStateManager.delegates.add(this);
-        transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database);
+        transmitter = new ConcreteBLETransmitter(context, bluetoothStateManager, timer, payloadDataSupplier, database, this);
         receiver = new ConcreteBLEReceiver(context, bluetoothStateManager, timer, database, transmitter, payloadDataSupplier);
         database.add(this);
     }
@@ -154,6 +165,9 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
                     @Override
                     public void run() {
                         for (final SensorDelegate delegate : delegates) {
+                            // Confirm it's a Herald Payload device (didDeleteOrDetect)
+                            delegate.sensor(SensorType.BLE, true, device.identifier);
+                            // Now share that payload
                             delegate.sensor(SensorType.BLE, payloadData, device.identifier);
                         }
                     }
@@ -168,6 +182,9 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
     @Override
     public void bleDatabaseDidDelete(@NonNull final BLEDevice device) {
         logger.debug("didDelete (device={})", device.identifier);
+        for (SensorDelegate delegate : delegates) {
+            delegate.sensor(SensorType.BLE, false, device.identifier);
+        }
     }
 
     // MARK:- BluetoothStateManagerDelegate
@@ -183,6 +200,46 @@ public class ConcreteBLESensor implements BLESensor, BLEDatabaseDelegate, Blueto
         }
         for (SensorDelegate delegate : delegates) {
             delegate.sensor(SensorType.BLE, sensorState);
+        }
+    }
+
+    // MARK:- GPDMP support
+
+    /**
+     * Sets this Bluetooth layer (and thus our managed ConcreteBLEReceiver) as GPDMP Layer1.
+     * @param stack The full GPDMP messaging stack to configure for Herald Bluetooth transport.
+     */
+    public void injectGPDMPLayers(ConcreteGPDMPProtocolStack stack) {
+        stack.replaceLayer1(this);
+    }
+
+    @Override
+    public void setIncoming(GPDMPLayer2BluetoothLEIncoming in) {
+        gpdmpIncoming = in;
+    }
+
+    @Override
+    public GPDMPLayer1BluetoothLEOutgoing getOutgoingInterface() {
+        return this;
+    }
+
+    @Override
+    public void outgoing(TargetIdentifier sendTo, PayloadData data, UUID gpdmpMessageTransportRequestId) {
+        // Send message via receiver (immediate send for now, secured payload characteristic later)
+        // TODO replace this mechanism with the Secured Payload characteristic
+        receiver.immediateSend(data,sendTo);
+    }
+
+    @Override
+    /**
+     * GPDMP Layer 1 Incoming. Used internally to Herald only, although included in Herald
+     * GPDMP API for convenience.
+     */
+    public void incoming(TargetIdentifier from, PayloadData data) {
+        // Receive raw data from the ConcreteBLETransmitter
+        // We just pass this onto the layer 2, if set
+        if (null != gpdmpIncoming) {
+            gpdmpIncoming.incoming(from,data);
         }
     }
 }

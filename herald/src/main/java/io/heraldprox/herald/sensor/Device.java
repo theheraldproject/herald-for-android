@@ -7,13 +7,19 @@ import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
 import java.util.Date;
 
 public class Device {
-    /// Device registration timestamp
+    /**
+     * Device registration timestamp.
+     */
     @NonNull
     public final Date createdAt;
-    /// Last time anything changed, e.g. attribute update
+    /**
+     * Last time anything changed, e.g. attribute update.
+     */
     @NonNull
     public Date lastUpdatedAt;
-    /// Ephemeral device identifier, e.g. peripheral identifier UUID
+    /**
+     * Ephemeral device identifier, e.g. peripheral identifier UUID.
+     */
     @NonNull
     public final TargetIdentifier identifier;
 

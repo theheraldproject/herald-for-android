@@ -6,7 +6,9 @@ package io.heraldprox.herald.sensor.datatype;
 
 import androidx.annotation.NonNull;
 
-/// GPS coordinates (latitude,longitude,altitude) in WGS84 decimal format and meters from sea level.
+/**
+ * GPS coordinates (latitude,longitude,altitude) in WGS84 decimal format and meters from sea level.
+ */
 public class WGS84PointLocationReference implements LocationReference {
     @NonNull
     public final Double latitude, longitude, altitude;

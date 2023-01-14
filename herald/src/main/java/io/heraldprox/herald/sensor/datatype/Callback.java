@@ -4,7 +4,10 @@
 
 package io.heraldprox.herald.sensor.datatype;
 
-/// Generic callback function
+/**
+ * Generic callback function
+ * @param <T>
+ */
 public interface Callback<T> {
     void accept(final T value);
 }

@@ -7,14 +7,20 @@ package io.heraldprox.herald.sensor.analysis.aggregates;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.analysis.sampling.Aggregate;
 import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.DoubleValue;
 
+/**
+ * Aggregate wrapper for {@link Distribution} to provide a one-pass Gaussian model for estimating
+ * mean, variance, standard deviation, min and max for sample values.
+ * @param <T>
+ */
 public class Gaussian<T extends DoubleValue> implements Aggregate<T> {
     private int run = 1;
     @NonNull
-    private io.heraldprox.herald.sensor.analysis.Sample model = new io.heraldprox.herald.sensor.analysis.Sample();
+    private Distribution model = new Distribution();
 
     @Override
     public int runs() {
@@ -32,6 +38,10 @@ public class Gaussian<T extends DoubleValue> implements Aggregate<T> {
         model.add(value.value().doubleValue());
     }
 
+    /**
+     * Sample mean.
+     * @return Mean, or null if no sample has been observed.
+     */
     @Nullable
     @Override
     public Double reduce() {
@@ -40,11 +50,16 @@ public class Gaussian<T extends DoubleValue> implements Aggregate<T> {
 
     @Override
     public void reset() {
-        model = new io.heraldprox.herald.sensor.analysis.Sample();
+        model = new Distribution();
     }
 
+    /**
+     * Get distribution model to obtain mean, variance, standard deviation, count, min and max for
+     * sample values.
+     * @return Distribution model.
+     */
     @NonNull
-    public io.heraldprox.herald.sensor.analysis.Sample model() {
+    public Distribution model() {
         return model;
     }
 }

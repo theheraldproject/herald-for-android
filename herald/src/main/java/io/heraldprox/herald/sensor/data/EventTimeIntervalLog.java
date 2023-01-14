@@ -8,10 +8,9 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import io.heraldprox.herald.sensor.DefaultSensorDelegate;
 import io.heraldprox.herald.sensor.datatype.Location;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
-import io.heraldprox.herald.sensor.analysis.Sample;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 import io.heraldprox.herald.sensor.datatype.Proximity;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
@@ -23,43 +22,46 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/// CSV log of event time intervals for post event analysis and visualisation
-public class EventTimeIntervalLog extends DefaultSensorDelegate {
-    @NonNull
-    private final TextFile textFile;
+/**
+ * CSV log of event time intervals for post event analysis ands visualisation.
+ */
+public class EventTimeIntervalLog extends SensorDelegateLogger {
     @NonNull
     private final PayloadData payloadData;
     @NonNull
     private final EventType eventType;
     private final Map<TargetIdentifier, String> targetIdentifierToPayload = new ConcurrentHashMap<>();
     private final Map<String, Date> payloadToTime = new ConcurrentHashMap<>();
-    private final Map<String, Sample> payloadToSample = new ConcurrentHashMap<>();
+    private final Map<String, Distribution> payloadToSample = new ConcurrentHashMap<>();
     public  enum EventType {
         detect,read,measure,share,sharedPeer,visit
     }
 
     public EventTimeIntervalLog(@NonNull final Context context, @NonNull final String filename, @NonNull final PayloadData payloadData, @NonNull final EventType eventType) {
-        this.textFile = new TextFile(context, filename);
+        super(context, filename);
         this.payloadData = payloadData;
         this.eventType = eventType;
+        write();
     }
 
-    @NonNull
-    private String csv(@NonNull final String value) {
-        return TextFile.csv(value);
+    public EventTimeIntervalLog(@NonNull final TextFile textFile, @NonNull final PayloadData payloadData, @NonNull final EventType eventType) {
+        super(textFile);
+        this.payloadData = payloadData;
+        this.eventType = eventType;
+        write();
     }
 
     private void add(@NonNull final String payload) {
         final Date time = payloadToTime.get(payload);
-        final Sample sample = payloadToSample.get(payload);
-        if (null == time || null == sample) {
+        final Distribution distribution = payloadToSample.get(payload);
+        if (null == time || null == distribution) {
             payloadToTime.put(payload, new Date());
-            payloadToSample.put(payload, new Sample());
+            payloadToSample.put(payload, new Distribution());
             return;
         }
         final Date now = new Date();
         payloadToTime.put(payload, now);
-        sample.add((now.getTime() - time.getTime()) / 1000d);
+        distribution.add((now.getTime() - time.getTime()) / 1000d);
         write();
     }
 
@@ -69,18 +71,18 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
         final String event = csv(eventType.name());
         final String centralPayload = csv(payloadData.shortName());
         for (final String payload : payloadToSample.keySet()) {
-            if (payload.equals(payloadData.shortName())) {
+            if (EventType.visit != eventType && payload.equals(payloadData.shortName())) {
                 continue;
             }
             payloadList.add(payload);
         }
         Collections.sort(payloadList);
         for (final String payload : payloadList) {
-            final Sample sample = payloadToSample.get(payload);
-            if (null == sample) {
+            final Distribution distribution = payloadToSample.get(payload);
+            if (null == distribution) {
                 continue;
             }
-            if (null == sample.mean() || null == sample.standardDeviation() || null == sample.min() || null == sample.max()) {
+            if (null == distribution.mean() || null == distribution.standardDeviation() || null == distribution.min() || null == distribution.max()) {
                 continue;
             }
             content.append(event);
@@ -89,18 +91,18 @@ public class EventTimeIntervalLog extends DefaultSensorDelegate {
             content.append(',');
             content.append(csv(payload));
             content.append(',');
-            content.append(sample.count());
+            content.append(distribution.count());
             content.append(',');
-            content.append(sample.mean());
+            content.append(distribution.mean());
             content.append(',');
-            content.append(sample.standardDeviation());
+            content.append(distribution.standardDeviation());
             content.append(',');
-            content.append(sample.min());
+            content.append(distribution.min());
             content.append(',');
-            content.append(sample.max());
+            content.append(distribution.max());
             content.append('\n');
         }
-        textFile.overwrite(content.toString());
+        overwrite(content.toString());
     }
 
 

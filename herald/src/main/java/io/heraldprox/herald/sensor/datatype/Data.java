@@ -9,8 +9,11 @@ import androidx.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.UUID;
 
-/// Raw byte array data
+/**
+ * Raw byte array data
+ */
 public class Data {
     private final static char[] hexChars = "0123456789ABCDEF".toCharArray();
     @NonNull
@@ -98,7 +101,11 @@ public class Data {
         return base64EncodedString();
     }
 
-    /// Get subdata from offset to end
+    /**
+     * Get subdata from offset to end
+     * @param offset Offset
+     * @return Suffix of data
+     */
     @Nullable
     public Data subdata(final int offset) {
         if (offset >= 0 && offset < value.length) {
@@ -110,7 +117,12 @@ public class Data {
         }
     }
 
-    /// Get subdata from offset to offset + length
+    /**
+     * Get subdata from offset to offset + length
+     * @param offset Offset
+     * @param length Length from offset
+     * @return Data fragment
+     */
     @Nullable
     public Data subdata(final int offset, final int length) {
         if (offset >= 0 && offset < value.length && offset + length <= value.length) {
@@ -122,7 +134,29 @@ public class Data {
         }
     }
 
-    /// Append data to end of this data.
+    /**
+     * Get prefix of data, equivalent to subdata(0, length)
+     * @param length
+     * @return
+     */
+    @Nullable
+    public Data prefix(final int length) {
+        return subdata(0, length);
+    }
+
+    @Nullable
+    public Data suffix(final int from) {
+        final int length = value.length - from;
+        if (length < 0) {
+            return null;
+        }
+        return subdata(from, length);
+    }
+
+    /**
+     * Append data to end of this data.
+     * @param data Data
+     */
     public void append(@Nullable final Data data) {
         if (null == data) {
             return;
@@ -271,7 +305,7 @@ public class Data {
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >> 8) & 0xFF),
                 (byte) ((value.value >> 16) & 0xFF),
-                (byte) (value.value >> 24)          // MSB
+                (byte) ((value.value >> 24) & 0xFF)         // MSB
         });
     }
 
@@ -284,7 +318,7 @@ public class Data {
                 (value[index] & 0xFF) |
                 ((value[index + 1] & 0xFF) << 8) |
                 ((value[index + 2] & 0xFF) << 16) |
-                ((value[index + 3]) << 24);
+                ((value[index + 3] & 0xFF) << 24);
         return new Int32(v);
     }
 
@@ -333,7 +367,7 @@ public class Data {
                 (byte) ((value.value >> 32) & 0xFF),
                 (byte) ((value.value >> 40) & 0xFF),
                 (byte) ((value.value >> 48) & 0xFF),
-                (byte) ((value.value >> 56)) // MSB
+                (byte) ((value.value >> 56) & 0xFF) // MSB
         });
     }
 
@@ -350,8 +384,26 @@ public class Data {
                 ((long) (value[index + 4] & 0xFF) << 32) |
                 ((long) (value[index + 5] & 0xFF) << 40) |
                 ((long) (value[index + 6] & 0xFF) << 48) |
-                ((long) (value[index + 7]) << 56);
+                ((long) (value[index + 7] & 0xFF) << 56);
         return new Int64(v);
+    }
+
+    public void append(@Nullable final UUID value) {
+        Data temp = new Data();
+        temp.append(new Int64(value.getLeastSignificantBits()));
+        temp.append(new Int64(value.getMostSignificantBits()));
+        temp = temp.reversed();
+        append(temp);
+    }
+
+    public UUID uuid(final int index) {
+        if (index < 0 || index + 15 >= value.length) {
+            return null;
+        }
+        Data temp = subdata(index,16);
+        temp = temp.reversed();
+
+        return new UUID(temp.int64(index + 8).value,temp.int64(index).value);
     }
 
     public void append(@Nullable final UIntBig value) {
@@ -406,21 +458,81 @@ public class Data {
 
     // MARK:- String to/from Data functions
 
-    /// Encoding option for string length data as prefix
-    public enum StringLengthEncodingOption {
+    /**
+     * Encoding option for data length data as prefix
+     */
+    public enum DataLengthEncodingOption {
         UINT8, UINT16, UINT32, UINT64
     }
 
-    /// Encode string as data, inserting length as prefix using UInt8,...,64. Returns true if successful, false otherwise.
+    /**
+     * Encode data, inserting length as prefix using UInt8,...,64.
+     * @param value Data
+     * @param encoding Encoding for length of data
+     * @return True if successful, false otherwise.
+     */
+    @SuppressWarnings({"UnusedReturnValue", "ConstantConditions"})
+    public boolean append(@Nullable final Data value, @NonNull final DataLengthEncodingOption encoding) {
+        //noinspection ConstantConditions
+        if (null == value || null == encoding) {
+            return false;
+        }
+        final byte[] data = value.value;
+        if (null == data) {
+            return false;
+        }
+        switch (encoding) {
+            case UINT8:
+                if (!(data.length <= UInt8.max.value)) {
+                    return false;
+                }
+                append(new UInt8(data.length));
+                break;
+            case UINT16:
+                if (!(data.length <= UInt16.max.value))  {
+                    return false;
+                }
+                append(new UInt16(data.length));
+                break;
+            case UINT32:
+                if (!(data.length <= UInt32.max.value)) {
+                    return false;
+                }
+                append(new UInt32(data.length));
+                break;
+            // Note: While Java byte array cannot exceed MAX_INT length, a developer is free to use
+            // UINT64 (long) to represent byte array length. This is a deliberate design decision.
+            case UINT64:
+                if (!(data.length <= UInt64.max.value)) {
+                    return false;
+                }
+                append(new UInt64(data.length));
+                break;
+        }
+        append(data);
+        return true;
+    }
+
+    /**
+     * Encode string as data, inserting length as prefix using UInt8.
+     * @param value String
+     * @return True if successful, false otherwise
+     */
     @SuppressWarnings("UnusedReturnValue")
     public boolean append(@Nullable final String value) {
         if (null == value) {
             return false;
         }
-        return append(value, StringLengthEncodingOption.UINT8);
+        return append(value, DataLengthEncodingOption.UINT8);
     }
 
-    public boolean append(@Nullable final String value, @NonNull final StringLengthEncodingOption encoding) {
+    /**
+     * Encode string as data, inserting length as prefix using UInt8,...,64.
+     * @param value Data
+     * @param encoding Encoding for length of data
+     * @return True if successful, false otherwise.
+     */
+    public boolean append(@Nullable final String value, @NonNull final DataLengthEncodingOption encoding) {
         //noinspection ConstantConditions
         if (null == value || null == encoding) {
             return false;
@@ -434,46 +546,21 @@ public class Data {
         if (null == data) {
             return false;
         }
-        switch (encoding) {
-            case UINT8:
-            if (!(data.length <= UInt8.max.value)) {
-                return false;
-            }
-            append(new UInt8(data.length));
-            break;
-        case UINT16:
-            if (!(data.length <= UInt16.max.value))  {
-                return false;
-            }
-            append(new UInt16(data.length));
-            break;
-        case UINT32:
-            if (!(data.length <= UInt32.max.value)) {
-                return false;
-            }
-            append(new UInt32(data.length));
-            break;
-        case UINT64:
-            if (!(data.length <= UInt64.max.value)) {
-                return false;
-            }
-            append(new UInt64(data.length));
-            break;
-        }
-        append(data);
-        return true;
+        return append(new Data(data), encoding);
     }
 
-    /// Decoded string and start/end indices in data byte array
-    public final static class DecodedString {
+    /**
+     * Decoded data and start/end indices in data byte array
+     */
+    public final static class DecodedData {
         @NonNull
-        public final String value;
+        public final Data value;
         public final int start;
         public final int end;
 
-        public DecodedString(@Nullable final String value, final int start, final int end) {
+        public DecodedData(@Nullable final Data value, final int start, final int end) {
             if (null == value) {
-                this.value = "";
+                this.value = new Data();
                 this.start = 0;
                 this.end = 0;
             } else {
@@ -485,13 +572,7 @@ public class Data {
     }
 
     @Nullable
-    public DecodedString string(final int index) {
-        return string(index, StringLengthEncodingOption.UINT8);
-    }
-
-    @Nullable
-    public DecodedString string(final int index, @NonNull final StringLengthEncodingOption encoding) {
-        // TODO Refactor Data for max size. Max Java byte length is MAX_INT. It cannot be LONG. Either change to int or refactor data class for array of array of bytes.
+    public DecodedData data(final int index, @NonNull final DataLengthEncodingOption encoding) {
         long start = index;
         long end = index;
         switch (encoding) {
@@ -522,6 +603,9 @@ public class Data {
                 end = start + count.value;
                 break;
             }
+            // Note: While Java byte array cannot exceed MAX_INT length, a developer is free to use
+            // UINT64 (long) to represent byte array length. This is a deliberate design decision.
+            // Bounds checks are included below to ensure byte array cannot exceed Java limits.
             case UINT64: {
                 final UInt64 count = uint64(index);
                 if (null == count) {
@@ -543,11 +627,82 @@ public class Data {
             return null;
         }
         try {
-            final String string = new String(value, (int) start, (int) (end - start), StandardCharsets.UTF_8);
-            return new DecodedString(string, (int) start, (int) end);
+            final Data data = subdata((int) start, (int) (end - start));
+            return new DecodedData(data == null ? new Data() : data, (int) start, (int) end);
         } catch (Throwable e) {
             return null;
         }
     }
 
+    /**
+     * Decoded string and start/end indices in data byte array.
+     */
+    public final static class DecodedString {
+        @NonNull
+        public final String value;
+        public final int start;
+        public final int end;
+
+        public DecodedString(@Nullable final String value, final int start, final int end) {
+            if (null == value) {
+                this.value = "";
+                this.start = 0;
+                this.end = 0;
+            } else {
+                this.value = value;
+                this.start = start;
+                this.end = end;
+            }
+        }
+    }
+
+    @Nullable
+    public DecodedString string(final int index) {
+        return string(index, DataLengthEncodingOption.UINT8);
+    }
+
+    @Nullable
+    public DecodedString string(final int index, @NonNull final DataLengthEncodingOption encoding) {
+        final DecodedData data = data(index, encoding);
+        if (null == data) {
+            return null;
+        }
+        try {
+            final String string = new String(data.value.value, StandardCharsets.UTF_8);
+            return new DecodedString(string, data.start, data.end);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /**
+     * Length of the byte array value.
+     * @return Size of the value array in number of bytes. Returns 0 for null value array.
+     */
+    public int length() {
+        if (null == value) {
+            return 0;
+        }
+        return value.length;
+    }
+
+    /**
+     * Alias for length(). They are identical.
+     * @return Size of the value array in number of bytes.
+     */
+    public int size() {
+        return length();
+    }
+
+    /**
+     * Returns a new Data instance with the same data as this one, but in the reverse order
+     * @return a new Data instance with the byte order reversed
+     */
+    public Data reversed() {
+        Data reverseData = new Data();
+        for (int i = length() - 1; i >= 0; --i) {
+            reverseData.append(subdata(i,1));
+        }
+        return reverseData;
+    }
 }

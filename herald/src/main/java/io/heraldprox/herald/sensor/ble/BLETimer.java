@@ -9,7 +9,7 @@ import android.os.PowerManager;
 
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
-import io.heraldprox.herald.sensor.analysis.Sample;
+import io.heraldprox.herald.sensor.datatype.Distribution;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -65,7 +65,7 @@ import androidx.annotation.NonNull;
  */
 public class BLETimer {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BLETimer");
-    private final Sample sample = new Sample();
+    private final Distribution distribution = new Distribution();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final PowerManager.WakeLock wakeLock;
     private final AtomicLong now = new AtomicLong(0);
@@ -75,7 +75,7 @@ public class BLETimer {
         public void run() {
             for (BLETimerDelegate delegate : delegates) {
                 try {
-                    delegate.bleTimer(now.get());
+                    delegate.bleTimer(System.currentTimeMillis());
                 } catch (Throwable e) {
                     logger.fault("delegate execution failed", e);
                 }
@@ -98,7 +98,7 @@ public class BLETimer {
                     final long elapsed = now.get() - last;
                     if (elapsed >= 1000) {
                         if (last != 0) {
-                            sample.add(elapsed);
+                            distribution.add(elapsed);
                             executorService.execute(runnable);
                         }
                         last = now.get();
@@ -121,7 +121,10 @@ public class BLETimer {
         wakeLock.release();
     }
 
-    /// Add delegate for time notification
+    /**
+     * Add delegate for time notification.
+     * @param delegate Delegate for receiving notifications
+     */
     public void add(@NonNull final BLETimerDelegate delegate) {
         delegates.add(delegate);
     }

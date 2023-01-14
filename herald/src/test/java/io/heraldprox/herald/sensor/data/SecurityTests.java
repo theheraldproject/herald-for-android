@@ -1,5 +1,10 @@
 package io.heraldprox.herald.sensor.data;
 
+import io.heraldprox.herald.sensor.data.security.DiffieHellmanMerkle;
+import io.heraldprox.herald.sensor.data.security.DiffieHellmanParameters;
+import io.heraldprox.herald.sensor.data.security.KeyExchange;
+import io.heraldprox.herald.sensor.data.security.KeyExchangeKeyPair;
+import io.heraldprox.herald.sensor.data.security.KeyExchangeSharedKey;
 import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.UIntBig;
 
@@ -16,8 +21,40 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class SecurityTests {
+
+    @Test
+    public void testKeyExchange() {
+        final KeyExchange keyExchange = new DiffieHellmanMerkle(DiffieHellmanParameters.modpGroup1);
+
+        final KeyExchangeKeyPair aliceKeyPair = keyExchange.keyPair();
+        System.out.println("alice private key bytes: " + aliceKeyPair.privateKey.value.length);
+        System.out.println("alice private key = " + aliceKeyPair.privateKey.hexEncodedString());
+        System.out.println("alice public key bytes: " + aliceKeyPair.publicKey.value.length);
+        System.out.println("alice public key = " + aliceKeyPair.publicKey.hexEncodedString());
+
+        final KeyExchangeKeyPair bobKeyPair = keyExchange.keyPair();
+        System.out.println("alice private key bytes: " + bobKeyPair.privateKey.value.length);
+        System.out.println("bob private key = " + bobKeyPair.privateKey.hexEncodedString());
+        System.out.println("bob public key bytes: " + bobKeyPair.publicKey.value.length);
+        System.out.println("bob public key = " + bobKeyPair.publicKey.hexEncodedString());
+
+        final KeyExchangeSharedKey aliceSharedKey = keyExchange.sharedKey(aliceKeyPair.privateKey, bobKeyPair.publicKey);
+        assertNotNull(aliceSharedKey);
+        System.out.println("alice shared key bytes: " + aliceSharedKey.value.length);
+        System.out.println("alice shared key = " + aliceSharedKey.hexEncodedString());
+        final KeyExchangeSharedKey bobSharedKey = keyExchange.sharedKey(bobKeyPair.privateKey, aliceKeyPair.publicKey);
+        assertNotNull(bobSharedKey);
+        System.out.println("bob shared key bytes: " + bobSharedKey.value.length);
+        System.out.println("bob shared key = " + bobSharedKey.hexEncodedString());
+
+        assertEquals(aliceSharedKey, bobSharedKey);
+    }
+
+
+
     // RFC-3526
     //    2048-bit MODP Group
     //    This group is assigned id 14.

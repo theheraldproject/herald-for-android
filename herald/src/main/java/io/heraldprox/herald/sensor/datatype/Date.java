@@ -10,7 +10,9 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.TimeZone;
 
-/// UTC date time
+/**
+ * UTC date time
+ */
 public class Date extends java.util.Date {
     private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.UK);
     static {
@@ -31,6 +33,14 @@ public class Date extends java.util.Date {
 
     public long secondsSinceUnixEpoch() {
         return getTime() / 1000;
+    }
+
+    public boolean beforeOrEqual(@NonNull final Date when) {
+        return getTime() <= when.getTime();
+    }
+
+    public boolean afterOrEqual(@NonNull final Date when) {
+        return getTime() >= when.getTime();
     }
 
     @NonNull

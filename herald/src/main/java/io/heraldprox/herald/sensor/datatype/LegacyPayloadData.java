@@ -13,7 +13,9 @@ import org.json.JSONObject;
 
 import java.util.UUID;
 
-/// Legacy payload data received from target
+/**
+ * Legacy payload data received from target
+ */
 public class LegacyPayloadData extends PayloadData {
     @Nullable
     public final UUID service; // null value is permitted
@@ -34,7 +36,10 @@ public class LegacyPayloadData extends PayloadData {
             return ProtocolName.OPENTRACE;
         } else if (service == BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID) {
             return ProtocolName.ADVERT;
-        } else if (service == BLESensorConfiguration.serviceUUID) {
+        } else if (service == BLESensorConfiguration.linuxFoundationServiceUUID) {
+            return ProtocolName.HERALD;
+        } else if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
+                   service == BLESensorConfiguration.legacyHeraldServiceUUID) {
             return ProtocolName.HERALD;
         } else {
             return ProtocolName.UNKNOWN;

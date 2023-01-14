@@ -23,7 +23,9 @@ import org.json.JSONObject;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-/// Test payload data supplier for generating fixed payload to support evaluation
+/**
+ * Test payload data supplier for generating fixed payload to support evaluation
+ */
 public class TestPayloadDataSupplier extends DefaultPayloadDataSupplier {
     private final int length;
     private final int identifier;

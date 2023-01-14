@@ -9,7 +9,9 @@ import androidx.annotation.Nullable;
 
 import java.util.Objects;
 
-/// Distance in metres.
+/**
+ * Distance in metres.
+ */
 public class Distance implements DoubleValue {
     public final double value;
 

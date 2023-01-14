@@ -17,7 +17,9 @@ import io.heraldprox.herald.sensor.datatype.PayloadTimestamp;
 import java.util.ArrayList;
 import java.util.List;
 
-/// Default payload data supplier implementing fixed length payload splitting method.
+/**
+ * Default payload data supplier implementing fixed length payload splitting method.
+ */
 public abstract class DefaultPayloadDataSupplier implements PayloadDataSupplier {
 
     @Nullable
