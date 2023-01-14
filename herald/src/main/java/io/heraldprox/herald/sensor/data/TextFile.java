@@ -13,8 +13,8 @@ import androidx.annotation.Nullable;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TextFile implements Resettable {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "Data.TextFile");
@@ -32,7 +32,14 @@ public class TextFile implements Resettable {
     @NonNull
     private final File file;
     private final ConcurrentLinkedQueue<String> writeBuffer = new ConcurrentLinkedQueue<>();
-    private final AtomicLong writeBufferSize = new AtomicLong();
+    private final AtomicInteger writeBufferSize = new AtomicInteger();
+
+    /**
+     * Line consumer for forEachLine().
+     */
+    public interface TextFileLineConsumer {
+        void apply(@NonNull final String line);
+    }
 
     /**
      * Text file with 30 second write delay on write() calls.
@@ -96,7 +103,15 @@ public class TextFile implements Resettable {
 
     @Override
     public synchronized void reset() {
+        clearBuffer();
         overwrite("");
+    }
+
+    /**
+     * Discard pending writes
+     */
+    protected synchronized void clearBuffer() {
+        writeBuffer.clear();
     }
 
     // MARK: - I/O functions
@@ -180,21 +195,52 @@ public class TextFile implements Resettable {
      */
     @NonNull
     public synchronized String contentsOf() {
-        try {
-            final FileInputStream fileInputStream = new FileInputStream(file);
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
-            final StringBuilder stringBuilder = new StringBuilder();
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
+        final StringBuilder stringBuilder = new StringBuilder();
+        forEachLine(new TextFileLineConsumer() {
+            @Override
+            public void apply(@NonNull String line) {
                 stringBuilder.append(line);
                 stringBuilder.append("\n");
             }
+        });
+        return stringBuilder.toString();
+    }
+
+    /**
+     * Get contents of file as individual lines.
+     * @return File content as individual lines.
+     */
+    @NonNull
+    public synchronized List<String> lines() {
+        final List<String> lines = new ArrayList<>();
+        forEachLine(new TextFileLineConsumer() {
+            @Override
+            public void apply(@NonNull String line) {
+                lines.add(line);
+            }
+        });
+        return lines;
+    }
+
+    /**
+     * Apply function to each line of the text file.
+     * @param consumer
+     */
+    public synchronized void forEachLine(@NonNull TextFileLineConsumer consumer) {
+        try {
+            if (!file.exists()) {
+                return;
+            }
+            final FileInputStream fileInputStream = new FileInputStream(file);
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                consumer.apply(line);
+            }
             bufferedReader.close();
             fileInputStream.close();
-            return stringBuilder.toString();
         } catch (Throwable e) {
             logger.fault("read failed (file={})", file, e);
-            return "";
         }
     }
 
@@ -239,18 +285,17 @@ public class TextFile implements Resettable {
         if (writeBuffer.isEmpty()) {
             return false;
         }
-        try {
-            final FileOutputStream fileOutputStream = new FileOutputStream(file, true);
-            String line;
-            while ((line = writeBuffer.poll()) != null) {
-                fileOutputStream.write((line + "\n").getBytes());
+        final List<String> lines = new ArrayList<>(writeBuffer);
+        final StringBuilder content = new StringBuilder(writeBufferSize.get() + lines.size());
+        // Newline character is added to the end by writeNow()
+        for (int i=0; i<lines.size(); i++) {
+            if (i > 0) {
+                content.append('\n');
             }
-            fileOutputStream.flush();
-            fileOutputStream.close();
-            writeBufferSize.set(0);
-        } catch (Throwable e) {
-            logger.fault("flushWriteBuffer failed (file={})", file, e);
+            content.append(lines.get(i));
         }
+        writeNow(content.toString());
+        clearBuffer();
         return true;
     }
 
@@ -274,19 +319,13 @@ public class TextFile implements Resettable {
      * @param content Text content
      */
     public synchronized void overwrite(@NonNull final String content) {
-        // Discard pending writes
-        writeBuffer.clear();
+        clearBuffer();
         try {
-            // Write to temporary file first
-            final File temporaryFile = new File(file.getParentFile(), file.getName() + ".tmp");
-            final FileOutputStream fileOutputStream = new FileOutputStream(temporaryFile);
+            // No longer writing to temporary file first as this caused the test to fail on latest Android version
+            final FileOutputStream fileOutputStream = new FileOutputStream(file, false);
             fileOutputStream.write(content.getBytes());
             fileOutputStream.flush();
             fileOutputStream.close();
-            // Rename to actual file on completion
-            if (!temporaryFile.renameTo(file)) {
-                logger.fault("overwrite failed (file={},reason=renameFailed)", file);
-            }
         } catch (Throwable e) {
             logger.fault("overwrite failed (file={})", file, e);
         }
@@ -299,6 +338,9 @@ public class TextFile implements Resettable {
      */
     @NonNull
     public static String csv(@NonNull final String value) {
+        if (null == value) {
+            return "NULL";
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("'") || value.contains("’")) {
             return "\"" + value + "\"";
         } else {

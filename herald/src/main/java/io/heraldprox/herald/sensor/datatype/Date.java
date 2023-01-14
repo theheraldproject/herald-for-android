@@ -35,6 +35,14 @@ public class Date extends java.util.Date {
         return getTime() / 1000;
     }
 
+    public boolean beforeOrEqual(@NonNull final Date when) {
+        return getTime() <= when.getTime();
+    }
+
+    public boolean afterOrEqual(@NonNull final Date when) {
+        return getTime() >= when.getTime();
+    }
+
     @NonNull
     public String toString() {
         return dateFormatter.format(this);

@@ -40,6 +40,11 @@ public class IteratorProxy<T extends DoubleValue> implements Iterator<Sample<T>>
         return nextItem;
     }
 
+    @Override
+    public void remove() {
+        // Unsupported operation
+    }
+
     @NonNull
     @Override
     public IteratorProxy<T> filter(@NonNull final Filter<T> filter) {

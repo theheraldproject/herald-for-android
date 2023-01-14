@@ -11,8 +11,8 @@ import java.io.File;
 import io.heraldprox.herald.sensor.data.TextFile;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class HistogramTests {
 
@@ -71,4 +71,27 @@ public class HistogramTests {
         folder.delete();
     }
 
+    @Test
+    public void minMaxMode() {
+        final Histogram histogram = new Histogram(0,100);
+        assertNull(histogram.minValue());
+        assertNull(histogram.maxValue());
+        assertNull(histogram.mode());
+        // 50 = 1
+        histogram.add(50);
+        assertNotNull(histogram.minValue());
+        assertNotNull(histogram.maxValue());
+        assertNotNull(histogram.mode());
+        assertEquals(50, histogram.minValue().intValue());
+        assertEquals(50, histogram.maxValue().intValue());
+        assertEquals(50, histogram.mode().intValue());
+        // 50 = 1, 60 = 2
+        histogram.add(60, 2);
+        assertNotNull(histogram.minValue());
+        assertNotNull(histogram.maxValue());
+        assertNotNull(histogram.mode());
+        assertEquals(50, histogram.minValue().intValue());
+        assertEquals(60, histogram.maxValue().intValue());
+        assertEquals(60, histogram.mode().intValue());
+    }
 }

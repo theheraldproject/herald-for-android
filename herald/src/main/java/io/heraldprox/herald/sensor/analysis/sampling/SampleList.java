@@ -183,6 +183,11 @@ public class SampleList<T extends DoubleValue> implements Iterable<Sample<T>>, F
                     return null;
                 }
             }
+
+            @Override
+            public void remove() {
+                // Unsupported operation
+            }
         };
     }
 

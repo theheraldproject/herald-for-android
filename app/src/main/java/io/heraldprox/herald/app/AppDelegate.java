@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -26,6 +26,7 @@ import io.heraldprox.herald.sensor.data.BatteryLog;
 import io.heraldprox.herald.sensor.data.ContactLog;
 import io.heraldprox.herald.sensor.data.DetectionLog;
 import io.heraldprox.herald.sensor.data.EventTimeIntervalLog;
+import io.heraldprox.herald.sensor.data.RssiLog;
 import io.heraldprox.herald.sensor.data.SensorDelegateLogger;
 import io.heraldprox.herald.sensor.data.StatisticsLog;
 import io.heraldprox.herald.sensor.data.TextFile;
@@ -64,6 +65,7 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void onCreate() {
         super.onCreate();
+        Log.i(tag, "AppDelegate.onCreate() called.");
 
         appDelegate = this;
         // Initialise foreground service to keep application running in background
@@ -85,8 +87,11 @@ public class AppDelegate extends Application implements SensorDelegate {
             final PayloadData payloadData = sensor.payloadData();
             final List<SensorDelegateLogger> sensorDelegateLoggers = new ArrayList<>();
             sensorDelegateLoggers.add(new ContactLog(this, "contacts.csv"));
-            sensorDelegateLoggers.add(new StatisticsLog(this, "statistics.csv",payloadData));
+            // Removed due to performance issues on old phone for https://github.com/theheraldproject/herald-for-android/issues/239
+            //sensorDelegateLoggers.add(new StatisticsLog(this, "statistics.csv",payloadData));
             sensorDelegateLoggers.add(new DetectionLog(this,"detection.csv", payloadData));
+            // Removed due to performance issues on old phone for https://github.com/theheraldproject/herald-for-android/issues/239
+            //sensorDelegateLoggers.add(new RssiLog(this, "rssi.csv"));
             sensorDelegateLoggers.add(new BatteryLog(this, "battery.csv"));
             if (BLESensorConfiguration.payloadDataUpdateTimeInterval != TimeInterval.never ||
                 (BLESensorConfiguration.interopOpenTraceEnabled && BLESensorConfiguration.interopOpenTracePayloadDataUpdateTimeInterval != TimeInterval.never)) {
@@ -99,10 +104,14 @@ public class AppDelegate extends Application implements SensorDelegate {
                 }
             }
         }
+
+        // Auto start tweak added in v2.1 for when the OS restarts the app, but not the UI
+        sensor.start(); // This will fail before we have permissions, but we need this to ensure it runs on background restart
     }
 
     @Override
     public void onTerminate() {
+        Log.i(tag, "AppDelegate.onTerminate() called.");
         sensor.stop();
         super.onTerminate();
     }
@@ -128,6 +137,16 @@ public class AppDelegate extends Application implements SensorDelegate {
     @Override
     public void sensor(@NonNull SensorType sensor, @NonNull TargetIdentifier didDetect) {
         Log.i(tag, sensor.name() + ",didDetect=" + didDetect);
+    }
+
+    @Override
+    public void sensor(@NonNull SensorType sensor, boolean available, @NonNull TargetIdentifier didDeleteOrDetect) {
+        String avail = "N";
+        if (available) {
+            avail = "Y";
+        }
+        Log.i(tag, sensor.name() + ",didDeleteOrDetect=" + didDeleteOrDetect +
+                ",available=" + avail);
     }
 
     @Override
@@ -212,7 +231,8 @@ public class AppDelegate extends Application implements SensorDelegate {
     private Notification getForegroundNotification() {
         final Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        // FLAG_MUTABLE was the default prior to Android 12. Required to be explicitly set since 12 (SDK 31)
+        final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
         final NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(io.heraldprox.herald.R.drawable.ic_notification)
                 .setContentTitle(this.getString(R.string.notification_content_title))

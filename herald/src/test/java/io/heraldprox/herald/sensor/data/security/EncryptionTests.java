@@ -13,7 +13,6 @@ import io.heraldprox.herald.sensor.datatype.Data;
 import io.heraldprox.herald.sensor.datatype.UInt8;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 public class EncryptionTests {
 

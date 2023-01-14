@@ -36,7 +36,10 @@ public class LegacyPayloadData extends PayloadData {
             return ProtocolName.OPENTRACE;
         } else if (service == BLESensorConfiguration.interopAdvertBasedProtocolServiceUUID) {
             return ProtocolName.ADVERT;
-        } else if (service == BLESensorConfiguration.serviceUUID) {
+        } else if (service == BLESensorConfiguration.linuxFoundationServiceUUID) {
+            return ProtocolName.HERALD;
+        } else if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
+                   service == BLESensorConfiguration.legacyHeraldServiceUUID) {
             return ProtocolName.HERALD;
         } else {
             return ProtocolName.UNKNOWN;

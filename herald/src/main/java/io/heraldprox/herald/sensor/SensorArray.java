@@ -14,15 +14,22 @@ import io.heraldprox.herald.sensor.data.CalibrationLog;
 import io.heraldprox.herald.sensor.data.ConcreteSensorLogger;
 import io.heraldprox.herald.sensor.data.SensorLogger;
 import io.heraldprox.herald.sensor.datatype.Data;
+import io.heraldprox.herald.sensor.datatype.Date;
 import io.heraldprox.herald.sensor.datatype.PayloadData;
 import io.heraldprox.herald.sensor.datatype.PayloadTimestamp;
 import io.heraldprox.herald.sensor.datatype.SensorState;
 import io.heraldprox.herald.sensor.datatype.SensorType;
 import io.heraldprox.herald.sensor.datatype.TargetIdentifier;
+import io.heraldprox.herald.sensor.datatype.UInt16;
 import io.heraldprox.herald.sensor.motion.ConcreteInertiaSensor;
+import io.heraldprox.herald.sensor.payload.extended.ConcreteExtendedDataSectionV1;
+import io.heraldprox.herald.sensor.protocol.ConcreteGPDMPProtocolStack;
+import io.heraldprox.herald.sensor.protocol.GPDMPLayer7Incoming;
+import io.heraldprox.herald.sensor.protocol.GPDMPMessageListenerManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -40,6 +47,8 @@ public class SensorArray implements Sensor {
     @NonNull
     private final ConcreteBLESensor concreteBleSensor;
 
+    private final ConcreteGPDMPProtocolStack gpdmpStack = ConcreteGPDMPProtocolStack.createDefaultBluetoothLEStack();
+
     public SensorArray(@NonNull final Context context, @NonNull final PayloadDataSupplier payloadDataSupplier) {
         // Ensure logger has been initialised (should have happened in AppDelegate already)
         ConcreteSensorLogger.context(context);
@@ -56,6 +65,10 @@ public class SensorArray implements Sensor {
         }
         payloadData = payloadDataSupplier.payload(new PayloadTimestamp(), null);
         logger.info("DEVICE (payload={},description={})", payloadData.shortName(), SensorArray.deviceDescription);
+
+        if (BLESensorConfiguration.gpdmpEnabled) {
+            concreteBleSensor.injectGPDMPLayers(gpdmpStack);
+        }
     }
 
     /**
@@ -75,6 +88,27 @@ public class SensorArray implements Sensor {
      */
     public boolean immediateSendAll(@NonNull final Data data) {
         return concreteBleSensor.immediateSendAll(data);
+    }
+
+    /**
+     * GPDMP send function
+     * @return the sent message UUID
+     */
+    public UUID gpdmpSend(UUID channelId, Date timeToAccess, Date timeout, UInt16 ttl,
+                             UInt16 minTransmissions, UInt16 maxTransmissions,
+                             UUID mySenderRecipientId,
+                             List<ConcreteExtendedDataSectionV1> sections) {
+        return gpdmpStack.getLayer7().sendOutgoing(channelId, timeToAccess, timeout, ttl,
+                minTransmissions, maxTransmissions, mySenderRecipientId, sections);
+    }
+
+    /**
+     * Fetch the GPDMP interface so we can listen for new incoming messages after decoding.
+     *
+     * @return The Layer7 messaging listener manager that allows the caller to add/remove a message listener
+     */
+    public GPDMPMessageListenerManager getGPDMPMessageListenerManager() {
+        return (GPDMPMessageListenerManager) gpdmpStack.getLayer7();
     }
 
     @NonNull

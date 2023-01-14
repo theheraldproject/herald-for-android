@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.UUID;
 
 /**
  * Raw byte array data
@@ -304,7 +305,7 @@ public class Data {
                 (byte) (value.value & 0xFF),        // LSB
                 (byte) ((value.value >> 8) & 0xFF),
                 (byte) ((value.value >> 16) & 0xFF),
-                (byte) (value.value >> 24)          // MSB
+                (byte) ((value.value >> 24) & 0xFF)         // MSB
         });
     }
 
@@ -317,7 +318,7 @@ public class Data {
                 (value[index] & 0xFF) |
                 ((value[index + 1] & 0xFF) << 8) |
                 ((value[index + 2] & 0xFF) << 16) |
-                ((value[index + 3]) << 24);
+                ((value[index + 3] & 0xFF) << 24);
         return new Int32(v);
     }
 
@@ -366,7 +367,7 @@ public class Data {
                 (byte) ((value.value >> 32) & 0xFF),
                 (byte) ((value.value >> 40) & 0xFF),
                 (byte) ((value.value >> 48) & 0xFF),
-                (byte) ((value.value >> 56)) // MSB
+                (byte) ((value.value >> 56) & 0xFF) // MSB
         });
     }
 
@@ -383,8 +384,26 @@ public class Data {
                 ((long) (value[index + 4] & 0xFF) << 32) |
                 ((long) (value[index + 5] & 0xFF) << 40) |
                 ((long) (value[index + 6] & 0xFF) << 48) |
-                ((long) (value[index + 7]) << 56);
+                ((long) (value[index + 7] & 0xFF) << 56);
         return new Int64(v);
+    }
+
+    public void append(@Nullable final UUID value) {
+        Data temp = new Data();
+        temp.append(new Int64(value.getLeastSignificantBits()));
+        temp.append(new Int64(value.getMostSignificantBits()));
+        temp = temp.reversed();
+        append(temp);
+    }
+
+    public UUID uuid(final int index) {
+        if (index < 0 || index + 15 >= value.length) {
+            return null;
+        }
+        Data temp = subdata(index,16);
+        temp = temp.reversed();
+
+        return new UUID(temp.int64(index + 8).value,temp.int64(index).value);
     }
 
     public void append(@Nullable final UIntBig value) {
@@ -654,5 +673,36 @@ public class Data {
         } catch (Throwable e) {
             return null;
         }
+    }
+
+    /**
+     * Length of the byte array value.
+     * @return Size of the value array in number of bytes. Returns 0 for null value array.
+     */
+    public int length() {
+        if (null == value) {
+            return 0;
+        }
+        return value.length;
+    }
+
+    /**
+     * Alias for length(). They are identical.
+     * @return Size of the value array in number of bytes.
+     */
+    public int size() {
+        return length();
+    }
+
+    /**
+     * Returns a new Data instance with the same data as this one, but in the reverse order
+     * @return a new Data instance with the byte order reversed
+     */
+    public Data reversed() {
+        Data reverseData = new Data();
+        for (int i = length() - 1; i >= 0; --i) {
+            reverseData.append(subdata(i,1));
+        }
+        return reverseData;
     }
 }

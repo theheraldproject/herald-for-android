@@ -33,6 +33,12 @@ public class ConcreteAnalysisDelegate<T extends DoubleValue> implements Analysis
         listManager.clear();
     }
 
+    @Override
+    public void removeSamplesFor(SampledID sampled) {
+        // Fix for https://github.com/theheraldproject/herald-for-android/issues/239
+        listManager.remove(sampled);
+    }
+
     @NonNull
     @Override
     public SampleList<T> samples() {

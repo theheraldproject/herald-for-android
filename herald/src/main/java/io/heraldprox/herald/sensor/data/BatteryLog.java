@@ -19,10 +19,12 @@ import io.heraldprox.herald.sensor.datatype.TimeInterval;
 public class BatteryLog extends SensorDelegateLogger {
     private final SensorLogger logger = new ConcreteSensorLogger("Sensor", "BatteryLog");
     private final static TimeInterval updateInterval = TimeInterval.seconds(30);
+    @NonNull
+    private final Context context;
 
     public BatteryLog(@NonNull final Context context, @NonNull final String filename) {
         super(context, filename);
-        writeHeader();
+        this.context = context;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -42,10 +44,18 @@ public class BatteryLog extends SensorDelegateLogger {
         }).start();
     }
 
-    private void writeHeader() {
-        if (empty()) {
-            write("time,source,level");
-        }
+    public BatteryLog(@NonNull final TextFile textFile) {
+        super(textFile);
+        this.context = null;
+    }
+
+    @Override
+    protected String header() {
+        return "time,source,level";
+    }
+
+    protected synchronized void append(@NonNull final String powerSource, final float batteryLevel) {
+        write(Timestamp.timestamp() + "," + powerSource + "," + batteryLevel);
     }
 
     private void update() {
@@ -64,8 +74,7 @@ public class BatteryLog extends SensorDelegateLogger {
         final float batteryLevel = level * 100 / (float) scale;
 
         final String powerSource = (isCharging ? "external" : "battery");
-        writeHeader();
-        write(timestamp() + "," + powerSource + "," + batteryLevel);
         logger.debug("update (powerSource={},batteryLevel={})", powerSource, batteryLevel);
+        append(powerSource, batteryLevel);
     }
 }

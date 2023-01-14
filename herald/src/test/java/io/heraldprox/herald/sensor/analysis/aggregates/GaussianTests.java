@@ -10,7 +10,6 @@ import io.heraldprox.herald.sensor.analysis.sampling.Sample;
 import io.heraldprox.herald.sensor.datatype.Int8;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 @SuppressWarnings("ConstantConditions")

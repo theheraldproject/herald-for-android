@@ -23,6 +23,13 @@ public class Histogram {
     @NonNull
     private Date lastUpdateTime = new Date(0);
     private long samples = 0;
+    private long countMax = 0;
+    @Nullable
+    private Integer mode = null;
+    @Nullable
+    private Integer minValue = null;
+    @Nullable
+    private Integer maxValue = null;
 
     /**
      * Accumulate histogram for value range [min, max] and auto-write histogram to CSV file at regular intervals.
@@ -72,25 +79,97 @@ public class Histogram {
         return histogram[value - min];
     }
 
+    @Nullable
+    public synchronized Integer mode() {
+        return mode;
+    }
+
+    @Nullable
+    public synchronized Integer minValue() {
+        return minValue;
+    }
+
+    @Nullable
+    public synchronized Integer maxValue() {
+        return maxValue;
+    }
+
     /**
      * Add sample. Out of range values are discarded.
      * @param value
+     * @param increment
      */
-    public synchronized void add(final int value) {
+    public synchronized void add(final int value, final long increment) {
         if (value < min || value > max) {
             return;
         }
         // Increment count
         final int index = value - min;
-        histogram[index]++;
-        samples++;
+        histogram[index] += increment;
+        samples += increment;
+        // Update mode
+        if (histogram[index] > countMax) {
+            countMax = histogram[index];
+            mode = value;
+        }
+        // Update bounds
+        if (null == minValue || value < minValue) {
+            minValue = value;
+        }
+        if (null == maxValue || value > maxValue) {
+            maxValue = value;
+        }
         // Write histogram to text file at regular intervals
-        final Date time = new Date();
-        if (lastUpdateTime.secondsSinceUnixEpoch() + updatePeriod.value < time.secondsSinceUnixEpoch()) {
-            if (textFile != null) {
+        if (textFile != null) {
+            final Date time = new Date();
+            if (lastUpdateTime.secondsSinceUnixEpoch() + updatePeriod.value < time.secondsSinceUnixEpoch()) {
                 write(textFile);
+                lastUpdateTime = time;
             }
-            lastUpdateTime = time;
+        }
+    }
+
+    /**
+     * Add sample. Out of range values are discarded.
+     * @param value
+     */
+    public synchronized void add(final int value) {
+        add(value, 1);
+    }
+
+    /**
+     * Add all values from another histogram. Out of range values are discarded.
+     * @param other Other histogram for merging into this histogram.
+     */
+    public synchronized void add(@NonNull final Histogram other) {
+        for (int value=min; value<=max; value++) {
+            final long increment = other.count(value);
+            if (increment > 0) {
+                // Increment count
+                final int index = value - min;
+                histogram[index] += increment;
+                samples += increment;
+                // Update mode
+                if (histogram[index] > countMax) {
+                    countMax = histogram[index];
+                    mode = value;
+                }
+                // Update bounds
+                if (null == minValue || value < minValue) {
+                    minValue = value;
+                }
+                if (null == maxValue || value > maxValue) {
+                    maxValue = value;
+                }
+            }
+        }
+        // Write histogram to text file at regular intervals
+        if (textFile != null) {
+            final Date time = new Date();
+            if (lastUpdateTime.secondsSinceUnixEpoch() + updatePeriod.value < time.secondsSinceUnixEpoch()) {
+                write(textFile);
+                lastUpdateTime = time;
+            }
         }
     }
 
@@ -102,6 +181,8 @@ public class Histogram {
             histogram[i] = 0;
         }
         samples = 0;
+        countMax = 0;
+        mode = null;
     }
 
     /**
@@ -124,6 +205,17 @@ public class Histogram {
             final int index = value - min;
             histogram[index] = count;
             samples += count;
+            if (histogram[index] > countMax) {
+                countMax = histogram[index];
+                mode = value;
+            }
+            // Update bounds
+            if (null == minValue || value < minValue) {
+                minValue = value;
+            }
+            if (null == maxValue || value > maxValue) {
+                maxValue = value;
+            }
         }
     }
 
@@ -149,5 +241,14 @@ public class Histogram {
     public void write(@NonNull final TextFile textFile) {
         final String content = toCsv();
         textFile.overwrite(content);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "Histogram{" +
+                "samples=" + samples +
+                ", mode=" + mode +
+                '}';
     }
 }

@@ -1,4 +1,4 @@
-//  Copyright 2020-2021 Herald Project Contributors
+//  Copyright 2020-2022 Herald Project Contributors
 //  SPDX-License-Identifier: Apache-2.0
 //
 
@@ -23,6 +23,10 @@ public abstract class DefaultSensorDelegate implements SensorDelegate {
 
     @Override
     public void sensor(@NonNull final SensorType sensor, @NonNull final TargetIdentifier didDetect) {
+    }
+
+    @Override
+    public void sensor(@NonNull final SensorType sensor, final boolean available, @NonNull final TargetIdentifier didDeleteOrDetect) {
     }
 
     @Override

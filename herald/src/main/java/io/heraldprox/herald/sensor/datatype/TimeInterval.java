@@ -34,6 +34,11 @@ public class TimeInterval implements DoubleValue {
     }
 
     @NonNull
+    public static TimeInterval days(final long days) {
+        return new TimeInterval(day.value * days);
+    }
+
+    @NonNull
     public static TimeInterval hours(final long hours) {
         return new TimeInterval(hour.value * hours);
     }

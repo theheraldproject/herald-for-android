@@ -21,6 +21,7 @@ public class Target {
     private Proximity proximity = null;
     private Distance distance = null;
     private ImmediateSendData received = null;
+    private String receivedText = null;
     private Date didRead = null, didMeasure = null, didShare = null, didReceive = null;
     private Distribution didReadTimeInterval = new Distribution();
     private Distribution didMeasureTimeInterval = new Distribution();
@@ -79,6 +80,16 @@ public class Target {
         lastUpdatedAt = new Date();
         didReceive = lastUpdatedAt;
         this.received = received;
+    }
+
+    public String receivedText() {
+        return receivedText;
+    }
+
+    public void receivedText(String txt) {
+        lastUpdatedAt = new Date();
+        didReceive = lastUpdatedAt;
+        this.receivedText = txt;
     }
 
     public Date didReceive() {

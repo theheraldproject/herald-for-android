@@ -16,7 +16,7 @@ import java.util.UUID;
  * Ephemeral identifier for detected target (e.g. smartphone, beacon, place). This is likely
  * to be an UUID but using String for variable identifier length.
  */
-public class TargetIdentifier {
+public class TargetIdentifier implements Comparable<TargetIdentifier> {
     @NonNull
     public final String value;
 
@@ -57,5 +57,11 @@ public class TargetIdentifier {
     @Override
     public String toString() {
         return value;
+    }
+
+    @Override
+    public int compareTo(@Nullable TargetIdentifier o) {
+        final String oValue = (null == o ? null : o.value);
+        return value.compareTo(oValue);
     }
 }
