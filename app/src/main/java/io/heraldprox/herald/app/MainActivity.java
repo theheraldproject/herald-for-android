@@ -216,6 +216,12 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         // Check and request permissions
         final List<String> requiredPermissions = new ArrayList<>();
 
+        // See https://developer.android.com/guide/topics/connectivity/bluetooth/permissions
+        // These two are 'legacy' permissions, but in testing are still needed on Android v12+
+        requiredPermissions.add(Manifest.permission.BLUETOOTH);
+        // This is required for power management (I.e. the turn Bluetooth on/off button on the UI)
+        requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
+
         // The next two ARE ***BOTH*** STILL NEEDED for Android 12 in order for didMeasure and didRead to work!
         requiredPermissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         requiredPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -233,9 +239,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
             requiredPermissions.add(Manifest.permission.BLUETOOTH_ADVERTISE);
         } else {
             // Legacy permissions
-            // See https://developer.android.com/guide/topics/connectivity/bluetooth/permissions
-            requiredPermissions.add(Manifest.permission.BLUETOOTH);
-            requiredPermissions.add(Manifest.permission.BLUETOOTH_ADMIN);
+            // Note: There are no permissions here as Android documentation for v12+ is incorrect!
         }
         final String[] requiredPermissionsArray = requiredPermissions.toArray(new String[0]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
