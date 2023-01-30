@@ -157,56 +157,7 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
         // REQUIRED : Ensure app has all required permissions
         requestPermissions();
 
-        // Test UI specific process to gather data from sensor for presentation
-        final Sensor sensor = AppDelegate.getAppDelegate().sensor();
-        sensor.add(this);
-        sensor.add(socialMixingScore);
-        ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
-        PayloadData payloadData = ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData();
-        ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + payloadData.shortName());
-
-        if (BLESensorConfiguration.gpdmpEnabled) {
-            // We generate a static identified and use this for the TEST payload, and for the channel UUID
-            // DO NOT DO THIS IN PRODUCTION - this is JUST for THIS demo app
-            mySenderRecipientId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aa" + payloadData.hexEncodedString().substring(10));
-            Log.d(tag, "Setting my own GPDMP channel ID (channelID=" + mySenderRecipientId.toString() + ")");
-            // Listen for any and all data sent on the default GPDMP channel
-            ((SensorArray) sensor).getGPDMPMessageListenerManager().addMessageListener(defaultChannelId, this);
-        }
-
-        targetListAdapter = new TargetListAdapter(this, targets);
-        final ListView targetsListView = ((ListView) findViewById(R.id.targets));
-        targetsListView.setAdapter(targetListAdapter);
-        targetsListView.setOnItemClickListener(this);
-        // - Temporal histogram model configuration
-        ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).model(temporalHistogramModel);
-        ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).bin(3);
-
-        // Test programmatic control of sensor on/off
-        final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
-        onOffSwitch.setChecked(false);
-        onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    sensor.start();
-                } else {
-                    sensor.stop();
-                }
-            }
-        });
-
-        // Sensor is on by default, unless automated test has been enabled,
-        // in which case, sensor is off by default and controlled by test
-        // server remote commands.
-        final AutomatedTestClient automatedTestClient = AppDelegate.getAppDelegate().automatedTestClient;
-        if (null == automatedTestClient) {
-            sensor.stop();
-            sensor.start(); // called again (first called by AppDelegate constructor) to ensure permissions are forced
-        } else {
-            sensor.stop();
-            automatedTestClient.add(this);
-        }
+        // All Herald advert/scan start code now moved to onRequestPermissionsResult()
     }
 
     /**
@@ -272,6 +223,59 @@ public class MainActivity extends AppCompatActivity implements SensorDelegate, A
 
             if (!permissionsGranted) {
                 Log.e(tag, "Application does not have all required permissions to start (permissions=" + Arrays.asList(permissions) + ")");
+            }
+
+            // Herald sensor initialisation code moved here to prevent mistiming between the advert starting and permissions being granted
+
+            // Test UI specific process to gather data from sensor for presentation
+            final Sensor sensor = AppDelegate.getAppDelegate().sensor();
+            sensor.add(this);
+            sensor.add(socialMixingScore);
+            ((TextView) findViewById(R.id.device)).setText(SensorArray.deviceDescription);
+            PayloadData payloadData = ((SensorArray) AppDelegate.getAppDelegate().sensor()).payloadData();
+            ((TextView) findViewById(R.id.payload)).setText("PAYLOAD : " + payloadData.shortName());
+
+            if (BLESensorConfiguration.gpdmpEnabled) {
+                // We generate a static identified and use this for the TEST payload, and for the channel UUID
+                // DO NOT DO THIS IN PRODUCTION - this is JUST for THIS demo app
+                mySenderRecipientId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aa" + payloadData.hexEncodedString().substring(10));
+                Log.d(tag, "Setting my own GPDMP channel ID (channelID=" + mySenderRecipientId.toString() + ")");
+                // Listen for any and all data sent on the default GPDMP channel
+                ((SensorArray) sensor).getGPDMPMessageListenerManager().addMessageListener(defaultChannelId, this);
+            }
+
+            targetListAdapter = new TargetListAdapter(this, targets);
+            final ListView targetsListView = ((ListView) findViewById(R.id.targets));
+            targetsListView.setAdapter(targetListAdapter);
+            targetsListView.setOnItemClickListener(this);
+            // - Temporal histogram model configuration
+            ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).model(temporalHistogramModel);
+            ((TemporalHistogramModelView) findViewById(R.id.temporalHistogram)).bin(3);
+
+            // Test programmatic control of sensor on/off
+            final Switch onOffSwitch = findViewById(R.id.sensorOnOffSwitch);
+            onOffSwitch.setChecked(false);
+            onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    if (isChecked) {
+                        sensor.start();
+                    } else {
+                        sensor.stop();
+                    }
+                }
+            });
+
+            // Sensor is on by default, unless automated test has been enabled,
+            // in which case, sensor is off by default and controlled by test
+            // server remote commands.
+            final AutomatedTestClient automatedTestClient = AppDelegate.getAppDelegate().automatedTestClient;
+            if (null == automatedTestClient) {
+                sensor.stop();
+                sensor.start(); // called again (first called by AppDelegate constructor) to ensure permissions are forced
+            } else {
+                sensor.stop();
+                automatedTestClient.add(this);
             }
         }
     }
