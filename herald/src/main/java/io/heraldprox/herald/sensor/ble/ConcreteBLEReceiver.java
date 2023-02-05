@@ -22,7 +22,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -431,11 +430,33 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Scan for HERALD protocol service on iOS (background) devices
         filter.add(new ScanFilter.Builder().setManufacturerData(
                 BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
-        // Scan for HERALD protocol service on Android or iOS (foreground) devices
-        filter.add(new ScanFilter.Builder().setServiceUuid(
-                        new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
-                        new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
-                .build());
+
+        // This logic added in v2.2 to enable disabling of standard herald device detection and
+        // detection of custom application IDs
+        if (BLESensorConfiguration.customServiceDetectionEnabled) {
+            if (null != BLESensorConfiguration.customServiceUUID) {
+                filter.add(new ScanFilter.Builder().setServiceUuid(
+                                new ParcelUuid(BLESensorConfiguration.customServiceUUID),
+                                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                        .build());
+            }
+            if (null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                for (int idx = 0;idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length;idx++) {
+                    filter.add(new ScanFilter.Builder().setServiceUuid(
+                                    new ParcelUuid(BLESensorConfiguration.customAdditionalServiceUUIDs[idx]),
+                                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            .build());
+                }
+            }
+        }
+        // This is useful for a custom application.
+        if (BLESensorConfiguration.standardHeraldServiceDetectionEnabled) {
+            // Scan for HERALD protocol service on Android or iOS (foreground) devices
+            filter.add(new ScanFilter.Builder().setServiceUuid(
+                            new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                    .build());
+        }
         // Scan for OpenTrace protocol service on iOS and Android devices
         if (BLESensorConfiguration.interopOpenTraceEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
@@ -645,7 +666,23 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return false;
         }
         for (final ParcelUuid serviceUuid : serviceUuids) {
-            if (serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
+            // Since v2.2 try custom service UUID(s) first
+            if (BLESensorConfiguration.customServiceDetectionEnabled) {
+                if (null != BLESensorConfiguration.customServiceUUID &&
+                    serviceUuid.getUuid().equals(BLESensorConfiguration.customServiceUUID)) {
+                    return true;
+                }
+                if (null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                    for (int idx = 0; idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length;idx++) {
+                        if (serviceUuid.getUuid().equals(BLESensorConfiguration.customAdditionalServiceUUIDs[idx])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            // Extra if term added in v2.2 so a custom app doesn't accidentally detect normal standard Herald devices
+            if (BLESensorConfiguration.standardHeraldServiceDetectionEnabled &&
+                serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
                 return true;
             }
             if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
@@ -1020,6 +1057,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         // Sensor characteristics
         BluetoothGattService service = gatt.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+        // Since v2.2 override if a custom UUID is specified
+        if (BLESensorConfiguration.customServiceDetectionEnabled) {
+            service = null; // Ensure we don't accidentally re-enable Herald detection
+            // Try the main custom one first (if not null)
+            if (null != BLESensorConfiguration.customServiceUUID) {
+                service = gatt.getService(BLESensorConfiguration.customServiceUUID);
+            }
+            if (null == service && null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                // Now try any additional custom service UUIDs
+                for (int idx = 0;null == service && idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length; idx++) {
+                    service = gatt.getService(BLESensorConfiguration.customAdditionalServiceUUIDs[idx]);
+                }
+            }
+        }
         if (null == service && BLESensorConfiguration.interopOpenTraceEnabled) {
             service = gatt.getService(BLESensorConfiguration.interopOpenTraceServiceUUID);
         }
@@ -1050,7 +1101,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // offering sensor services.
             }
         } else {
-            logger.debug("onServicesDiscovered, found sensor service (device={})", device);
+            logger.debug("onServicesDiscovered, found sensor service (device={},service={})", device,service.getUuid());
             device.invalidateCharacteristics();
             for (final BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                 // Confirm operating system with signal characteristic

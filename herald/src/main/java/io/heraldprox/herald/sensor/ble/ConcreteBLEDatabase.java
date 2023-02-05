@@ -153,6 +153,12 @@ public class ConcreteBLEDatabase implements BLEDatabase, BLEDeviceDelegate {
             if (null != data && data.length > 0) {
                 return new PseudoDeviceAddress(data);
             }
+        } else if (BLESensorConfiguration.customServiceDetectionEnabled &&
+                   0 != BLESensorConfiguration.customManufacturerIdForSensor) {
+            final byte[] data = scanRecord.getManufacturerSpecificData(BLESensorConfiguration.customManufacturerIdForSensor);
+            if (null != data && data.length > 0) {
+                return new PseudoDeviceAddress(data);
+            }
         }
         // Not found
         return null;

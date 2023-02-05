@@ -5,6 +5,7 @@
 package io.heraldprox.herald.sensor.ble;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import io.heraldprox.herald.sensor.data.SensorLoggerLevel;
 import io.heraldprox.herald.sensor.datatype.Data;
@@ -32,7 +33,7 @@ public class BLESensorConfiguration {
      *  <br>- Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
      */
     @NonNull
-    public static UUID legacyHeraldServiceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
+    public final static UUID legacyHeraldServiceUUID = UUID.fromString("428132af-4746-42d3-801e-4572d65bfd9b");
     public static boolean legacyHeraldServiceDetectionEnabled = true;
 
     /**
@@ -47,7 +48,20 @@ public class BLESensorConfiguration {
      *  <br>- Switch to 16-bit UUID by setting the value xxxx in base UUID 0000xxxx-0000-1000-8000-00805F9B34FB
      */
     @NonNull
-    public static UUID linuxFoundationServiceUUID = UUID.fromString("0000FCF6-0000-1000-8000-00805F9B34FB");
+    public final static UUID linuxFoundationServiceUUID = UUID.fromString("0000FCF6-0000-1000-8000-00805F9B34FB");
+
+    /**
+     * Enables detection of the current standard Herald service UUID.
+     * Enabled by default
+     * @since v2.2 February 2023
+     */
+    public static boolean standardHeraldServiceDetectionEnabled = true;
+    /**
+     * Enables advertising of the current standard Herald service UUID.
+     * Enabled by default
+     * @since v2.2 February 2023
+     */
+    public static boolean standardHeraldServiceAdvertisingEnabled = true;
 
     /**
      * Signaling characteristic for controlling connection between peripheral and central, e.g. keep each other from suspend state
@@ -68,6 +82,52 @@ public class BLESensorConfiguration {
      */
     @NonNull
     public final static UUID payloadCharacteristicUUID = UUID.fromString("3e98c0f8-8f05-4829-a121-43e38f8933e7");
+
+    // MARK:- Custom Service UUID interoperability - Since v2.2
+    /**
+     * A custom service UUID to use for a Herald service. Required for custom apps (without Herald interop).
+     *
+     * @since v2.2 February 2023
+     * @note Requires customHeraldServiceDetectionEnabled to be set to true to enable.
+     */
+    @Nullable
+    public static UUID customServiceUUID = null;
+    /**
+     * Whether to detect a custom service UUID. Disabled by default.
+     * Doesn't affect advertising.
+     * in preference to the default Linux Foundation Herald UUID if specified.
+     * Only takes effect if customServiceUUID is set to a valid non-null UUID.
+     *
+     * @since v2.2 February 2023
+     */
+    public static boolean customServiceDetectionEnabled = false;
+    /**
+     * Whether to advertise using the main customServiceUUID instead of the standard Herald
+     * Service UUID.
+     *
+     * @since v2.2 February 2023
+     */
+    public static boolean customServiceAdvertisingEnabled = false;
+    /**
+     * Additional UUIDs beyond just customServiceUUID to detect. Useful for 'legacy' custom
+     * application detections. You do not have to include customServiceUUID in this list.
+     *
+     * @since v2.2 February 2023
+     * @note Requires customHeraldServiceDetectionEnabled to be set to true to enable.
+     */
+    @Nullable
+    public static UUID[] customAdditionalServiceUUIDs = null;
+    /**
+     * The custom manufacturer ID to use. Note this MUST be a Bluetooth SIG registered ID to
+     * ensure there is no interference.
+     * Note that if this is not specified, then the default Linux Foundation Herald service
+     * manufacturer ID will be used.
+     *
+     * @since v2.2 February 2023
+     * @note Requires customHeraldServiceDetectionEnabled to be set to true to enable.
+     * @note Requires pseudoDeviceAddress to be enabled.
+     */
+    static int customManufacturerIdForSensor = 0;
 
     // MARK:- Interoperability with OpenTrace
 
