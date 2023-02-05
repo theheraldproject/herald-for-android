@@ -129,7 +129,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         // TODO do we need to do something here in case Sensor.init() is called? E.g. stop and restart?
         // Override state to starting anyway to ensure we try to restart
         myLoopTask.doStart();
-        myLoopTask.healthCheck();
+        // Immediately calling a healthcheck can cause advertising to be stopped before it has had chance to start
+//        myLoopTask.healthCheck();
     }
 
     @Override
@@ -139,6 +140,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         } else {
             logger.fault("stop, transmitter already disabled");
         }
+        // Clean out this reference (forced)
+        bluetoothGattServer = null;
     }
 
 
@@ -207,6 +210,8 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 if (advertLoopState != AdvertLoopState.stopped) {
                     logger.debug("advertLoopTask, healthCheck, stopping advert following bluetooth state change (isSupported={},bluetoothPowerOff={})", isSupported(), bluetoothStateManager.state() == BluetoothState.poweredOff);
                     doStop(now,true);
+                } else {
+                    logger.debug("advertLoopTask, healthCheck, transmitter is disabled, not supported, or Bluetooth is powered off");
                 }
                 return;
             }
@@ -339,7 +344,13 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                     logger.fault("disableGattServer, no BLUETOOTH_CONNECT permission to clear and stop GATT server");
                 } else {
                     try {
-                        bluetoothGattServer.clearServices();
+//                        bluetoothGattServer.clearServices(); // Clears non-Herald GATT services (E.g. fetch device name, model, etc.)
+                        BluetoothGattService ourService = bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+                        if (null != ourService) {
+                            // Service is already advertised, so remove it
+                            logger.debug("disableGattServer clearing single service for Herald (NOT calling clearServices())");
+                            bluetoothGattServer.removeService(ourService);
+                        }
                         bluetoothGattServer.close();
                         logger.debug("disableGattServer, GATT server stopped successfully");
                     } catch (Throwable e) {
@@ -519,6 +530,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
     @Override
     public void bluetoothStateManager(@NonNull final BluetoothState didUpdateState) {
         logger.debug("didUpdateState (state={},transmitterEnabled={})", didUpdateState, transmitterEnabled.get());
+        if (BluetoothState.poweredOff == didUpdateState) {
+            // Clean out this reference (forced)
+            bluetoothGattServer = null;
+        }
         myLoopTask.healthCheck();
     }
 
@@ -621,6 +636,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             }
 
             @Override
+            public void onServiceAdded(int status, @NonNull BluetoothGattService service) {
+                logger.debug("BluetoothGattServerCallback, onServiceAdded (successfully={},uuid={}",
+                        (BluetoothGatt.GATT_SUCCESS == status),
+                        service.getUuid().toString()
+                );
+            }
+
+            @Override
             public void onConnectionStateChange(@NonNull final BluetoothDevice bluetoothDevice, final int status, final int newState) {
                 lastInteraction = new Date();
                 final BLEDevice device = database.device(bluetoothDevice);
@@ -634,6 +657,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 }
                 myLoopTask.healthCheck();
             }
+
 
             @Override
             public void onCharacteristicWriteRequest(@NonNull final BluetoothDevice device, final int requestId, @NonNull final BluetoothGattCharacteristic characteristic, final boolean preparedWrite, final boolean responseNeeded, final int offset, @Nullable final byte[] value) {
@@ -816,13 +840,20 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 logger.debug("setGattService, serviceList,  - with characteristic: {}",chr.getUuid());
             }
         }
-        // TODO decide if we need to not clear other services (I.e. can we interfere with other apps? Worrying if we can...)
-        bluetoothGattServer.clearServices();
+        // Only modify our own service (This should be the only service on GATT we can see anyway)
+//        bluetoothGattServer.clearServices();
+        BluetoothGattService ourService = bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+        if (null != ourService) {
+            // Service is already advertised, so remove it
+            logger.debug("setGattService clearing single service for Herald (NOT calling clearServices())");
+            boolean success = bluetoothGattServer.removeService(ourService);
+            logger.debug("setGattService clearing single service result (successful={})",success);
+        }
 
         // Logic check - ensure there are now no Gatt Services
         List<BluetoothGattService> services = bluetoothGattServer.getServices();
         for (final BluetoothGattService svc : services) {
-            logger.fault("setGattService device clearServices() call did not correctly clear service (service={})",svc.getUuid());
+            logger.debug("setGattService is advertising (non-Herald) service (service={})",svc.getUuid());
         }
 
         final BluetoothGattService service = new BluetoothGattService(BLESensorConfiguration.linuxFoundationServiceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
@@ -857,6 +888,10 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
         if (count > 1) {
             logger.fault("setGattService device incorrectly sharing multiple Herald services (count={})", count);
+        }
+        if (0 == count) {
+            // Note that the service will probably not be listed yet - updating the advert is asynchronous
+            logger.fault("setGattService couldn't list Herald services after setting! Should be advertising now (or soon...).");
         }
 
         logger.debug("setGattService successful (service={},signalCharacteristic={},payloadCharacteristic={})",
