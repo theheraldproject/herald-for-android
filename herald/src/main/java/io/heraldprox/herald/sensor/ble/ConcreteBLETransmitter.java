@@ -258,12 +258,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 if (null != bluetoothGattServer &&
                         (bluetoothGattServer.getServices().size() == 0 ||
                                 (BLESensorConfiguration.customServiceAdvertisingEnabled &&
-                                        bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) == null ||
-                                        bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size() == 0
+                                        (null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) ||
+                                        null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics() ||
+                                        0 == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size())
                                 ) ||
                                 (!BLESensorConfiguration.customServiceAdvertisingEnabled &&
-                                        bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) == null ||
-                                        bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size() == 0
+                                        (null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) ||
+                                        null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics() ||
+                                        0 == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size())
                                 )
                         )
                 ) {
@@ -450,12 +452,14 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 }
                 if (!result && (bluetoothGattServer.getServices().size() == 0 ||
                         (BLESensorConfiguration.customServiceAdvertisingEnabled &&
-                                bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) == null ||
-                                bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size() == 0
+                                (null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) ||
+                                null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics() ||
+                                0 == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size())
                         ) ||
                         (!BLESensorConfiguration.customServiceAdvertisingEnabled &&
-                        bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) == null ||
-                        bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size() == 0
+                                (null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) ||
+                                null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics() ||
+                                0 == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size())
                 )
                 )) {
                     logger.debug("startAdvert shows GATT server is not advertising Herald. Setting GATT Service");
