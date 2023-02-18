@@ -314,7 +314,9 @@ public class BLESensorConfiguration {
      * This was introduced in v2.1.0-beta4 as a controllable flag. Prior to this the feature was
      * always enabled. Additional Pseudo mac logic and read logic on iOS was added in the v2.1.0
      * release such that this is only required on very old/misbehaving Android sets. It has been
-     * decided to DISABLE this from v2.1.0 onwards. If required, extra logic will be added to Herald
+     * decided to DISABLE this for v2.1.0 onwards. It was reenabled in V2.2.0 due to certain
+     * versions of iOS incorrectly raising existing Bluetooth devices as 'newly detected'.
+     * If required, extra logic will be added to Herald
      * to detect on an Android device when it is 'misbehaving' by rotating it's MAC too much, and
      * if this is the case, this flag will be dynamically enabled for just that device.
      * <br><br>
@@ -329,7 +331,7 @@ public class BLESensorConfiguration {
      *
      * @since v2.1.0-beta4
      */
-    public static boolean pseudoDeviceAddressEnabled = false;
+    public static boolean pseudoDeviceAddressEnabled = true;
 
     /**
      *  Interrogate standard Bluetooth services to obtain device make/model data
