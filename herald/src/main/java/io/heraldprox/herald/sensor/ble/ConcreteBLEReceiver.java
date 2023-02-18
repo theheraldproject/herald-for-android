@@ -599,6 +599,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.txPower(new BLE_TxPower(txPowerLevel));
                 }
             }
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.android ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
+                logger.debug("didDiscover, OS already known (device={})",device);
+                continue;
+            }
             // Identify operating system from scan record where possible
             // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
             // - Sensor service found + Manufacturer not Apple -> Android
@@ -1193,6 +1200,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
      */
     @NonNull
     private NextTask nextTaskForDevice(@NonNull final BLEDevice device) {
+        logger.debug("nextTaskForDevice, called for device (device={})", device);
         // No task for devices marked as .ignore
         if (device.ignore()) {
             logger.debug("nextTaskForDevice, ignore (device={},ignoreExpiresIn={})", device, device.timeIntervalUntilIgnoreExpires());
@@ -1205,6 +1213,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // No task for devices marked as receive only (no advert to connect to)
         if (device.receiveOnly()) {
+            logger.debug("nextTaskForDevice, receive only so next is nothing (device={})", device);
             return NextTask.nothing;
         }
         // Device introspection to resolve device model if enabled and possible
@@ -1220,13 +1229,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Resolve or confirm operating system by reading payload which
         // triggers characteristic discovery to confirm the operating system
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown ||
-                device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
+            device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc ||
+            device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
             logger.debug("nextTaskForDevice (device={},task=readPayload|OS)", device);
             return NextTask.readPayload;
         }
         // Immediate send is supported only if service and characteristics
         // have been discovered, and operating system has been confirmed
         if (null != device.immediateSendData()) {
+            logger.debug("nextTaskForDevice (device={},task=immediateSend)", device);
             return NextTask.immediateSend;
         }
         // Get payload as top priority
@@ -1273,6 +1284,17 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("nextTaskForDevice (device={},task=writePayloadUpdate,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
                 return NextTask.writePayload;
             }
+        } else {
+            // Since v2.2 - Write our payload to iOS if needed (i.e. if they haven't detected us)
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
+                final TimeInterval lastTime = device.timeIntervalSinceLastWritePayload();
+                logger.debug("nextTaskForDevice, timeSinceLastWrite (device={},task=writePayload,elapsed={})", device, lastTime);
+                    // Don't forget the = to part! Because both can be never
+                if (lastTime.value >= BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
+                    logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
+                    return NextTask.writePayload;
+                }
+            }
         }
         // Write payload sharing data to iOS
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ios && !device.protocolIsOpenTrace()) {
@@ -1285,6 +1307,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return NextTask.writePayloadSharing;
             }
         }
+        logger.debug("nextTaskForDevice (device={},task=nothing)",device);
         return NextTask.nothing;
     }
 
@@ -1464,6 +1487,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } else {
                 logger.debug("writeSignalCharacteristic to iOS (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
+                // Assume it succeeds without acknowledgement
+                if (task == NextTask.writePayload) {
+                    device.registerWritePayload();
+                } else if (task == NextTask.writePayloadSharing) {
+                    device.registerWritePayloadSharing();
+                }
             }
             return;
         }
@@ -1476,6 +1505,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } else {
                 logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
+                // Assume it succeeds without acknowledgement
+                if (task == NextTask.writePayload) {
+                    device.registerWritePayload();
+                } else if (task == NextTask.writePayloadSharing) {
+                    device.registerWritePayloadSharing();
+                }
             }
         }
     }
