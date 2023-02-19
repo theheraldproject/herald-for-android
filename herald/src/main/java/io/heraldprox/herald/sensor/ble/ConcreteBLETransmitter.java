@@ -52,6 +52,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -256,8 +257,16 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 // Check if we're actually advertising the service over GATT
                 if (null != bluetoothGattServer &&
                         (bluetoothGattServer.getServices().size() == 0 ||
-                         bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) == null ||
-                         bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size() == 0
+                                (BLESensorConfiguration.customServiceAdvertisingEnabled &&
+                                        (null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) ||
+                                        null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics() ||
+                                        0 == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size())
+                                ) ||
+                                (!BLESensorConfiguration.customServiceAdvertisingEnabled &&
+                                        (null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) ||
+                                        null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics() ||
+                                        0 == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size())
+                                )
                         )
                 ) {
                     logger.debug("advertLoopTask, healthCheck, shows GATT server is not advertising Herald. Setting GATT Service");
@@ -345,7 +354,11 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 } else {
                     try {
 //                        bluetoothGattServer.clearServices(); // Clears non-Herald GATT services (E.g. fetch device name, model, etc.)
-                        BluetoothGattService ourService = bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+                        UUID ourAdvertisedId = BLESensorConfiguration.linuxFoundationServiceUUID;
+                        if (BLESensorConfiguration.customServiceAdvertisingEnabled) {
+                            ourAdvertisedId = BLESensorConfiguration.customServiceUUID;
+                        }
+                        BluetoothGattService ourService = bluetoothGattServer.getService(ourAdvertisedId);
                         if (null != ourService) {
                             // Service is already advertised, so remove it
                             logger.debug("disableGattServer clearing single service for Herald (NOT calling clearServices())");
@@ -438,9 +451,17 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
 //                    result = false;
                 }
                 if (!result && (bluetoothGattServer.getServices().size() == 0 ||
-                                bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) == null ||
-                                bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size() == 0
-                   )) {
+                        (BLESensorConfiguration.customServiceAdvertisingEnabled &&
+                                (null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID) ||
+                                null == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics() ||
+                                0 == bluetoothGattServer.getService(BLESensorConfiguration.customServiceUUID).getCharacteristics().size())
+                        ) ||
+                        (!BLESensorConfiguration.customServiceAdvertisingEnabled &&
+                                (null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID) ||
+                                null == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics() ||
+                                0 == bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID).getCharacteristics().size())
+                )
+                )) {
                     logger.debug("startAdvert shows GATT server is not advertising Herald. Setting GATT Service");
                     try {
                         setGattService(logger, context, bluetoothGattServer);
@@ -554,25 +575,38 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW)
                 .build();
 
-        // This logic added since v2.1.0-beta4.
-        // See BLESensorConfiguration.pseudoDeviceAddressEnabled for details.
-        if (BLESensorConfiguration.pseudoDeviceAddressEnabled) {
-            final AdvertiseData data = new AdvertiseData.Builder()
-                    .setIncludeDeviceName(false)
-                    .setIncludeTxPowerLevel(false)
-                    .addServiceUuid(new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID))
-                    .addManufacturerData(BLESensorConfiguration.linuxFoundationManufacturerIdForSensor, pseudoDeviceAddress.data)
-                    .build();
-            bluetoothLeAdvertiser.startAdvertising(settings, data, advertiseCallback);
-            logger.debug("startAdvertising successful (pseudoDeviceAddress={},settings={})", pseudoDeviceAddress, settings);
-        } else {
-            final AdvertiseData data = new AdvertiseData.Builder()
-                    .setIncludeDeviceName(false)
-                    .setIncludeTxPowerLevel(false)
-                    .addServiceUuid(new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID))
-                    .build();
-            bluetoothLeAdvertiser.startAdvertising(settings, data, advertiseCallback);
-            logger.debug("startAdvertising successful (pseudoDeviceAddress=nil,settings={})", settings);
+        // Custom service logic added since v2.2 February 2023
+        UUID advertServiceUUID = null;
+        int advertManufacturerId = 0;
+        if (BLESensorConfiguration.standardHeraldServiceAdvertisingEnabled) {
+            advertServiceUUID = BLESensorConfiguration.linuxFoundationServiceUUID;
+            advertManufacturerId = BLESensorConfiguration.linuxFoundationManufacturerIdForSensor;
+        }
+        if (BLESensorConfiguration.customServiceAdvertisingEnabled) {
+            advertServiceUUID = BLESensorConfiguration.customServiceUUID;
+            advertManufacturerId = BLESensorConfiguration.customManufacturerIdForSensor;
+        }
+        if (null != advertServiceUUID) { // We may not want to advertise Herald or Custom services - just scan.
+            // This logic added since v2.1.0-beta4.
+            // See BLESensorConfiguration.pseudoDeviceAddressEnabled for details.
+            if (BLESensorConfiguration.pseudoDeviceAddressEnabled) {
+                final AdvertiseData data = new AdvertiseData.Builder()
+                        .setIncludeDeviceName(false)
+                        .setIncludeTxPowerLevel(false)
+                        .addServiceUuid(new ParcelUuid(advertServiceUUID))
+                        .addManufacturerData(advertManufacturerId, pseudoDeviceAddress.data)
+                        .build();
+                bluetoothLeAdvertiser.startAdvertising(settings, data, advertiseCallback);
+                logger.debug("startAdvertising successful (pseudoDeviceAddress={},settings={})", pseudoDeviceAddress, settings);
+            } else {
+                final AdvertiseData data = new AdvertiseData.Builder()
+                        .setIncludeDeviceName(false)
+                        .setIncludeTxPowerLevel(false)
+                        .addServiceUuid(new ParcelUuid(advertServiceUUID))
+                        .build();
+                bluetoothLeAdvertiser.startAdvertising(settings, data, advertiseCallback);
+                logger.debug("startAdvertising successful (pseudoDeviceAddress=nil,settings={})", settings);
+            }
         }
     }
 
@@ -842,7 +876,12 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         }
         // Only modify our own service (This should be the only service on GATT we can see anyway)
 //        bluetoothGattServer.clearServices();
-        BluetoothGattService ourService = bluetoothGattServer.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+        // Custom service UUID added since v2.2 February 2023
+        UUID ourAdvertisedId = BLESensorConfiguration.linuxFoundationServiceUUID;
+        if (BLESensorConfiguration.customServiceAdvertisingEnabled) {
+            ourAdvertisedId = BLESensorConfiguration.customServiceUUID;
+        }
+        BluetoothGattService ourService = bluetoothGattServer.getService(ourAdvertisedId);
         if (null != ourService) {
             // Service is already advertised, so remove it
             logger.debug("setGattService clearing single service for Herald (NOT calling clearServices())");
@@ -856,7 +895,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
             logger.debug("setGattService is advertising (non-Herald) service (service={})",svc.getUuid());
         }
 
-        final BluetoothGattService service = new BluetoothGattService(BLESensorConfiguration.linuxFoundationServiceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+        final BluetoothGattService service = new BluetoothGattService(ourAdvertisedId, BluetoothGattService.SERVICE_TYPE_PRIMARY);
         final BluetoothGattCharacteristic signalCharacteristic = new BluetoothGattCharacteristic(
                 BLESensorConfiguration.androidSignalCharacteristicUUID,
                 BluetoothGattCharacteristic.PROPERTY_WRITE,
@@ -882,7 +921,7 @@ public class ConcreteBLETransmitter implements BLETransmitter, BluetoothStateMan
         services = bluetoothGattServer.getServices();
         int count = 0;
         for (final BluetoothGattService svc : services) {
-            if (svc.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
+            if (svc.getUuid().equals(ourAdvertisedId)) {
                 count++;
             }
         }

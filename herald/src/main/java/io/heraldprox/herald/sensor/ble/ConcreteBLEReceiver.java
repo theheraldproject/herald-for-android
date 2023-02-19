@@ -22,7 +22,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -431,11 +430,33 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Scan for HERALD protocol service on iOS (background) devices
         filter.add(new ScanFilter.Builder().setManufacturerData(
                 BLESensorConfiguration.manufacturerIdForApple, new byte[0], new byte[0]).build());
-        // Scan for HERALD protocol service on Android or iOS (foreground) devices
-        filter.add(new ScanFilter.Builder().setServiceUuid(
-                        new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
-                        new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
-                .build());
+
+        // This logic added in v2.2 to enable disabling of standard herald device detection and
+        // detection of custom application IDs
+        if (BLESensorConfiguration.customServiceDetectionEnabled) {
+            if (null != BLESensorConfiguration.customServiceUUID) {
+                filter.add(new ScanFilter.Builder().setServiceUuid(
+                                new ParcelUuid(BLESensorConfiguration.customServiceUUID),
+                                new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                        .build());
+            }
+            if (null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                for (int idx = 0;idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length;idx++) {
+                    filter.add(new ScanFilter.Builder().setServiceUuid(
+                                    new ParcelUuid(BLESensorConfiguration.customAdditionalServiceUUIDs[idx]),
+                                    new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                            .build());
+                }
+            }
+        }
+        // This is useful for a custom application.
+        if (BLESensorConfiguration.standardHeraldServiceDetectionEnabled) {
+            // Scan for HERALD protocol service on Android or iOS (foreground) devices
+            filter.add(new ScanFilter.Builder().setServiceUuid(
+                            new ParcelUuid(BLESensorConfiguration.linuxFoundationServiceUUID),
+                            new ParcelUuid(new UUID(0xFFFFFFFFFFFFFFFFL, 0)))
+                    .build());
+        }
         // Scan for OpenTrace protocol service on iOS and Android devices
         if (BLESensorConfiguration.interopOpenTraceEnabled) {
             filter.add(new ScanFilter.Builder().setServiceUuid(
@@ -578,6 +599,13 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                     device.txPower(new BLE_TxPower(txPowerLevel));
                 }
             }
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.android ||
+                device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
+                logger.debug("didDiscover, OS already known (device={})",device);
+                continue;
+            }
             // Identify operating system from scan record where possible
             // - Sensor service found + Manufacturer is Apple -> iOS (Foreground)
             // - Sensor service found + Manufacturer not Apple -> Android
@@ -645,7 +673,23 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             return false;
         }
         for (final ParcelUuid serviceUuid : serviceUuids) {
-            if (serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
+            // Since v2.2 try custom service UUID(s) first
+            if (BLESensorConfiguration.customServiceDetectionEnabled) {
+                if (null != BLESensorConfiguration.customServiceUUID &&
+                    serviceUuid.getUuid().equals(BLESensorConfiguration.customServiceUUID)) {
+                    return true;
+                }
+                if (null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                    for (int idx = 0; idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length;idx++) {
+                        if (serviceUuid.getUuid().equals(BLESensorConfiguration.customAdditionalServiceUUIDs[idx])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            // Extra if term added in v2.2 so a custom app doesn't accidentally detect normal standard Herald devices
+            if (BLESensorConfiguration.standardHeraldServiceDetectionEnabled &&
+                serviceUuid.getUuid().equals(BLESensorConfiguration.linuxFoundationServiceUUID)) {
                 return true;
             }
             if (BLESensorConfiguration.legacyHeraldServiceDetectionEnabled &&
@@ -1020,6 +1064,20 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
 
         // Sensor characteristics
         BluetoothGattService service = gatt.getService(BLESensorConfiguration.linuxFoundationServiceUUID);
+        // Since v2.2 override if a custom UUID is specified
+        if (BLESensorConfiguration.customServiceDetectionEnabled) {
+            service = null; // Ensure we don't accidentally re-enable Herald detection
+            // Try the main custom one first (if not null)
+            if (null != BLESensorConfiguration.customServiceUUID) {
+                service = gatt.getService(BLESensorConfiguration.customServiceUUID);
+            }
+            if (null == service && null != BLESensorConfiguration.customAdditionalServiceUUIDs) {
+                // Now try any additional custom service UUIDs
+                for (int idx = 0;null == service && idx < BLESensorConfiguration.customAdditionalServiceUUIDs.length; idx++) {
+                    service = gatt.getService(BLESensorConfiguration.customAdditionalServiceUUIDs[idx]);
+                }
+            }
+        }
         if (null == service && BLESensorConfiguration.interopOpenTraceEnabled) {
             service = gatt.getService(BLESensorConfiguration.interopOpenTraceServiceUUID);
         }
@@ -1050,7 +1108,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 // offering sensor services.
             }
         } else {
-            logger.debug("onServicesDiscovered, found sensor service (device={})", device);
+            logger.debug("onServicesDiscovered, found sensor service (device={},service={})", device,service.getUuid());
             device.invalidateCharacteristics();
             for (final BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                 // Confirm operating system with signal characteristic
@@ -1142,6 +1200,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
      */
     @NonNull
     private NextTask nextTaskForDevice(@NonNull final BLEDevice device) {
+        logger.debug("nextTaskForDevice, called for device (device={})", device);
         // No task for devices marked as .ignore
         if (device.ignore()) {
             logger.debug("nextTaskForDevice, ignore (device={},ignoreExpiresIn={})", device, device.timeIntervalUntilIgnoreExpires());
@@ -1154,6 +1213,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         }
         // No task for devices marked as receive only (no advert to connect to)
         if (device.receiveOnly()) {
+            logger.debug("nextTaskForDevice, receive only so next is nothing (device={})", device);
             return NextTask.nothing;
         }
         // Device introspection to resolve device model if enabled and possible
@@ -1169,13 +1229,15 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
         // Resolve or confirm operating system by reading payload which
         // triggers characteristic discovery to confirm the operating system
         if (device.operatingSystem() == BLEDeviceOperatingSystem.unknown ||
-                device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc) {
+            device.operatingSystem() == BLEDeviceOperatingSystem.ios_tbc ||
+            device.operatingSystem() == BLEDeviceOperatingSystem.android_tbc) {
             logger.debug("nextTaskForDevice (device={},task=readPayload|OS)", device);
             return NextTask.readPayload;
         }
         // Immediate send is supported only if service and characteristics
         // have been discovered, and operating system has been confirmed
         if (null != device.immediateSendData()) {
+            logger.debug("nextTaskForDevice (device={},task=immediateSend)", device);
             return NextTask.immediateSend;
         }
         // Get payload as top priority
@@ -1222,6 +1284,17 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 logger.debug("nextTaskForDevice (device={},task=writePayloadUpdate,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
                 return NextTask.writePayload;
             }
+        } else {
+            // Since v2.2 - Write our payload to iOS if needed (i.e. if they haven't detected us)
+            if (device.operatingSystem() == BLEDeviceOperatingSystem.ios) {
+                final TimeInterval lastTime = device.timeIntervalSinceLastWritePayload();
+                logger.debug("nextTaskForDevice, timeSinceLastWrite (device={},task=writePayload,elapsed={})", device, lastTime);
+                    // Don't forget the = to part! Because both can be never
+                if (lastTime.value >= BLESensorConfiguration.payloadDataUpdateTimeInterval.value) {
+                    logger.debug("nextTaskForDevice (device={},task=writePayload,elapsed={})", device, device.timeIntervalSinceLastWritePayload());
+                    return NextTask.writePayload;
+                }
+            }
         }
         // Write payload sharing data to iOS
         if (device.operatingSystem() == BLEDeviceOperatingSystem.ios && !device.protocolIsOpenTrace()) {
@@ -1234,6 +1307,7 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
                 return NextTask.writePayloadSharing;
             }
         }
+        logger.debug("nextTaskForDevice (device={},task=nothing)",device);
         return NextTask.nothing;
     }
 
@@ -1413,6 +1487,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } else {
                 logger.debug("writeSignalCharacteristic to iOS (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
+                // Assume it succeeds without acknowledgement
+                if (task == NextTask.writePayload) {
+                    device.registerWritePayload();
+                } else if (task == NextTask.writePayloadSharing) {
+                    device.registerWritePayloadSharing();
+                }
             }
             return;
         }
@@ -1425,6 +1505,12 @@ public class ConcreteBLEReceiver extends BluetoothGattCallback implements BLERec
             } else {
                 logger.debug("writeSignalCharacteristic to Android (task={},dataLength={},device={})", task, data.length, device);
                 // => onCharacteristicWrite
+                // Assume it succeeds without acknowledgement
+                if (task == NextTask.writePayload) {
+                    device.registerWritePayload();
+                } else if (task == NextTask.writePayloadSharing) {
+                    device.registerWritePayloadSharing();
+                }
             }
         }
     }
