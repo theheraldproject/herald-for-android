@@ -13,7 +13,7 @@ import io.heraldprox.herald.sensor.datatype.Date;
  * Timestamp generator for use across all loggers.
  */
 public class Timestamp {
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.UK);
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ");
     static {
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }

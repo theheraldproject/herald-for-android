@@ -77,7 +77,7 @@ public class BLETimer {
                 try {
                     delegate.bleTimer(System.currentTimeMillis());
                 } catch (Throwable e) {
-                    logger.fault("delegate execution failed", e);
+                    logger.fault("delegate execution failed {}", e);
                 }
             }
         }
